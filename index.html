@@ -1122,6 +1122,7 @@
       el.finishRoundBtn.addEventListener('click', finishCurrentRound);
       el.playersGrid.addEventListener('click', handlePlayerCardClick);
       el.auditList.addEventListener('click', handleAuditClick);
+      el.historyList.addEventListener('click', handleHistoryClick);
       el.tabButtons.addEventListener('click', handleTabClick);
     }
 
@@ -1702,8 +1703,7 @@
           ]
         });
         if (action !== 'copy') break;
-        const copied = await copySettlementTextToClipboard(entry, beerSettlement);
-        showToast(copied ? 'Endabrechnung in Zwischenablage kopiert.' : 'Kopieren leider nicht möglich.');
+        await handleSettlementCopyFeedback(entry, beerSettlement, 'Endabrechnung');
       }
     }
 
@@ -1758,6 +1758,20 @@
           ]
         });
         if (answer === 'yes') redoAuditEntry(auditId);
+      }
+    }
+
+    async function handleHistoryClick(event) {
+      const button = event.target.closest('button[data-history-action]');
+      if (!button) return;
+      const action = button.dataset.historyAction;
+      const entryId = button.dataset.historyId;
+      const entry = (state.history || []).find((item) => item.id === entryId);
+      if (!entry) return;
+
+      if (action === 'copy-settlement') {
+        const beerSettlement = getBeerSettlement(entry);
+        await handleSettlementCopyFeedback(entry, beerSettlement, 'Abrechnung');
       }
     }
 
@@ -2024,7 +2038,10 @@
             </div>
           </div>
           <div class="history-zone" style="margin-top:10px;">
-            <div class="history-zone-title">Bierabrechnung nach Gegenrechnung</div>
+            <div class="label-row" style="justify-content:space-between; align-items:center;">
+              <div class="history-zone-title">Bierabrechnung nach Gegenrechnung</div>
+              <button type="button" class="info" data-history-action="copy-settlement" data-history-id="${escapeHtml(entry.id)}" style="width:auto; min-width:170px; box-shadow:none;">Abrechnungstext kopieren</button>
+            </div>
             ${renderBeerSettlementSheet(entry, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: false })}
           </div>
           <details class="history-detail-toggle" style="margin-top:10px;">
@@ -2303,6 +2320,76 @@
     async function copySettlementTextToClipboard(container, beerSettlement) {
       const text = buildSettlementText(container, beerSettlement);
       return copyTextToClipboard(text);
+    }
+
+    async function showManualCopyDialog(text, label = 'Abrechnung') {
+      return new Promise((resolve) => {
+        el.modalTitle.textContent = `${label} manuell kopieren`;
+        el.modalMessage.textContent = 'Automatisches Kopieren hat auf diesem Gerät nicht funktioniert. Bitte Text unten markieren und kopieren.';
+        el.modalBody.innerHTML = '';
+
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.readOnly = true;
+        area.style.width = '100%';
+        area.style.minHeight = '240px';
+        area.style.background = 'rgba(8, 13, 23, .88)';
+        area.style.color = 'var(--text)';
+        area.style.border = '1px solid var(--line)';
+        area.style.borderRadius = '14px';
+        area.style.padding = '12px 14px';
+        el.modalBody.appendChild(area);
+
+        el.modalActions.innerHTML = '';
+
+        const selectBtn = document.createElement('button');
+        selectBtn.textContent = 'Text markieren';
+        selectBtn.className = 'info';
+        selectBtn.addEventListener('click', () => {
+          area.focus();
+          area.select();
+          area.setSelectionRange(0, area.value.length);
+        });
+
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = 'Schließen';
+        closeBtn.className = 'primary';
+        closeBtn.addEventListener('click', () => {
+          hideDialog();
+          resolve('ok');
+        });
+
+        el.modalActions.appendChild(selectBtn);
+        el.modalActions.appendChild(closeBtn);
+
+        el.modalBackdrop.classList.remove('hidden');
+        el.modalWrap.classList.remove('hidden');
+
+        requestAnimationFrame(() => {
+          area.focus();
+          area.select();
+          area.setSelectionRange(0, area.value.length);
+        });
+      });
+    }
+
+    async function handleSettlementCopyFeedback(container, beerSettlement, label = 'Abrechnung') {
+      const text = buildSettlementText(container, beerSettlement);
+      const copied = await copyTextToClipboard(text);
+
+      if (copied) {
+        await showDialog({
+          title: 'Text kopiert',
+          message: `Der Text der ${label} wurde in die Zwischenablage kopiert.`,
+          actions: [
+            { label: 'OK', value: 'ok', className: 'primary' }
+          ]
+        });
+        return true;
+      }
+
+      await showManualCopyDialog(text, label);
+      return false;
     }
 
     async function showPlayerPickerDialog() {
@@ -3412,18 +3499,11 @@ async function showSettlementPopup(container, { mode = 'round' } = {}) {
   });
 
   if (action === 'copy') {
-    const copied = await copySettlementTextToClipboard(container, beerSettlement, mode);
-    const copyLabel = mode === 'final' ? 'Endabrechnung' : 'Abrechnung';
-
-    await showDialog({
-      title: copied ? 'Text kopiert' : 'Kopieren nicht möglich',
-      message: copied
-        ? `Der Text der ${copyLabel} wurde in die Zwischenablage kopiert.`
-        : 'Der Text konnte leider nicht in die Zwischenablage kopiert werden.',
-      actions: [
-        { label: 'OK', value: 'ok', className: 'primary' }
-      ]
-    });
+    await handleSettlementCopyFeedback(
+      container,
+      beerSettlement,
+      mode === 'final' ? 'Endabrechnung' : 'Abrechnung'
+    );
   }
 }
 
