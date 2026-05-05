@@ -1764,14 +1764,13 @@
     async function handleHistoryClick(event) {
       const button = event.target.closest('button[data-history-action]');
       if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
       const action = button.dataset.historyAction;
       const entryId = button.dataset.historyId;
-      const entry = (state.history || []).find((item) => item.id === entryId);
-      if (!entry) return;
 
       if (action === 'copy-settlement') {
-        const beerSettlement = getBeerSettlement(entry);
-        await handleSettlementCopyFeedback(entry, beerSettlement, 'Abrechnung');
+        await handleHistoryCopyById(entryId);
       }
     }
 
@@ -1976,6 +1975,22 @@
         return;
       }
       el.historyList.innerHTML = state.history.map((entry, index) => renderHistoryEntry(entry, index)).join('');
+
+      el.historyList.querySelectorAll('button[data-history-action="copy-settlement"]').forEach((btn) => {
+        btn.addEventListener('click', async (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const entryId = btn.dataset.historyId;
+          await handleHistoryCopyById(entryId);
+        });
+      });
+    }
+
+    async function handleHistoryCopyById(entryId) {
+      const entry = (state.history || []).find((item) => item.id === entryId);
+      if (!entry) return;
+      const beerSettlement = getBeerSettlement(entry);
+      await handleSettlementCopyFeedback(entry, beerSettlement, 'Abrechnung');
     }
 
     function renderHistoryEntry(entry, index) {
