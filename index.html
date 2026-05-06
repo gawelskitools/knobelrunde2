@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Knobeln – Strafpunkte 1647</title>
+  <title>Knobeln – Strafpunkte v5</title>
   <style>
     :root {
       --bg: #0b1220;
@@ -777,7 +777,7 @@
           <button id="menuBtn" class="menu-btn" aria-label="Menü öffnen">☰</button>
           <div class="header-copy">
             <div class="header-title-row">
-              <h1>Knobeln – Strafpunkte</h1>
+              <h1>Knobeln – Strafpunkte 20260506</h1>
               <button id="helpBtn" class="help-btn" aria-label="Hilfe öffnen">?</button>
             </div>
             <p class="section-subtitle">Eine Partie mit bis zu 3 Spielrunden à 5 oder 10 Durchgänge und maximal 12 Spielern.</p>
@@ -1574,7 +1574,7 @@
           ]
         });
         if (earlyAnswer !== 'end') return;
-        await finalizeRoundAndSession({ exportBackupFirst: false, endSession: true, earlyEnd: true });
+        await finalizeRoundAndSession({ endSession: true, earlyEnd: true });
         return;
       }
 
@@ -1611,31 +1611,15 @@
         }
       }
 
-      const answer = await showDialog({
-        title: 'Spielrunde beenden',
-        message: 'Soll die Spielrunde jetzt abgeschlossen werden? Du kannst sie regulär beenden, vorher noch eine JSON-Sicherung laden oder die gesamte Partie direkt hier abschließen.',
-        actions: [
-          { label: 'Mit Speichern beenden', value: 'save', className: 'primary' },
-          { label: 'Ohne Speichern beenden', value: 'nosave', className: 'danger' },
-          { label: 'Partie jetzt beenden', value: 'end', className: 'warn' },
-          { label: 'Abbrechen', value: 'cancel' }
-        ]
-      });
-      if (answer === 'cancel') return;
-      if (answer === 'end') {
-        await finalizeRoundAndSession({ exportBackupFirst: false, endSession: true, earlyEnd: false });
-        return;
-      }
-      await finalizeRoundAndSession({ exportBackupFirst: answer === 'save', endSession: false, earlyEnd: false });
+      await finalizeRoundAndSession({ endSession: isFinalRound, earlyEnd: false });
     }
 
-    async function finalizeRoundAndSession({ exportBackupFirst = false, endSession = false, earlyEnd = false }) {
+    async function finalizeRoundAndSession({ endSession = false, earlyEnd = false }) {
       const session = state.currentSession;
       if (!session) return;
 
       const finishedRoundIndex = session.currentRound.index;
       const finishedRoundMax = session.maxRounds;
-      const backupName = `knobeln-runde-${finishedRoundIndex}`;
 
       settleTrueCounters(session, 'final', null, 'Partieende', new Date().toISOString());
       session.currentRound.status = 'finished';
@@ -1653,53 +1637,35 @@
       state.history.unshift(roundSnapshot);
       state.history = state.history.slice(0, MAX_HISTORY);
       state.actionAudit = [];
-
       saveState(true);
 
-      await showFinalRoundPopup(roundSnapshot);
+      const action = await showFinalRoundPopup(roundSnapshot, {
+        mode: endSession ? 'final' : 'round',
+        nextRoundIndex: finishedRoundIndex + 1,
+        maxRounds: finishedRoundMax
+      });
 
-      const isSessionFinished = endSession || session.roundIndex >= session.maxRounds;
-
-      if (isSessionFinished) {
-        if (!endSession) {
-          await showDialog({
-            title: 'Partie beendet',
-            message: 'Das Spiel ist nach drei Spielrunden beendet. Es geht nur weiter, wenn du eine neue Partie anlegst.',
-            actions: [
-              { label: 'OK', value: 'ok', className: 'primary' }
-            ]
-          });
-        }
-
+      if (endSession || session.roundIndex >= session.maxRounds) {
         state.currentSession = null;
         state.ui.openTab = null;
         saveState();
         render();
-
-        if (exportBackupFirst) {
-          setTimeout(() => exportBackup(backupName), 80);
-        }
-
-        showToast(endSession ? 'Partie beendet.' : 'Spielrunde beendet.');
+        showToast('Partie beendet.');
         return;
       }
 
-      session.roundIndex += 1;
-      if (session.roundIndex < session.maxRounds) {
-        session.finalRoundExtensionUsed = false;
-        session.finalRoundExtraTurns = 0;
+      if (action === 'next') {
+        session.roundIndex += 1;
+        if (session.roundIndex < session.maxRounds) {
+          session.finalRoundExtensionUsed = false;
+          session.finalRoundExtraTurns = 0;
+        }
+        session.currentRound = createRoundObject(session.roundIndex, session.roundTarget, new Date().toISOString());
+        state.ui.openTab = null;
+        saveState();
+        render();
+        showToast(`Spielrunde ${finishedRoundIndex}/${finishedRoundMax} beendet – weiter mit ${session.roundIndex}/${finishedRoundMax}.`);
       }
-      session.currentRound = createRoundObject(session.roundIndex, session.roundTarget, new Date().toISOString());
-      state.ui.openTab = null;
-
-      saveState();
-      render();
-
-      if (exportBackupFirst) {
-        setTimeout(() => exportBackup(backupName), 80);
-      }
-
-      showToast(`Spielrunde ${finishedRoundIndex}/${finishedRoundMax} beendet – weiter mit ${session.roundIndex}/${finishedRoundMax}.`);
     }
 
     function buildHistoryEntry(session) {
@@ -1718,20 +1684,28 @@
       };
     }
 
-    async function showFinalRoundPopup(entry) {
+    async function showFinalRoundPopup(entry, { mode = 'round', nextRoundIndex = null, maxRounds = null } = {}) {
       const beerSettlement = getBeerSettlement(entry);
       while (true) {
         const action = await showCustomDialog({
-          title: `Bierabrechnung Spielrunde ${entry.roundIndex}`,
+          title: mode === 'final' ? `Endabrechnung Spielrunde ${entry.roundIndex}` : `Bierabrechnung Spielrunde ${entry.roundIndex}`,
           message: `${escapeHtml(entry.sessionTitle)} · ${formatDateTime(entry.finishedAt)} · ${entry.currentRound.turnsCompleted}/${entry.currentRound.target} Durchgänge`,
           bodyHtml: renderBeerSettlementSheet(entry, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: true }),
-          actions: [
-            { label: 'Text kopieren', value: 'copy', className: 'info' },
-            { label: 'Schließen', value: 'ok', className: 'primary' }
-          ]
+          actions: mode === 'final'
+            ? [
+                { label: 'Text kopieren', value: 'copy', className: 'info' },
+                { label: 'Spiel beenden', value: 'finish', className: 'danger' }
+              ]
+            : [
+                { label: 'Text kopieren', value: 'copy', className: 'info' },
+                { label: `Jetzt Spielrunde ${nextRoundIndex}/${maxRounds} starten`, value: 'next', className: 'info' }
+              ]
         });
-        if (action !== 'copy') break;
-        await handleSettlementCopyFeedback(entry, beerSettlement, 'Endabrechnung');
+        if (action === 'copy') {
+          await handleSettlementCopyFeedback(entry, beerSettlement, mode === 'final' ? 'Endabrechnung' : 'Abrechnung');
+          continue;
+        }
+        return action;
       }
     }
 
@@ -2945,679 +2919,7 @@
       }, 2400);
     }
   
-/* ===== PATCH v6.5 – stabiler Flow auf Basis v6_textcopy_favorites ===== */
 
-/* Oft gespielte Namen fest im Code.
-   Reihenfolge hier = Reihenfolge im Spieler-Popup.
-   Du kannst diese Liste später direkt hier erweitern/ändern. */
-function getPresetPlayers() {
-  return [
-    { name: 'Alex', code: 'A' },
-    { name: 'Arno', code: 'ÖSI' },
-    { name: 'Buri', code: 'B' },
-    { name: 'Klappi', code: 'K' },
-    { name: 'Niko', code: 'N' },
-    { name: 'Sascha', code: 'S' },
-    { name: 'Thomas', code: 'TÜV' },
-    { name: 'Timo', code: 'T' }
-  ];
-}
-
-function patchStaticUi() {
-  const favoritesBtn = document.getElementById('drawerFavoritesBtn');
-  if (favoritesBtn) favoritesBtn.remove();
-
-  const importTitle = document.querySelector('#drawerImportBtn .menu-title');
-  if (importTitle) importTitle.textContent = 'Spielstand-Sicherung importieren';
-
-  const exportTitle = document.querySelector('#drawerExportBtn .menu-title');
-  if (exportTitle) exportTitle.textContent = 'Spielstand-Sicherung exportieren';
-
-  const cleanTitle = document.querySelector('#drawerCleanStartBtn .menu-title');
-  if (cleanTitle) cleanTitle.textContent = 'Neues Spiel starten';
-
-  const infoSection = document.querySelector('.drawer-section .drawer-info-card');
-  if (infoSection) {
-    const section = infoSection.closest('.drawer-section');
-    if (section) {
-      section.innerHTML = `
-        <div class="drawer-section-label">Info</div>
-        <nav>
-          <button id="drawerInfoBtn">
-            <span class="menu-title">Kurzinfo & Hilfe öffnen</span>
-            <span class="menu-subtitle">Öffnet dieselbe Hilfe wie das ?-Symbol im Header.</span>
-          </button>
-        </nav>
-      `;
-    }
-  }
-
-  if (!document.getElementById('menu-button-contrast-style')) {
-    const style = document.createElement('style');
-    style.id = 'menu-button-contrast-style';
-    style.textContent = `
-      .drawer nav button {
-        text-align: left;
-        padding: 14px;
-        border-radius: 18px;
-        background: rgba(255,255,255,.06) !important;
-        border: 1px solid rgba(255,255,255,.18) !important;
-        box-shadow: none;
-        display: grid;
-        gap: 4px;
-      }
-      .drawer nav button:hover,
-      .drawer nav button:focus-visible {
-        background: rgba(255,255,255,.10) !important;
-        border-color: rgba(255,255,255,.28) !important;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-}
-
-function getPresetPlayerByName(name) {
-  const normalized = normalizeName(name);
-  return getPresetPlayers().find((item) => normalizeName(item.name) === normalized) || null;
-}
-
-try {
-  state.favoritePlayers = getPresetPlayers().map((item) => item.name);
-} catch (e) {}
-
-function bindEvents() {
-  patchStaticUi();
-
-  el.menuBtn.addEventListener('click', openDrawer);
-  el.helpBtn.addEventListener('click', openHelpDialog);
-  el.closeDrawerBtn.addEventListener('click', closeDrawer);
-  el.drawerBackdrop.addEventListener('click', closeDrawer);
-  el.drawerImportBtn.addEventListener('click', () => { closeDrawer(); el.importInput.click(); });
-  el.drawerExportBtn.addEventListener('click', () => { closeDrawer(); exportBackup(); });
-
-  const infoBtn = document.getElementById('drawerInfoBtn');
-  if (infoBtn) infoBtn.addEventListener('click', () => { closeDrawer(); openHelpDialog(); });
-
-  el.drawerCleanStartBtn.addEventListener('click', async () => {
-    closeDrawer();
-    await cleanStartNewGame();
-  });
-
-  el.importInput.addEventListener('change', importBackup);
-
-  el.newGameBtn.addEventListener('click', handleNewGameButton);
-  el.finishRoundBtn.addEventListener('click', openEndGameDialog);
-  el.playersGrid.addEventListener('click', handlePlayerCardClick);
-  el.auditList.addEventListener('click', handleAuditClick);
-  el.tabButtons.addEventListener('click', handleTabClick);
-}
-
-function addPlayerByName(name) {
-  const session = state.currentSession;
-  if (!session) return;
-
-  const cleanName = String(name || '').trim();
-  if (!cleanName) {
-    showToast('Bitte einen Namen eingeben.');
-    return;
-  }
-  if (session.players.length >= MAX_PLAYERS) {
-    showToast(`Maximal ${MAX_PLAYERS} Spieler sind erlaubt.`);
-    return;
-  }
-
-  const normalized = normalizeName(cleanName);
-  const existingMatch = session.players.find((player) => normalizeName(player.name) === normalized);
-  if (existingMatch) {
-    if (existingMatch.status === 'exited') {
-      showToast('Dieser Spieler war schon dabei. Bitte Wiedereinsteigen auf der Spielerkarte benutzen.');
-    } else {
-      showToast('Dieser Name ist in dieser Partie bereits vergeben.');
-    }
-    return;
-  }
-
-  const preset = getPresetPlayerByName(cleanName);
-  const usedCodes = session.players.map((player) => player.code);
-  const code = (preset && !usedCodes.includes(preset.code)) ? preset.code : generateCode(cleanName, usedCodes);
-
-  const player = {
-    id: uid('player'),
-    name: cleanName,
-    code,
-    status: 'active',
-    createdAt: new Date().toISOString(),
-    exitedAtTs: null
-  };
-
-  session.players.push(player);
-  session.currentRound.events.push({
-    id: uid('event'),
-    ts: new Date().toISOString(),
-    type: 'playerAdd',
-    actorId: player.id,
-    actorName: player.name,
-    actorCode: player.code,
-    label: `${player.name} (${player.code}) hinzugefügt`
-  });
-
-  saveState(true);
-  render();
-}
-
-async function handlePlayerCardClick(event) {
-  const button = event.target.closest('button[data-action]');
-  if (!button) return;
-
-  const action = button.dataset.action;
-  if (action === 'add-player') {
-    openAddPlayerDialog();
-    return;
-  }
-
-  const session = state.currentSession;
-  if (!session) return;
-
-  const playerId = button.dataset.playerId;
-  const player = session.players.find((item) => item.id === playerId);
-  if (!player) return;
-
-  if (action === 'delete-player') {
-    const blockedReason = getPlayerDeleteBlockedReason(session, player.id);
-    if (blockedReason) {
-      showToast(blockedReason);
-      return;
-    }
-    const ok = await showDialog({
-      title: 'Spieler löschen',
-      message: `${player.name} (${player.code}) wirklich löschen? Das ist nur für falsche Eingaben gedacht.`,
-      actions: [
-        { label: 'Ja, löschen', value: 'yes', className: 'danger' },
-        { label: 'Abbrechen', value: 'no' }
-      ]
-    });
-    if (ok === 'yes') deletePlayerFromSession(player.id);
-    return;
-  }
-
-  if (action === 'rejoin') {
-    const ok = await showDialog({
-      title: 'Wiedereinsteigen',
-      message: `${player.name} steigt mit altem Stand wieder ein. Wirklich fortsetzen?`,
-      actions: [
-        { label: 'Ja, wieder einsteigen', value: 'yes', className: 'primary' },
-        { label: 'Abbrechen', value: 'no' }
-      ]
-    });
-    if (ok === 'yes') rejoinPlayer(player.id);
-    return;
-  }
-
-  if (session.currentRound.status !== 'open') {
-    showToast('Die aktuelle Spielrunde ist bereits beendet.');
-    return;
-  }
-  if (session.currentRound.turnsCompleted >= session.currentRound.target) {
-    showToast('Die maximale Anzahl an Durchgängen ist erreicht. Bitte die Spielrunde jetzt beenden.');
-    return;
-  }
-  if (player.status !== 'active') {
-    showToast('Dieser Spieler ist ausgestiegen.');
-    return;
-  }
-
-  if (action === 'loss') {
-    const ok = await showDialog({
-      title: 'Verlorene Runde eintragen',
-      message: `Wirklich eintragen, dass ${player.name} die Runde verloren hat?`,
-      actions: [
-        { label: 'Ja, eintragen', value: 'yes', className: 'danger' },
-        { label: 'Abbrechen', value: 'no' }
-      ]
-    });
-    if (ok === 'yes') await applyUndoablePlayerAction('loss', player.id);
-  }
-
-  if (action === 'lust') {
-    const ok = await showDialog({
-      title: 'Lustknobeln eintragen',
-      message: `Wirklich eintragen, dass ${player.name} Lustknobeln gemacht hat?`,
-      actions: [
-        { label: 'Ja, eintragen', value: 'yes', className: 'violet' },
-        { label: 'Abbrechen', value: 'no' }
-      ]
-    });
-    if (ok === 'yes') await applyUndoablePlayerAction('lust', player.id);
-  }
-
-  if (action === 'exit') {
-    const ok = await showDialog({
-      title: 'Ausstieg eintragen',
-      message: `Wirklich eintragen, dass ${player.name} aussteigen möchte?`,
-      actions: [
-        { label: 'Ja, aussteigen', value: 'yes', className: 'warn' },
-        { label: 'Abbrechen', value: 'no' }
-      ]
-    });
-    if (ok === 'yes') applyExit(player.id);
-  }
-}
-
-async function applyUndoablePlayerAction(type, playerId) {
-  const session = state.currentSession;
-  if (!session) return;
-
-  const actor = session.players.find((player) => player.id === playerId);
-  if (!actor) return;
-
-  const activePlayers = session.players.filter((player) => player.status === 'active');
-  if (activePlayers.length < 2) {
-    showToast('Dafür braucht es mindestens zwei aktive Spieler.');
-    return;
-  }
-
-  const beforeSession = deepClone(session);
-  const ts = new Date().toISOString();
-
-  const event = {
-    id: uid('event'),
-    ts,
-    type,
-    actorId: actor.id,
-    actorCode: actor.code,
-    actorName: actor.name,
-    auditId: null,
-    label: ''
-  };
-
-  const targets = activePlayers.filter((player) => player.id !== actor.id);
-  targets.forEach((target) => {
-    session.points.push({
-      id: uid('point'),
-      eventId: event.id,
-      kind: type,
-      ts,
-      roundIndex: session.currentRound.index,
-      turnNo: session.currentRound.turnsCompleted + 1,
-      fromId: actor.id,
-      fromName: actor.name,
-      fromCode: actor.code,
-      toId: target.id,
-      toName: target.name,
-      toCode: target.code,
-      status: 'open',
-      cancelReason: null,
-      settlementId: null
-    });
-  });
-
-  session.currentRound.turnsCompleted += 1;
-  const targetCodes = targets.map((target) => target.code).join(' ');
-
-  event.label = type === 'loss'
-    ? `${actor.name} (${actor.code}) verliert und verteilt 1 Strafpunkt an Mitspieler ${targetCodes}.`
-    : `${actor.name} (${actor.code}) knobelt aus Lust und verteilt 1 Strafpunkt an Mitspieler ${targetCodes}.`;
-
-  session.currentRound.events.push(event);
-
-  const afterSession = deepClone(session);
-  const auditId = uid('audit');
-  event.auditId = auditId;
-
-  const storedEvent = session.currentRound.events.find((item) => item.id === event.id);
-  if (storedEvent) storedEvent.auditId = auditId;
-
-  state.actionAudit = state.actionAudit.filter((entry) => entry.status === 'applied');
-  state.actionAudit.push({
-    id: auditId,
-    eventId: event.id,
-    actionType: type,
-    label: event.label,
-    ts,
-    actorName: actor.name,
-    actorCode: actor.code,
-    beforeSession,
-    afterSession,
-    status: 'applied'
-  });
-
-  if (state.actionAudit.length > MAX_UNDO) {
-    state.actionAudit = state.actionAudit.slice(-MAX_UNDO);
-  }
-
-  saveState(true);
-  render();
-
-  await handleTurnCompletionFlow();
-}
-
-async function handleTurnCompletionFlow() {
-  const session = state.currentSession;
-  if (!session || session.currentRound.status !== 'open') return;
-
-  const activeCount = session.players.filter((player) => player.status === 'active').length;
-  const roundComplete = session.currentRound.turnsCompleted >= session.currentRound.target || activeCount <= 1;
-  if (!roundComplete) return;
-
-  const isFinalRound = session.roundIndex >= session.maxRounds;
-
-  if (isFinalRound) {
-    if (!session.finalRoundExtensionUsed) {
-      const extensionAnswer = await showDialog({
-        title: 'Dritte Spielrunde abgeschlossen',
-        message: 'Die dritte Spielrunde ist abgeschlossen. Möchtest du die Partie jetzt beenden oder nur noch zusätzliche Durchgänge anhängen?',
-        actions: [
-          { label: 'Partie beenden', value: 'end', className: 'danger' },
-          { label: '1 weiterer Durchgang', value: '1', className: 'info' },
-          { label: '2 weitere Durchgänge', value: '2', className: 'info' },
-          { label: '3 weitere Durchgänge', value: '3', className: 'info' },
-          { label: 'Abbrechen', value: 'cancel' }
-        ]
-      });
-
-      if (extensionAnswer === 'cancel') return;
-
-      if (extensionAnswer !== 'end') {
-        const extraTurns = Number(extensionAnswer || 0);
-        if (extraTurns > 0) {
-          session.currentRound.target += extraTurns;
-          session.finalRoundExtensionUsed = true;
-          session.finalRoundExtraTurns = extraTurns;
-          session.currentRound.events.push({
-            id: uid('event'),
-            ts: new Date().toISOString(),
-            type: 'extraTurns',
-            label: `${extraTurns} zusätzliche ${extraTurns === 1 ? 'Runde' : 'Runden'} an die dritte Spielrunde angehängt`
-          });
-          saveState(true);
-          render();
-          showToast(`${extraTurns} zusätzlicher ${extraTurns === 1 ? 'Durchgang' : 'Durchgänge'} aktiviert.`);
-        }
-        return;
-      }
-    }
-
-    await completeGameFromCurrentRound({ exportBackupFirst: false, earlyEnd: false });
-    return;
-  }
-
-  const nextRoundIndex = session.roundIndex + 1;
-  const roundAnswer = await showDialog({
-    title: `Spielrunde ${session.roundIndex}/${session.maxRounds} abgeschlossen`,
-    message: 'Soll der Stand dieser Spielrunde gespeichert werden? Danach geht es direkt mit der nächsten Spielrunde weiter.',
-    actions: [
-      { label: `Spielrunde mit Stand speichern und Spielrunde ${nextRoundIndex}/${session.maxRounds} starten`, value: 'save', className: 'primary' },
-      { label: `Spielrunde ohne Speichern und Spielrunde ${nextRoundIndex}/${session.maxRounds} starten`, value: 'continue', className: 'info' },
-      { label: 'Abbrechen', value: 'cancel' }
-    ]
-  });
-
-  if (roundAnswer === 'cancel') return;
-
-  await completeRoundAndAdvance({ exportBackupFirst: roundAnswer === 'save' });
-}
-
-async function openEndGameDialog() {
-  const session = state.currentSession;
-  if (!session) return;
-
-  const answer = await showDialog({
-    title: 'Partie vorzeitig beenden',
-    message: 'Soll das gesamte Spiel jetzt beendet werden? Die aktuelle Spielrunde wird dabei mit dem aktuellen Stand abgeschlossen.',
-    actions: [
-      { label: 'Spiel beenden mit Stand speichern', value: 'save', className: 'warn' },
-      { label: 'Spiel beenden', value: 'end', className: 'warn' },
-      { label: 'Abbrechen', value: 'cancel' }
-    ]
-  });
-
-  if (answer === 'cancel') return;
-
-  await completeGameFromCurrentRound({
-    exportBackupFirst: answer === 'save',
-    earlyEnd: true
-  });
-}
-
-function closeCurrentRoundSnapshot({ exportBackupFirst = false, earlyEnd = false }) {
-  const session = state.currentSession;
-  if (!session) return null;
-
-  settleTrueCounters(session, 'final', null, 'Partieende', new Date().toISOString());
-
-  session.currentRound.status = 'finished';
-  session.currentRound.finishedAt = new Date().toISOString();
-  session.currentRound.events.push({
-    id: uid('event'),
-    ts: new Date().toISOString(),
-    type: 'roundFinish',
-    label: earlyEnd ? `Spielrunde ${session.currentRound.index} vorzeitig beendet` : `Spielrunde ${session.currentRound.index} beendet`
-  });
-
-  const roundSnapshot = buildHistoryEntry(session);
-
-  session.finishedRounds = session.finishedRounds || [];
-  session.finishedRounds.push(deepClone(session.currentRound));
-
-  state.history.unshift(roundSnapshot);
-  state.history = state.history.slice(0, MAX_HISTORY);
-  state.actionAudit = [];
-
-  if (exportBackupFirst) {
-    exportBackup(`knobeln-runde-${session.currentRound.index}`);
-  }
-
-  return roundSnapshot;
-}
-
-async function completeRoundAndAdvance({ exportBackupFirst = false }) {
-  const session = state.currentSession;
-  if (!session) return;
-
-  const finishedRoundIndex = session.currentRound.index;
-  const nextRoundIndex = finishedRoundIndex + 1;
-
-  const roundSnapshot = closeCurrentRoundSnapshot({
-    exportBackupFirst,
-    earlyEnd: false
-  });
-  if (!roundSnapshot) return;
-
-  await showSettlementPopup(roundSnapshot, { mode: 'round' });
-
-  session.roundIndex = nextRoundIndex;
-  session.currentRound = createRoundObject(
-    nextRoundIndex,
-    session.roundTarget,
-    new Date().toISOString()
-  );
-
-  if (session.roundIndex < session.maxRounds) {
-    session.finalRoundExtensionUsed = false;
-    session.finalRoundExtraTurns = 0;
-  }
-
-  saveState();
-  render();
-}
-
-async function completeGameFromCurrentRound({ exportBackupFirst = false, earlyEnd = false }) {
-  const roundSnapshot = closeCurrentRoundSnapshot({
-    exportBackupFirst,
-    earlyEnd
-  });
-  if (!roundSnapshot) return;
-
-  await showSettlementPopup(roundSnapshot, { mode: 'final' });
-
-  state.currentSession = null;
-  state.ui.openTab = null;
-  saveState();
-  render();
-}
-
-function formatDateTimeWithUm(ts) {
-  if (!ts) return '–';
-  const date = new Date(ts);
-  return `${date.toLocaleDateString('de-DE')} um ${date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`;
-}
-
-function getSettlementHeaderLines(container, mode = 'round') {
-  const title = (container.sessionTitle || container.title || 'Knobelpartie').trim();
-  const createdAt = container.createdAt || container.startedAt || container.finishedAt || (container.currentRound ? container.currentRound.startedAt : null);
-  const finishedAt = container.finishedAt || (container.currentRound ? container.currentRound.finishedAt : null) || new Date().toISOString();
-  const roundIndex = container.roundIndex || (container.currentRound ? container.currentRound.index : 1) || 1;
-  const maxRounds = container.maxRounds || 3;
-  const target = container.currentRound ? container.currentRound.target : (container.roundTarget || 0);
-  const baseTarget = container.roundTarget || target;
-  const extraTurns = Math.max(0, target - baseTarget);
-  const extraLabel = extraTurns > 0 && roundIndex >= maxRounds ? ` +${extraTurns}` : '';
-  const line1 = `${title} um ${formatDateTimeWithUm(createdAt)}`;
-
-  if (mode === 'final') {
-    return {
-      headerLine1: line1,
-      headerLine2: `Endabrechnung nach Spielrunde ${roundIndex}/${maxRounds}${extraLabel} am ${formatDateTimeWithUm(finishedAt)}`
-    };
-  }
-  return {
-    headerLine1: line1,
-    headerLine2: `Ende Spielrunde ${roundIndex}/${maxRounds}${extraLabel} am ${formatDateTimeWithUm(finishedAt)}`
-  };
-}
-
-function renderSettlementPopupBody(container, beerSettlement, mode = 'round') {
-  const headers = getSettlementHeaderLines(container, mode);
-
-  const playerCards = beerSettlement.perPlayer.map((item) => `
-    <div class="beer-player-card">
-      <div class="beer-player-head">
-        <strong>${escapeHtml(item.player.name)} (${escapeHtml(item.player.code)})</strong>
-      </div>
-      <div class="beer-kpi-row">
-        <div class="beer-kpi">
-          <span class="label">Schuldet Freibier</span>
-          <span class="value">${item.beersToPay} ${item.beersToPay === 1 ? 'Bier' : 'Biere'}</span>
-        </div>
-        <div class="beer-kpi">
-          <span class="label">Bekommt Freibier</span>
-          <span class="value">${item.totalReceives} ${item.totalReceives === 1 ? 'Bier' : 'Biere'}</span>
-        </div>
-      </div>
-    </div>
-  `).join('');
-
-  const ledgerRows = beerSettlement.pubLedger.map((item) => `
-    <div class="beer-ledger-row ${item.beersToPay === 0 ? 'zero' : ''}">
-      <strong>${escapeHtml(item.player.name)} (${escapeHtml(item.player.code)})</strong>
-      <span>${item.beersToPay} ${item.beersToPay === 1 ? 'Bier' : 'Biere'}</span>
-    </div>
-  `).join('');
-
-  return `
-    <div class="beer-sheet">
-      <div class="beer-sheet-header">
-        <div><strong>${escapeHtml(headers.headerLine1)}</strong></div>
-        <div>${escapeHtml(headers.headerLine2)}</div>
-      </div>
-      <div class="beer-player-list">${playerCards}</div>
-      <div class="history-zone">
-        <div class="history-zone-title">Die Wirtshausabrechnung</div>
-        <div class="beer-ledger">${ledgerRows}</div>
-      </div>
-    </div>
-  `;
-}
-
-async function showSettlementPopup(container, { mode = 'round' } = {}) {
-  const beerSettlement = getBeerSettlement(container);
-  const action = await showCustomDialog({
-    title: mode === 'final' ? 'Endabrechnung' : 'Abrechnung',
-    message: '',
-    bodyHtml: renderSettlementPopupBody(container, beerSettlement, mode),
-    actions: [
-      { label: 'Text kopieren', value: 'copy', className: 'info' },
-      { label: 'OK', value: 'ok', className: 'primary' }
-    ]
-  });
-
-  if (action === 'copy') {
-    await handleSettlementCopyFeedback(
-      container,
-      beerSettlement,
-      mode === 'final' ? 'Endabrechnung' : 'Abrechnung'
-    );
-  }
-}
-
-function buildSettlementText(container, beerSettlement, mode = 'final') {
-  const headers = getSettlementHeaderLines(container, mode);
-
-  const playerText = beerSettlement.perPlayer.map((item) => {
-    return `${item.player.name} (${item.player.code})
-Schuldet Freibier: ${item.beersToPay} ${item.beersToPay === 1 ? 'Bier' : 'Biere'}
-Bekommt Freibier: ${item.totalReceives} ${item.totalReceives === 1 ? 'Bier' : 'Biere'}`;
-  }).join('\n\n');
-
-  const ledgerText = beerSettlement.pubLedger
-    .map((item) => `- ${item.player.name} (${item.player.code}): ${item.beersToPay} ${item.beersToPay === 1 ? 'Bier' : 'Biere'}`)
-    .join('\n');
-
-  return `${headers.headerLine1}
-${headers.headerLine2}
-
-${playerText}
-
-Die Wirtshausabrechnung
-${ledgerText}`;
-}
-
-async function copySettlementTextToClipboard(container, beerSettlement, mode = 'final') {
-  const text = buildSettlementText(container, beerSettlement, mode);
-  return copyTextToClipboard(text);
-}
-
-function render() {
-  patchStaticUi();
-
-  const session = state.currentSession;
-  const hasSession = Boolean(session);
-
-  el.scoreboardSection.classList.toggle('hidden', !hasSession);
-  el.playersSection.classList.toggle('hidden', !hasSession);
-  el.tabsSection.classList.toggle('hidden', !(hasSession || state.history.length));
-
-  if (!hasSession) {
-    el.topGameName.textContent = 'Keine offene Partie';
-    el.topGameMeta.textContent = 'Knobelpartie mit Datum und Uhrzeit erscheint hier automatisch.';
-    el.finishRoundBtn.disabled = true;
-    el.finishRoundBtn.classList.add('hidden');
-    el.newGameBtn.disabled = false;
-    el.newGameBtn.classList.remove('hidden');
-    el.newGameBtn.textContent = 'Neue Partie anlegen';
-    el.scoreRound.textContent = '–';
-    el.scoreTurn.textContent = '–';
-    el.scorePlayers.textContent = '–';
-  } else {
-    el.topGameName.textContent = session.title;
-    el.topGameMeta.textContent = `Spielrunde ${session.roundIndex}/${session.maxRounds} · Durchgänge ${session.currentRound.turnsCompleted}/${session.currentRound.target} · Spieler ${session.players.length}`;
-
-    el.finishRoundBtn.disabled = false;
-    el.finishRoundBtn.classList.remove('hidden');
-    el.finishRoundBtn.textContent = 'Spiel beenden';
-
-    el.newGameBtn.classList.add('hidden');
-    el.newGameBtn.disabled = true;
-
-    renderPlayers(session);
-  }
-
-  renderScoreboard();
-  renderAudit();
-  renderHistory();
-  renderTabs();
-}
-
-</script>
+  </script>
 </body>
 </html>
