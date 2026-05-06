@@ -1632,6 +1632,11 @@
     async function finalizeRoundAndSession({ exportBackupFirst = false, endSession = false, earlyEnd = false }) {
       const session = state.currentSession;
       if (!session) return;
+
+      const finishedRoundIndex = session.currentRound.index;
+      const finishedRoundMax = session.maxRounds;
+      const backupName = `knobeln-runde-${finishedRoundIndex}`;
+
       settleTrueCounters(session, 'final', null, 'Partieende', new Date().toISOString());
       session.currentRound.status = 'finished';
       session.currentRound.finishedAt = new Date().toISOString();
@@ -1648,15 +1653,14 @@
       state.history.unshift(roundSnapshot);
       state.history = state.history.slice(0, MAX_HISTORY);
       state.actionAudit = [];
-      saveState(true);
 
-      if (exportBackupFirst) {
-        exportBackup(`knobeln-runde-${session.currentRound.index}`);
-      }
+      saveState(true);
 
       await showFinalRoundPopup(roundSnapshot);
 
-      if (endSession || session.roundIndex >= session.maxRounds) {
+      const isSessionFinished = endSession || session.roundIndex >= session.maxRounds;
+
+      if (isSessionFinished) {
         if (!endSession) {
           await showDialog({
             title: 'Partie beendet',
@@ -1666,12 +1670,36 @@
             ]
           });
         }
+
         state.currentSession = null;
         state.ui.openTab = null;
+        saveState();
+        render();
+
+        if (exportBackupFirst) {
+          setTimeout(() => exportBackup(backupName), 80);
+        }
+
+        showToast(endSession ? 'Partie beendet.' : 'Spielrunde beendet.');
+        return;
       }
+
+      session.roundIndex += 1;
+      if (session.roundIndex < session.maxRounds) {
+        session.finalRoundExtensionUsed = false;
+        session.finalRoundExtraTurns = 0;
+      }
+      session.currentRound = createRoundObject(session.roundIndex, session.roundTarget, new Date().toISOString());
+      state.ui.openTab = null;
+
       saveState();
       render();
-      showToast(endSession ? 'Partie beendet.' : 'Spielrunde beendet.');
+
+      if (exportBackupFirst) {
+        setTimeout(() => exportBackup(backupName), 80);
+      }
+
+      showToast(`Spielrunde ${finishedRoundIndex}/${finishedRoundMax} beendet – weiter mit ${session.roundIndex}/${finishedRoundMax}.`);
     }
 
     function buildHistoryEntry(session) {
