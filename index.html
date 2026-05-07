@@ -622,15 +622,22 @@
       font-size: .86rem;
       line-height: 1.4;
     }
-    .drawer nav { display: grid; gap: 10px; }
+    .drawer nav { display: grid; gap: 12px; }
     .drawer nav button {
       text-align: left;
-      padding: 14px;
+      padding: 15px 14px;
       border-radius: 18px;
-      background: rgba(255,255,255,.04);
-      box-shadow: none;
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: 0 8px 20px rgba(0,0,0,.16);
       display: grid;
       gap: 4px;
+      transition: transform .14s ease, border-color .14s ease, background .14s ease;
+    }
+    .drawer nav button:hover, .drawer nav button:focus-visible {
+      transform: translateY(-1px);
+      background: linear-gradient(180deg, rgba(56,189,248,.18), rgba(255,255,255,.06));
+      border-color: rgba(56,189,248,.32);
     }
     .drawer nav button .menu-title {
       font-weight: 800;
@@ -642,10 +649,11 @@
     }
     .drawer-footnote {
       margin-top: auto;
-      padding-top: 8px;
+      padding-top: 12px;
       color: var(--muted);
       font-size: .82rem;
       line-height: 1.4;
+      border-top: 1px solid rgba(255,255,255,.08);
     }
 
 
@@ -777,7 +785,7 @@
           <button id="menuBtn" class="menu-btn" aria-label="Menü öffnen">☰</button>
           <div class="header-copy">
             <div class="header-title-row">
-              <h1>Knobeln – Strafpunkte 20260506</h1>
+              <h1>Knobelrunde 1.0</h1>
               <button id="helpBtn" class="help-btn" aria-label="Hilfe öffnen">?</button>
             </div>
             <p class="section-subtitle">Eine Partie mit bis zu 3 Spielrunden à 5 oder 10 Durchgänge und maximal 12 Spielern.</p>
@@ -871,35 +879,19 @@
       <button id="closeDrawerBtn" class="menu-btn" aria-label="Menü schließen">✕</button>
     </div>
     <div class="drawer-hero">
-      <div class="section-title" style="margin-bottom:0;">Knobeln – Kurzüberblick</div>
-      <div class="section-subtitle">Eine Partie läuft über bis zu 3 Spielrunden. Jede Spielrunde hat 5 oder 10 Durchgänge.</div>
-    </div>
-    <div class="drawer-section">
-      <div class="drawer-section-label">Info</div>
-      <div class="drawer-info-card">
-        <div class="section-title" style="margin-bottom:0;">Spiel- und Toolanleitung</div>
-        <div class="drawer-info-list">
-          <div>• Verloren oder Lustknobeln verteilt automatisch je 1 Strafpunkt an alle anderen aktiven Spieler.</div>
-          <div>• Grün markierte Karten sind aktiv, graue Karten ausgestiegen.</div>
-          <div>• Das Kürzel rechts oben ist für Falscheingaben gedacht und wirkt wie ein Long-Press-Löschfeld.</div>
-          <div>• Eine Spielrunde endet nach 5 oder 10 Durchgängen. Danach zuerst die Spielrunde beenden.</div>
-        </div>
-      </div>
+      <div class="section-title" style="margin-bottom:0;">Werkzeuge</div>
+      <div class="section-subtitle">Spielstand sichern, laden oder mit einem sauberen Spielfeld neu starten.</div>
     </div>
     <div class="drawer-section">
       <div class="drawer-section-label">Werkzeuge</div>
       <nav>
         <button id="drawerImportBtn">
-          <span class="menu-title">Sicherung importieren</span>
+          <span class="menu-title">Spielstand-Sicherung importieren</span>
           <span class="menu-subtitle">Eine exportierte JSON-Datei laden und den Stand in das Tool übernehmen.</span>
         </button>
         <button id="drawerExportBtn">
-          <span class="menu-title">Sicherung exportieren</span>
+          <span class="menu-title">Spielstand-Sicherung exportieren</span>
           <span class="menu-subtitle">Den aktuellen Stand als JSON-Datei lokal sichern.</span>
-        </button>
-        <button id="drawerFavoritesBtn">
-          <span class="menu-title">Oft gespielte Namen verwalten</span>
-          <span class="menu-subtitle">Bis zu 12 Lieblingsnamen hinterlegen, direkt auswählen oder wieder löschen.</span>
         </button>
         <button id="drawerCleanStartBtn" class="info">
           <span class="menu-title">Neues sauberes Spiel starten</span>
@@ -940,6 +932,18 @@
     const MAX_UNDO = 2;
     const MAX_FAVORITES = 12;
 
+    // Oft gespielte Namen fest im Code hinterlegen. Reihenfolge = Anzeige im Spieler-Popup.
+    const PRESET_PLAYERS = [
+      { name: 'Alex', code: 'A' },
+      { name: 'Arno', code: 'ÖSI' },
+      { name: 'Buri', code: 'B' },
+      { name: 'Klappi', code: 'K' },
+      { name: 'Niko', code: 'N' },
+      { name: 'Sascha', code: 'S' },
+      { name: 'Thomas', code: 'TÜV' },
+      { name: 'Timo', code: 'T' }
+    ];
+
     const state = loadState();
 
     const el = {
@@ -951,7 +955,6 @@
       importInput: document.getElementById('importInput'),
       drawerImportBtn: document.getElementById('drawerImportBtn'),
       drawerExportBtn: document.getElementById('drawerExportBtn'),
-      drawerFavoritesBtn: document.getElementById('drawerFavoritesBtn'),
       drawerCleanStartBtn: document.getElementById('drawerCleanStartBtn'),
       topGameName: document.getElementById('topGameName'),
       topGameMeta: document.getElementById('topGameMeta'),
@@ -1114,7 +1117,6 @@
       el.drawerBackdrop.addEventListener('click', closeDrawer);
       el.drawerImportBtn.addEventListener('click', () => { closeDrawer(); el.importInput.click(); });
       el.drawerExportBtn.addEventListener('click', () => { closeDrawer(); exportBackup(); });
-      el.drawerFavoritesBtn.addEventListener('click', () => { closeDrawer(); openFavoritePlayersManager(); });
       el.drawerCleanStartBtn.addEventListener('click', async () => { closeDrawer(); await cleanStartNewGame(); });
       el.importInput.addEventListener('change', importBackup);
 
@@ -1232,7 +1234,9 @@
         }
         return;
       }
-      const code = generateCode(cleanName, session.players.map((player) => player.code));
+      const presetCode = getPresetCodeByName(cleanName);
+      const existingCodes = session.players.map((player) => player.code);
+      const code = presetCode && !existingCodes.includes(presetCode) ? presetCode : generateCode(cleanName, existingCodes);
       const player = {
         id: uid('player'),
         name: cleanName,
@@ -2042,6 +2046,7 @@
                 <div class="history-kpi"><div class="tiny muted">Verlorene Runden</div><div><strong>${summary.lossCount}</strong></div></div>
                 <div class="history-kpi"><div class="tiny muted">Lustknobeln</div><div><strong>${summary.lustCount}</strong></div></div>
                 <div class="history-kpi"><div class="tiny muted">Ausstiege</div><div><strong>${summary.exitCount}</strong></div></div>
+                <div class="history-kpi"><div class="tiny muted">Wiedereinstiege</div><div><strong>${summary.rejoinCount}</strong></div></div>
                 <div class="history-kpi"><div class="tiny muted">Neue Biere</div><div><strong>${summary.newPoints}</strong></div></div>
               </div>
               <div class="small"><strong>Mitspieler:</strong> ${escapeHtml(summary.playerCodesLabel)}</div>
@@ -2078,10 +2083,11 @@
 
     function getHistoryRoundSummary(entry) {
       const events = (entry.currentRound && Array.isArray(entry.currentRound.events) ? entry.currentRound.events : [])
-        .filter((ev) => ['loss', 'lust', 'exit'].includes(ev.type));
+        .filter((ev) => ['loss', 'lust', 'exit', 'rejoin'].includes(ev.type));
       const lossEvents = events.filter((ev) => ev.type === 'loss');
       const lustEvents = events.filter((ev) => ev.type === 'lust');
       const exitEvents = events.filter((ev) => ev.type === 'exit');
+      const rejoinEvents = events.filter((ev) => ev.type === 'rejoin');
       const actorCounts = new Map();
       let newPoints = 0;
       for (const ev of [...lossEvents, ...lustEvents]) {
@@ -2117,6 +2123,7 @@
         lossCount: lossEvents.length,
         lustCount: lustEvents.length,
         exitCount: exitEvents.length,
+        rejoinCount: rejoinEvents.length,
         newPoints,
         actorSummaryLabel,
         compactSettlements,
@@ -2412,39 +2419,46 @@
     async function showPlayerPickerDialog() {
       return new Promise((resolve) => {
         el.modalTitle.textContent = 'Spieler hinzufügen';
-        el.modalMessage.textContent = 'Namen eingeben oder häufig gespielte Namen direkt antippen.';
+        el.modalMessage.textContent = 'Namen auswählen oder einen neuen Namen eingeben.';
         el.modalActions.innerHTML = '';
+
         const wrapper = document.createElement('div');
         wrapper.className = 'grid';
-        const favoriteNames = Array.isArray(state.favoritePlayers) ? state.favoritePlayers : [];
-        if (favoriteNames.length) {
+
+        if (Array.isArray(PRESET_PLAYERS) && PRESET_PLAYERS.length) {
           const favWrap = document.createElement('div');
           favWrap.className = 'favorite-picker-wrap';
+
           const favTitle = document.createElement('div');
           favTitle.className = 'tiny muted';
           favTitle.textContent = 'Oft gespielte Namen';
+
           const favList = document.createElement('div');
           favList.className = 'favorite-chip-list';
-          favoriteNames.forEach((name) => {
+
+          PRESET_PLAYERS.forEach((item) => {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'favorite-chip-btn';
-            btn.textContent = name;
+            btn.textContent = `${item.name} (${item.code})`;
             btn.addEventListener('click', () => {
               hideDialog();
-              resolve(name);
+              resolve(item.name);
             });
             favList.appendChild(btn);
           });
+
           favWrap.appendChild(favTitle);
           favWrap.appendChild(favList);
           wrapper.appendChild(favWrap);
         }
+
         const input = document.createElement('input');
         input.type = 'text';
         input.maxLength = 40;
-        input.placeholder = 'Name des Spielers';
+        input.placeholder = 'Zusätzlichen Namen eingeben';
         wrapper.appendChild(input);
+
         el.modalBody.innerHTML = '';
         el.modalBody.appendChild(wrapper);
 
@@ -2479,96 +2493,23 @@
       });
     }
 
+    function getPresetCodeByName(name) {
+      const normalized = normalizeName(name);
+      const match = PRESET_PLAYERS.find((item) => normalizeName(item.name) === normalized);
+      return match ? match.code : null;
+    }
+
     function sanitizeFavoriteName(name) {
       return String(name || '').trim();
     }
 
-    function renderFavoriteManagerBody() {
-      const favorites = Array.isArray(state.favoritePlayers) ? state.favoritePlayers : [];
-      const listHtml = favorites.length
-        ? favorites.map((name, index) => `
-          <div class="favorite-manage-row">
-            <div><strong>${escapeHtml(name)}</strong></div>
-            <button type="button" data-fav-remove="${index}" class="danger favorite-remove-btn">Löschen</button>
-          </div>
-        `).join('')
-        : '<div class="empty">Noch keine oft gespielten Namen hinterlegt.</div>';
-      const disabled = favorites.length >= MAX_FAVORITES ? 'disabled' : '';
-      return `
-        <div class="favorite-manager-wrap">
-          <div class="small"><strong>Oft gespielte Namen</strong></div>
-          <div class="favorite-manage-list">${listHtml}</div>
-          <div class="line"></div>
-          <div class="tiny muted">Maximal ${MAX_FAVORITES} Namen. Tippe auf „Hinzufügen“, um einen neuen Namen zu speichern.</div>
-          <div class="grid" style="margin-top:8px;">
-            <input id="favoriteNameInput" type="text" maxlength="40" placeholder="Neuen Namen eintragen" ${disabled} />
-            <button id="favoriteNameAddBtn" class="primary" ${disabled}>Hinzufügen</button>
-          </div>
-        </div>
-      `;
-    }
 
-    function bindFavoriteManagerInteractions() {
-      const addBtn = document.getElementById('favoriteNameAddBtn');
-      const input = document.getElementById('favoriteNameInput');
-      const removeButtons = document.querySelectorAll('[data-fav-remove]');
-      removeButtons.forEach((button) => {
-        button.addEventListener('click', () => {
-          const index = Number(button.getAttribute('data-fav-remove'));
-          if (Number.isNaN(index)) return;
-          state.favoritePlayers.splice(index, 1);
-          saveState(true);
-          refreshFavoriteManager();
-        });
-      });
-      if (addBtn && input) {
-        const submit = () => {
-          const value = sanitizeFavoriteName(input.value);
-          if (!value) {
-            input.focus();
-            return;
-          }
-          if (state.favoritePlayers.length >= MAX_FAVORITES) {
-            showToast(`Maximal ${MAX_FAVORITES} Namen sind erlaubt.`);
-            return;
-          }
-          const normalized = normalizeName(value);
-          const exists = state.favoritePlayers.some((name) => normalizeName(name) === normalized);
-          if (exists) {
-            showToast('Dieser Name ist bereits gespeichert.');
-            return;
-          }
-          state.favoritePlayers.push(value);
-          saveState(true);
-          refreshFavoriteManager();
-          showToast('Name gespeichert.');
-        };
-        addBtn.addEventListener('click', submit);
-        input.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter') submit();
-        });
-      }
-    }
 
-    function refreshFavoriteManager() {
-      el.modalBody.innerHTML = renderFavoriteManagerBody();
-      bindFavoriteManagerInteractions();
-    }
 
-    function openFavoritePlayersManager() {
-      el.modalTitle.textContent = 'Oft gespielte Namen verwalten';
-      el.modalMessage.textContent = `Bis zu ${MAX_FAVORITES} Namen können gespeichert und später direkt ausgewählt werden.`;
-      el.modalActions.innerHTML = '';
-      refreshFavoriteManager();
 
-      const closeBtn = document.createElement('button');
-      closeBtn.textContent = 'Schließen';
-      closeBtn.className = 'primary';
-      closeBtn.addEventListener('click', hideDialog);
-      el.modalActions.appendChild(closeBtn);
-      el.modalBackdrop.classList.remove('hidden');
-      el.modalWrap.classList.remove('hidden');
-    }
+
+
+
 
     function renderResultHtml(view) {
       if (view.incomingOpenDetails.length > 0) return renderChips(view.incomingOpenDetails, false);
@@ -2614,17 +2555,25 @@
 
     function openHelpDialog() {
       showCustomDialog({
-        title: 'Kurzinfo & Hilfe',
-        message: 'Kurze Spiel- und Toolanleitung für das mobile Layout.',
+        title: 'Spielanleitung',
+        message: 'Kurze Spielanleitung für die Nutzung der App.',
         bodyHtml: `
           <div class="drawer-info-list">
-            <div>• Eine Partie läuft über bis zu 3 Spielrunden. Jede Spielrunde hat 5 oder 10 Durchgänge.</div>
-            <div>• Verloren oder Lustknobeln verteilt automatisch je 1 Strafpunkt an alle anderen aktiven Spieler.</div>
-            <div>• Grün markierte Karten sind aktiv, graue Karten ausgestiegen.</div>
-            <div>• Das Kürzel rechts oben ist für Falscheingaben gedacht und wirkt wie ein Long-Press-Löschfeld.</div>
-            <div>• Nach dem letzten Durchgang zuerst die Spielrunde beenden, danach kann die nächste starten.</div>
-            <div>• Sicherungen und ein sauberer Neustart liegen im Burger-Menü unter Werkzeuge.</div>
-          </div>`,
+            <div>• Tippe auf „Neue Partie anlegen“ und wähle 5 oder 10 Durchgänge pro Spielrunde.</div>
+			<div>• Füge Spieler über die Plus-Karte hinzu. Du kannst einen Namen aus der Liste wählen oder neu eingeben.</div>
+			<div>• Das Kürzel auf der jeweiligen Spielerkarte oben rechts ist für Falscheingaben gedacht. Dort kann ein Spielername gelöscht werden (nur vor Spielbeginn).</div>
+			<div>• Eine Partie läuft über bis zu 3 Spielrunden. Jede Spielrunde hat 5 oder 10 Durchgänge.</div>
+			<div>• Der erste Durchgang der ersten Spielrunde startet immer mit "Schuss einfach".</div>
+			<div>• Eine Partie kann jederzeit sofort vorzeitig über den roten Button "Spielrunde beenden" beendet werden.</div>
+            <div>• Grün markierte Spieler-Karten sind aktiv, graue Karten sind ausgestiegen.</div>
+			<div>• Nutze auf der Spielerkarte die Buttons Verloren, Lustknobeln, Ausstieg oder Wiedereinsteigen.</div>
+			<div>• Verloren oder Lustknobeln verteilt automatisch je 1 Strafpunkt an alle anderen aktiven Spieler.</div>
+			<div>• Nach dem letzten Durchgang (5/5 oder 10/10) jeder Spielrunde muss die Spielrunde über den roten Button "Spielrunde beenden" immer zuerst beendet werden.</div>
+			<div>• Danach wird immer die Zwischen-/End-Abrechnung angezeigt, die bei Bedarf als Text in die Zwischenablage kopiert werden kann.</div>
+			<div>• Erst danach kann es mit der nächsten Spielrunde weitergehen.</div>			
+			<div>• Verlauf und Historie sind über die Bereiche unten oder das Menü erreichbar.Dort kann auch immer der letzte vergebene Strafpunkt Rückgängig gemacht werden</div>            
+            <div>• Sicherungsdateien eines Spiels und ein sauberer Neustart liegen im Burger-Menü unter Werkzeuge.</div>
+          </div>`,		  
         actions: [
           { label: 'Schließen', value: 'ok', className: 'primary' }
         ]
