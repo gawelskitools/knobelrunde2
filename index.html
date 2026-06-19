@@ -797,6 +797,7 @@
             <div class="header-title-row">
               <h1>Knobelclubrunde 1.0</h1>
               <button id="helpBtn" class="help-btn" aria-label="Hilfe öffnen">?</button>
+              <button id="agbBtn" class="help-btn" aria-label="AGB öffnen">§</button>
             </div>
             <p class="section-subtitle">Eine Partie mit bis zu 3 Spielrunden à 5 oder 10 Durchgänge und maximal 12 Spielern.</p>
           </div>
@@ -847,8 +848,8 @@
       <div id="tabButtons" class="tab-buttons">
         <button data-tab="audit">
           <span>
-            <strong>Gesamter Verlauf</strong>
-            <span class="tab-meta">laufende Partie</span>
+            <strong>Letzte Aktionen rückgängig machen</strong>
+            <span class="tab-meta">maximal 3 Aktionen</span>
           </span>
           <span id="tabCountAudit" class="tab-count">0</span>
         </button>
@@ -863,8 +864,8 @@
 
       <div id="tabPanel-audit" class="tab-panel hidden">
         <div class="label-row">
-          <span class="pill amber">Gesamter Verlauf</span>
-          <span class="tiny muted">alle Spielrunden der aktuellen Partie mit Verteilung an Gegenspieler</span>
+          <span class="pill amber">Letzte Aktionen rückgängig machen</span>
+          <span class="tiny muted">hier stehen nur die letzten maximal 3 Aktionen der laufenden Partie</span>
         </div>
         <div id="auditList" class="audit-list scroll-limit"></div>
       </div>
@@ -872,7 +873,7 @@
       <div id="tabPanel-history" class="tab-panel hidden">
         <div class="label-row">
           <span class="pill violet">Historie</span>
-          <span class="tiny muted">maximal die letzten 3 abgeschlossenen Spielrunden</span>
+          <span class="tiny muted">laufendes Spiel plus maximal die letzten 3 kompletten Spiele</span>
         </div>
         <div id="historyList" class="history-list"></div>
       </div>
@@ -939,14 +940,14 @@
     const MAX_PLAYERS = 12;
     const MAX_HISTORY = 3;
     const MAX_ROUNDS_PER_SESSION = 3;
-    const MAX_UNDO = 2;
+    const MAX_UNDO = 3;
     const MAX_FAVORITES = 12;
     const CASH_PENALTY_VALUE_CENTS = 50;
+    // 0 = unbegrenzt, sonst nach X Vergehen sperren.
+    const CASH_PENALTY_BUTTON_LIMIT = 3;
     const CASH_PENALTY_TYPES = {
       lust: { label: 'Lust-Knobeln', shortLabel: 'Lust-Knobeln' },
-      mattenflucht: { label: 'Matten-Flucht', shortLabel: 'Matten-Flucht' },
-      wuerfelflucht: { label: 'Würfel-Flucht', shortLabel: 'Würfel-Flucht' },
-      neuwuerfeln: { label: 'Neu-Würfeln', shortLabel: 'Neu-Würfeln' }
+      cashfault: { label: 'Strafkasse', shortLabel: 'Strafkasse' }
     };
 
     // Oft gespielte Namen fest im Code hinterlegen. Reihenfolge = Anzeige im Spieler-Popup.
@@ -975,11 +976,16 @@
       return isReservedPresetName(name) ? 'preset' : 'guest';
     }
 
+    function hasActiveGuestPlayer(session) {
+      return Boolean(session && (session.players || []).some((player) => getPlayerType(player) === 'guest' && player.status === 'active'));
+    }
+
     const state = loadState();
 
     const el = {
       menuBtn: document.getElementById('menuBtn'),
       helpBtn: document.getElementById('helpBtn'),
+      agbBtn: document.getElementById('agbBtn'),
       closeDrawerBtn: document.getElementById('closeDrawerBtn'),
       drawer: document.getElementById('drawer'),
       drawerBackdrop: document.getElementById('drawerBackdrop'),
@@ -1019,6 +1025,7 @@
       return {
         currentSession: null,
         history: [],
+        gamesHistory: [],
         actionAudit: [],
         favoritePlayers: [],
         ui: { openTab: null }
@@ -1040,14 +1047,210 @@
       }
     }
 
+
+    function buildLegacyGamesHistoryFromRounds(historyEntries) {
+      const entries = Array.isArray(historyEntries) ? historyEntries.map(migrateLegacyHistoryEntry).filter(Boolean) : [];
+      const grouped = new Map();
+      for (const entry of entries) {
+        const key = entry.sessionId || entry.sessionTitle || entry.id;
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            id: uid('game'),
+            sessionId: entry.sessionId || key,
+            title: entry.sessionTitle || 'Knobelpartie importiert',
+            createdAt: entry.players?.[0]?.createdAt || entry.finishedAt,
+            finishedAt: entry.finishedAt,
+            roundTarget: entry.roundTarget || (entry.currentRound && entry.currentRound.target) || 10,
+            maxRounds: entry.maxRounds || 3,
+            players: deepClone(entry.players || []),
+            points: deepClone(entry.points || []),
+            settlements: deepClone(entry.settlements || []),
+            cashPenalties: deepClone(entry.cashPenalties || []),
+            finishedRounds: [],
+            roundEntries: []
+          });
+        }
+        const game = grouped.get(key);
+        game.finishedAt = entry.finishedAt || game.finishedAt;
+        game.players = deepClone(entry.players || game.players || []);
+        game.points = deepClone(entry.points || game.points || []);
+        game.settlements = deepClone([...(game.settlements || []), ...(entry.settlements || [])]);
+        game.cashPenalties = deepClone(entry.cashPenalties || game.cashPenalties || []);
+        if (entry.currentRound) game.finishedRounds.push(deepClone(entry.currentRound));
+        game.roundEntries.push(deepClone(entry));
+      }
+      return Array.from(grouped.values())
+        .sort((a, b) => new Date(b.finishedAt || 0) - new Date(a.finishedAt || 0))
+        .slice(0, MAX_HISTORY);
+    }
+
+    function normalizeGamesHistory(items) {
+      if (!Array.isArray(items)) return [];
+      return items.slice(0, MAX_HISTORY).map((item) => ({
+        id: item.id || uid('game'),
+        sessionId: item.sessionId || item.id || uid('session'),
+        title: item.title || item.sessionTitle || 'Knobelpartie importiert',
+        createdAt: item.createdAt || item.finishedAt || new Date().toISOString(),
+        finishedAt: item.finishedAt || item.createdAt || new Date().toISOString(),
+        roundTarget: item.roundTarget || 10,
+        maxRounds: item.maxRounds || 3,
+        players: deepClone(item.players || []),
+        points: deepClone(item.points || []),
+        settlements: deepClone(item.settlements || []),
+        cashPenalties: deepClone(item.cashPenalties || []),
+        finishedRounds: deepClone(item.finishedRounds || []),
+        roundEntries: deepClone(item.roundEntries || [])
+      }));
+    }
+
+    function createGameArchive(session) {
+      return {
+        id: uid('game'),
+        sessionId: session.id,
+        title: session.title,
+        createdAt: session.createdAt,
+        finishedAt: session.currentRound.finishedAt || new Date().toISOString(),
+        roundTarget: session.roundTarget,
+        maxRounds: session.maxRounds,
+        players: deepClone(session.players || []),
+        points: deepClone(session.points || []),
+        settlements: deepClone(session.settlements || []),
+        cashPenalties: deepClone(session.cashPenalties || []),
+        finishedRounds: deepClone(session.finishedRounds || []),
+        roundEntries: deepClone(session.roundEntries || [])
+      };
+    }
+
+    function getGameModeLabel(target, maxRounds) {
+      return `${maxRounds}x ${target}/${target} Durchgänge`;
+    }
+
+    function getGameHistoryItems() {
+      const items = [];
+      if (state.currentSession) {
+        items.push({
+          kind: 'current',
+          id: `current-${state.currentSession.id}`,
+          title: state.currentSession.title,
+          createdAt: state.currentSession.createdAt,
+          finishedAt: null,
+          roundTarget: state.currentSession.roundTarget,
+          maxRounds: state.currentSession.maxRounds,
+          players: deepClone(state.currentSession.players || []),
+          points: deepClone(state.currentSession.points || []),
+          settlements: deepClone(state.currentSession.settlements || []),
+          cashPenalties: deepClone(state.currentSession.cashPenalties || []),
+          finishedRounds: deepClone(state.currentSession.finishedRounds || []),
+          currentRound: deepClone(state.currentSession.currentRound),
+          roundEntries: deepClone(state.currentSession.roundEntries || [])
+        });
+      }
+      normalizeGamesHistory(state.gamesHistory || []).forEach((game) => {
+        items.push({ kind: 'archived', ...game });
+      });
+      return items;
+    }
+
+    function getGameRoundsForDisplay(game) {
+      const finishedRounds = [...(game.roundEntries || [])].sort((a, b) => {
+        if (a.roundIndex !== b.roundIndex) return a.roundIndex - b.roundIndex;
+        return new Date(a.finishedAt || 0) - new Date(b.finishedAt || 0);
+      });
+      if (game.kind === 'current' && game.currentRound) {
+        return [{
+          id: `live-round-${game.currentRound.index}`,
+          sessionId: game.id,
+          sessionTitle: game.title,
+          roundIndex: game.currentRound.index,
+          maxRounds: game.maxRounds,
+          roundTarget: game.roundTarget,
+          finishedAt: game.currentRound.finishedAt || new Date().toISOString(),
+          players: deepClone(game.players || []),
+          points: deepClone(game.points || []),
+          settlements: deepClone((game.settlements || []).filter((item) => item.roundIndex === game.currentRound.index)),
+          cashPenalties: deepClone(game.cashPenalties || []),
+          currentRound: deepClone(game.currentRound),
+          isLiveRound: true
+        }, ...finishedRounds];
+      }
+      return finishedRounds;
+    }
+
+    function getGameTimelineEvents(game) {
+      const rounds = game.kind === 'current'
+        ? [...(game.finishedRounds || []), ...(game.currentRound ? [game.currentRound] : [])]
+        : [...(game.finishedRounds || [])];
+      return rounds.flatMap((round) => (round.events || []).map((item) => ({
+        ...item,
+        roundIndex: round.index,
+        isCurrent: game.kind === 'current' && game.currentRound && round.index === game.currentRound.index
+      }))).sort((a, b) => new Date(a.ts) - new Date(b.ts));
+    }
+
+    function renderSingleRoundTimeline(entry, options = {}) {
+      const {
+        wrapperTag = 'div',
+        summaryText = '',
+        open = false,
+        zoneTitle = ''
+      } = options;
+      const events = (entry.currentRound && Array.isArray(entry.currentRound.events) ? entry.currentRound.events : [])
+        .slice()
+        .sort((a, b) => new Date(a.ts) - new Date(b.ts));
+      const eventsHtml = events.length
+        ? events.map((item) => `
+              <div class="timeline-item">
+                <div class="label-row">
+                  <span class="pill ${eventPillClass(item.type)}">${escapeHtml(eventTypeLabel(item.type))}</span>
+                  <span class="tiny muted">${formatDateTime(item.ts)}</span>
+                </div>
+                <div>${escapeHtml(item.label || '')}</div>
+              </div>
+            `).join('')
+        : '<div class="empty">Noch keine Einträge in dieser Spielrunde.</div>';
+
+      if (wrapperTag === 'details') {
+        return `
+          <details class="history-detail-toggle" ${open ? 'open' : ''}>
+            <summary>${summaryText}</summary>
+            <div class="history-zone" style="margin-top:10px;">
+              <div class="history-zone-title">${zoneTitle || summaryText}</div>
+              <div class="history-detail-list">${eventsHtml}</div>
+            </div>
+          </details>
+        `;
+      }
+
+      return `
+        <div class="history-zone" style="margin-top:10px;">
+          ${zoneTitle ? `<div class="history-zone-title">${zoneTitle}</div>` : ''}
+          <div class="history-detail-list">${eventsHtml}</div>
+        </div>
+      `;
+    }
+
+    function renderGameTimeline(game) {
+      const rounds = getGameRoundsForDisplay(game);
+      if (!rounds.length) return '<div class="empty">Noch keine Einträge in diesem Spiel.</div>';
+      return rounds.map((entry, index) => renderSingleRoundTimeline(entry, {
+        wrapperTag: 'details',
+        open: entry.isLiveRound || index === 0,
+        summaryText: entry.isLiveRound ? 'Aktuelle Spielrunde' : `Spielrunde ${entry.roundIndex} von ${entry.maxRounds}`,
+        zoneTitle: entry.isLiveRound ? 'Verlauf der aktuellen Spielrunde' : `Verlauf Spielrunde ${entry.roundIndex}`
+      })).join('');
+    }
+
     function migrateState(parsed) {
       const base = createDefaultState();
       if (!parsed || typeof parsed !== 'object') return base;
 
       if (parsed.currentSession || Array.isArray(parsed.actionAudit)) {
+        const migratedCurrentSession = parsed.currentSession ? migrateExistingSession(parsed.currentSession) : null;
+        const legacyHistory = Array.isArray(parsed.history) ? parsed.history.slice(0, MAX_HISTORY) : [];
         return {
-          currentSession: parsed.currentSession ? migrateExistingSession(parsed.currentSession) : null,
-          history: Array.isArray(parsed.history) ? parsed.history.slice(0, MAX_HISTORY) : [],
+          currentSession: migratedCurrentSession,
+          history: legacyHistory,
+          gamesHistory: normalizeGamesHistory(parsed.gamesHistory || buildLegacyGamesHistoryFromRounds(legacyHistory)),
           actionAudit: Array.isArray(parsed.actionAudit) ? parsed.actionAudit.slice(-MAX_UNDO) : [],
           favoritePlayers: Array.isArray(parsed.favoritePlayers) ? parsed.favoritePlayers.slice(0, MAX_FAVORITES) : [],
           ui: {
@@ -1064,6 +1267,7 @@
       return {
         currentSession: parsed.currentGame ? migrateLegacyCurrentGame(parsed.currentGame) : null,
         history: migratedHistory,
+        gamesHistory: buildLegacyGamesHistoryFromRounds(migratedHistory),
         actionAudit: [],
         favoritePlayers: [],
         ui: { openTab: null }
@@ -1086,6 +1290,7 @@
         settlements: Array.isArray(currentGame.settlements) ? currentGame.settlements.map((item) => ({ ...item, roundIndex: item.roundIndex || 1 })) : [],
         finishedRounds: [],
         cashPenalties: Array.isArray(currentGame.cashPenalties) ? currentGame.cashPenalties : [],
+        roundEntries: [],
         currentRound: {
           index: 1,
           target: 10,
@@ -1104,6 +1309,7 @@
         ...session,
         finishedRounds: Array.isArray(session.finishedRounds) ? session.finishedRounds : [],
         cashPenalties: Array.isArray(session.cashPenalties) ? session.cashPenalties : [],
+        roundEntries: Array.isArray(session.roundEntries) ? session.roundEntries : [],
         currentRound: session.currentRound || createRoundObject(session.roundIndex || 1, session.roundTarget || 10, session.createdAt || new Date().toISOString())
       };
     }
@@ -1147,6 +1353,7 @@
     function bindEvents() {
       el.menuBtn.addEventListener('click', openDrawer);
       el.helpBtn.addEventListener('click', openHelpDialog);
+      el.agbBtn.addEventListener('click', openAgbDialog);
       el.closeDrawerBtn.addEventListener('click', closeDrawer);
       el.drawerBackdrop.addEventListener('click', closeDrawer);
       el.drawerImportBtn.addEventListener('click', () => { closeDrawer(); el.importInput.click(); });
@@ -1212,6 +1419,7 @@
         points: [],
         settlements: [],
         finishedRounds: [],
+        roundEntries: [],
         cashPenalties: [],
         finalRoundExtensionUsed: false,
         finalRoundExtraTurns: 0,
@@ -1308,6 +1516,8 @@
       const playerId = button.dataset.playerId;
       const player = session.players.find((item) => item.id === playerId);
       if (!player) return;
+      const playerType = getPlayerType(player);
+      const isGuest = playerType === 'guest';
 
       if (action === 'delete-player') {
         const blockedReason = getPlayerDeleteBlockedReason(session, player.id);
@@ -1344,8 +1554,10 @@
         showToast('Die aktuelle Spielrunde ist bereits beendet.');
         return;
       }
-      const isCashPenaltyAction = ['lust', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'].includes(action);
-      if (!isCashPenaltyAction && session.currentRound.turnsCompleted >= session.currentRound.target) {
+
+      const isCashPenaltyAction = action === 'cashfault';
+      const countsAsTurn = action === 'loss' || (action === 'lust' && isGuest);
+      if (countsAsTurn && session.currentRound.turnsCompleted >= session.currentRound.target) {
         showToast('Die maximale Anzahl an Durchgängen ist erreicht. Bitte die Spielrunde jetzt beenden.');
         return;
       }
@@ -1364,6 +1576,38 @@
           ]
         });
         if (ok === 'yes') applyUndoablePlayerAction('loss', player.id);
+        return;
+      }
+
+      if (action === 'lust') {
+        if (isGuest) {
+          const ok = await showDialog({
+            title: 'Lustknobeln eintragen',
+            message: `Wirklich eintragen, dass ${player.name} Lustknobeln gemacht hat? Alle anderen aktiven Mitspieler bekommen dadurch 1 Freibier.`,
+            actions: [
+              { label: 'Ja, eintragen', value: 'yes', className: 'violet' },
+              { label: 'Abbrechen', value: 'no' }
+            ]
+          });
+          if (ok === 'yes') applyUndoablePlayerAction('lust', player.id);
+          return;
+        }
+
+        const activeGuests = (session.players || []).filter((item) => item.status === 'active' && getPlayerType(item) === 'guest');
+        const amountCoins = previewCashPenaltyAmountCoins(session, 'lust', player.id);
+        const guestText = activeGuests.length
+          ? ` Zusätzlich bekommen alle aktiven Gastspieler je 1 Freibier.`
+          : '';
+        const ok = await showDialog({
+          title: 'Lustknobeln eintragen',
+          message: `Wirklich ${player.name} Lustknobeln eintragen? Das zählt ${formatCoins(amountCoins)} für die Strafkasse.${guestText}`,
+          actions: [
+            { label: 'Ja, eintragen', value: 'yes', className: 'cashpenalty' },
+            { label: 'Abbrechen', value: 'no' }
+          ]
+        });
+        if (ok === 'yes') applyPresetLustKnobeln(player.id);
+        return;
       }
 
       if (action === 'exit') {
@@ -1376,14 +1620,14 @@
           ]
         });
         if (ok === 'yes') applyExit(player.id);
+        return;
       }
 
       if (isCashPenaltyAction) {
-        const config = CASH_PENALTY_TYPES[action];
         const amountCoins = previewCashPenaltyAmountCoins(session, action, player.id);
         const ok = await showDialog({
-          title: `${config.label} eintragen`,
-          message: `Wirklich ${config.label} für ${player.name} eintragen? Das zählt ${formatCoins(amountCoins)} für die Strafkasse und nicht als Durchgang.`,
+          title: 'Strafkasse eintragen',
+          message: `Wirklich ein Spiel-Vergehen für ${player.name} eintragen? Das zählt ${formatCoins(amountCoins)} für die Strafkasse und nicht als Durchgang.`,
           actions: [
             { label: 'Ja, eintragen', value: 'yes', className: 'warn' },
             { label: 'Abbrechen', value: 'no' }
@@ -1483,6 +1727,94 @@
       saveState(true);
       render();
       notifyIfRoundTargetReached(session);
+    }
+
+    function applyPresetLustKnobeln(playerId) {
+      const session = state.currentSession;
+      if (!session) return;
+      const actor = session.players.find((player) => player.id === playerId);
+      if (!actor) return;
+      const activeGuests = (session.players || []).filter((player) => player.status === 'active' && getPlayerType(player) === 'guest');
+      if (!activeGuests.length) {
+        applyUndoableCashPenalty('lust', playerId);
+        return;
+      }
+
+      const beforeSession = deepClone(session);
+      const ts = new Date().toISOString();
+      const amountCoins = previewCashPenaltyAmountCoins(session, 'lust', playerId);
+      const amountCents = previewCashPenaltyAmountCents(session, 'lust', playerId);
+      const event = {
+        id: uid('event'),
+        ts,
+        type: 'lust',
+        actorId: actor.id,
+        actorCode: actor.code,
+        actorName: actor.name,
+        auditId: null,
+        label: ''
+      };
+
+      session.cashPenalties.push({
+        id: uid('cash'),
+        eventId: event.id,
+        type: 'lust',
+        ts,
+        roundIndex: session.currentRound.index,
+        playerId: actor.id,
+        playerName: actor.name,
+        playerCode: actor.code,
+        amountCoins,
+        amountCents
+      });
+
+      activeGuests.forEach((target) => {
+        session.points.push({
+          id: uid('point'),
+          eventId: event.id,
+          kind: 'lust',
+          ts,
+          roundIndex: session.currentRound.index,
+          turnNo: session.currentRound.turnsCompleted + 1,
+          fromId: actor.id,
+          fromName: actor.name,
+          fromCode: actor.code,
+          toId: target.id,
+          toName: target.name,
+          toCode: target.code,
+          status: 'open',
+          cancelReason: null,
+          settlementId: null
+        });
+      });
+
+      const guestCodes = activeGuests.map((item) => item.code).join(' ');
+      event.label = `${actor.name} (${actor.code}) knobelt aus Lust, zahlt ${formatCoins(amountCoins)} in die Strafkasse und verteilt an aktive Gastspieler ${guestCodes} je 1 Freibier.`;
+      session.currentRound.events.push(event);
+
+      const afterSession = deepClone(session);
+      const auditId = uid('audit');
+      event.auditId = auditId;
+      const storedEvent = session.currentRound.events.find((item) => item.id === event.id);
+      if (storedEvent) storedEvent.auditId = auditId;
+
+      state.actionAudit = state.actionAudit.filter((entry) => entry.status === 'applied');
+      state.actionAudit.push({
+        id: auditId,
+        eventId: event.id,
+        actionType: 'lust',
+        label: event.label,
+        ts,
+        actorName: actor.name,
+        actorCode: actor.code,
+        beforeSession,
+        afterSession,
+        status: 'applied'
+      });
+      if (state.actionAudit.length > MAX_UNDO) state.actionAudit = state.actionAudit.slice(-MAX_UNDO);
+
+      saveState(true);
+      render();
     }
 
     function applyUndoableCashPenalty(type, playerId) {
@@ -1738,9 +2070,9 @@
 
       const roundSnapshot = buildHistoryEntry(session);
       session.finishedRounds = session.finishedRounds || [];
+      session.roundEntries = session.roundEntries || [];
       session.finishedRounds.push(deepClone(session.currentRound));
-      state.history.unshift(roundSnapshot);
-      state.history = state.history.slice(0, MAX_HISTORY);
+      session.roundEntries.push(deepClone(roundSnapshot));
       state.actionAudit = [];
       saveState(true);
 
@@ -1751,6 +2083,9 @@
       });
 
       if (endSession || session.roundIndex >= session.maxRounds) {
+        state.gamesHistory = state.gamesHistory || [];
+        state.gamesHistory.unshift(createGameArchive(session));
+        state.gamesHistory = state.gamesHistory.slice(0, MAX_HISTORY);
         state.currentSession = null;
         state.ui.openTab = null;
         saveState();
@@ -1876,9 +2211,10 @@
       event.stopPropagation();
       const action = button.dataset.historyAction;
       const entryId = button.dataset.historyId;
+      const gameId = button.dataset.gameId || null;
 
       if (action === 'copy-settlement') {
-        await handleHistoryCopyById(entryId);
+        await handleHistoryCopyById(entryId, gameId);
       }
     }
 
@@ -1891,6 +2227,17 @@
         if (entryIndex >= index) return { ...entry, status: 'undone' };
         return entry;
       });
+      if (state.currentSession && state.currentSession.currentRound && Array.isArray(state.currentSession.currentRound.events)) {
+        state.currentSession.currentRound.events.push({
+          id: uid('event'),
+          ts: new Date().toISOString(),
+          type: 'undo',
+          actorId: null,
+          actorCode: target.actorCode || '',
+          actorName: target.actorName || '',
+          label: `Rückgängig gemacht: ${target.label}`
+        });
+      }
       saveState(true);
       render();
       showToast('Eintrag zurückgenommen.');
@@ -1906,6 +2253,17 @@
         if (entryIndex > index) return { ...entry, status: 'undone' };
         return entry;
       });
+      if (state.currentSession && state.currentSession.currentRound && Array.isArray(state.currentSession.currentRound.events)) {
+        state.currentSession.currentRound.events.push({
+          id: uid('event'),
+          ts: new Date().toISOString(),
+          type: 'redo',
+          actorId: null,
+          actorCode: target.actorCode || '',
+          actorName: target.actorName || '',
+          label: `Wiederhergestellt: ${target.label}`
+        });
+      }
       saveState(true);
       render();
       showToast('Eintrag wiederhergestellt.');
@@ -1916,7 +2274,7 @@
       const hasSession = Boolean(session);
       el.scoreboardSection.classList.toggle('hidden', !hasSession);
       el.playersSection.classList.toggle('hidden', !hasSession);
-      el.tabsSection.classList.toggle('hidden', !(hasSession || state.history.length));
+      el.tabsSection.classList.toggle('hidden', !(hasSession || (state.gamesHistory || []).length));
 
       if (!hasSession) {
         el.topGameName.textContent = 'Keine offene Partie';
@@ -1961,7 +2319,7 @@
         const cashPenaltySummary = getCashPenaltySummary(session, player.id);
         const actionDisabled = player.status !== 'active' || session.currentRound.status !== 'open';
         const lossDisabled = actionDisabled || session.currentRound.turnsCompleted >= session.currentRound.target;
-        const nonLustPenaltyLocked = getNonLustCashPenaltyCount(session, player.id) >= 3;
+        const cashPenaltyLocked = isCashPenaltyLimitReached(session, player.id);
         const playerType = getPlayerType(player);
         const isGuest = playerType === 'guest';
         return `
@@ -2001,12 +2359,13 @@
               <button data-action="loss" data-player-id="${escapeHtml(player.id)}" class="danger full-width" ${lossDisabled ? 'disabled' : ''}>Verloren</button>
             </div>
             ${player.status === 'active' ? `
-              ${isGuest ? '' : `
+              ${isGuest ? `
+              <div class="player-actions full-width-row">
+                <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="violet full-width" ${(actionDisabled || session.currentRound.turnsCompleted >= session.currentRound.target) ? 'disabled' : ''}>Lust-Knobeln</button>
+              </div>` : `
               <div class="player-actions cash-grid">
                 <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${actionDisabled ? 'disabled' : ''}>Lust-Knobeln</button>
-                <button data-action="mattenflucht" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${(actionDisabled || nonLustPenaltyLocked) ? 'disabled' : ''}>Matten-Flucht</button>
-                <button data-action="wuerfelflucht" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${(actionDisabled || nonLustPenaltyLocked) ? 'disabled' : ''}>Würfel-Flucht</button>
-                <button data-action="neuwuerfeln" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${(actionDisabled || nonLustPenaltyLocked) ? 'disabled' : ''}>Neu-Würfeln</button>
+                <button data-action="cashfault" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${(actionDisabled || cashPenaltyLocked) ? 'disabled' : ''}>Strafkasse</button>
               </div>`}
               <div class="player-actions full-width-row">
                 <button data-action="exit" data-player-id="${escapeHtml(player.id)}" class="warn full-width" ${lossDisabled ? 'disabled' : ''}>Ausstieg</button>
@@ -2035,7 +2394,8 @@
       if (!session) return;
       el.scoreRound.textContent = `${session.roundIndex}/${session.maxRounds}`;
       el.scoreTurn.textContent = `${session.currentRound.turnsCompleted}/${session.currentRound.target}`;
-      el.scorePlayers.textContent = String(session.players.length);
+      const activeCount = session.players.filter((player) => player.status === 'active').length;
+      el.scorePlayers.textContent = `${activeCount}/${session.players.length}`;
 
       const boxes = document.querySelectorAll('#scoreboardSection .scorebox');
       boxes.forEach((box) => box.classList.remove('highlight'));
@@ -2045,87 +2405,101 @@
 
     function renderAudit() {
       const session = state.currentSession;
+      const items = [...(state.actionAudit || [])].slice(-MAX_UNDO).reverse();
+      el.tabCountAudit.textContent = String(items.length);
       if (!session) {
-        el.tabCountAudit.textContent = '0';
         el.auditList.innerHTML = '<div class="empty">Keine offene Partie.</div>';
         return;
       }
-      const roundBlocks = [];
-      const rounds = [...(session.finishedRounds || []), session.currentRound];
-      rounds.forEach((round) => {
-        const roundEvents = (round.events || []).map((item) => ({
-          id: item.id,
-          ts: item.ts,
-          label: item.label,
-          type: item.type,
-          auditId: item.auditId || null,
-          roundIndex: round.index,
-          isCurrent: round.index === session.currentRound.index
-        }));
-        roundBlocks.push(...roundEvents);
-      });
-      const missingUndone = state.actionAudit
-        .filter((entry) => entry.status === 'undone' && !session.currentRound.events.some((ev) => ev.id === entry.eventId))
-        .map((entry) => ({ id: entry.eventId, ts: entry.ts, label: entry.label, type: entry.actionType, auditId: entry.id, roundIndex: session.currentRound.index, isCurrent: true }));
-      const items = [...roundBlocks, ...missingUndone].sort((a, b) => new Date(a.ts) - new Date(b.ts));
-      el.tabCountAudit.textContent = String(items.length);
       if (!items.length) {
-        el.auditList.innerHTML = '<div class="empty">Noch keine Einträge.</div>';
+        el.auditList.innerHTML = '<div class="empty">Noch keine rückgängig machbaren Aktionen.</div>';
         return;
       }
-      let currentRoundMarker = null;
-      el.auditList.innerHTML = items.map((item) => {
-        const header = item.roundIndex !== currentRoundMarker
-          ? `<div class="label-row" style="margin-bottom:6px;"><span class="pill blue">Spielrunde ${item.roundIndex}</span></div>`
-          : '';
-        currentRoundMarker = item.roundIndex;
-        const audit = item.auditId && item.isCurrent ? state.actionAudit.find((entry) => entry.id === item.auditId) : null;
-        const buttons = audit ? `
+      el.auditList.innerHTML = items.map((audit) => `
+        <div class="audit-item">
+          <div class="label-row">
+            <span class="pill ${audit.status === 'applied' ? 'green' : 'red'}">${audit.status === 'applied' ? 'aktiv' : 'zurückgenommen'}</span>
+            <span class="pill ${eventPillClass(audit.actionType)}">${escapeHtml(eventTypeLabel(audit.actionType))}</span>
+            <span class="tiny muted">${formatDateTime(audit.ts)}</span>
+          </div>
+          <div>${escapeHtml(audit.label)}</div>
           <div class="grid-2" style="margin-top: 8px;">
             <button data-audit-action="undo" data-audit-id="${escapeHtml(audit.id)}" class="warn" ${audit.status === 'undone' ? 'disabled' : ''}>Rückgängig?</button>
             <button data-audit-action="redo" data-audit-id="${escapeHtml(audit.id)}" class="primary" ${audit.status === 'applied' ? 'disabled' : ''}>Wiederherstellen?</button>
           </div>
-        ` : '';
-        return `
-          ${header}
-          <div class="audit-item">
-            <div class="label-row">
-              <span class="pill ${eventPillClass(item.type)}">${escapeHtml(eventTypeLabel(item.type))}</span>
-              <span class="tiny muted">${formatDateTime(item.ts)}</span>
-              ${audit ? `<span class="pill ${audit.status === 'applied' ? 'green' : 'red'}">${audit.status === 'applied' ? 'aktiv' : 'zurückgenommen'}</span>` : ''}
-            </div>
-            <div>${escapeHtml(item.label)}</div>
-            ${buttons}
-          </div>
-        `;
-      }).join('');
+        </div>
+      `).join('');
     }
 
     function renderHistory() {
-      if (!state.history.length) {
-        el.historyList.innerHTML = '<div class="empty">Noch keine abgeschlossene Spielrunde.</div>';
+      const games = getGameHistoryItems();
+      el.tabCountHistory.textContent = String(games.length);
+      if (!games.length) {
+        el.historyList.innerHTML = '<div class="empty">Noch keine laufenden oder abgeschlossenen Spiele.</div>';
         return;
       }
-      el.historyList.innerHTML = state.history.map((entry, index) => renderHistoryEntry(entry, index)).join('');
-
-      el.historyList.querySelectorAll('button[data-history-action="copy-settlement"]').forEach((btn) => {
-        btn.addEventListener('click', async (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          const entryId = btn.dataset.historyId;
-          await handleHistoryCopyById(entryId);
-        });
-      });
+      el.historyList.innerHTML = games.map((game, index) => renderGameHistoryEntry(game, index)).join('');
     }
 
-    async function handleHistoryCopyById(entryId) {
-      const entry = (state.history || []).find((item) => item.id === entryId);
+    async function handleHistoryCopyById(entryId, gameId = null) {
+      let entry = null;
+      const currentGame = state.currentSession ? getGameHistoryItems().find((item) => item.kind === 'current') : null;
+      if (gameId && currentGame && currentGame.id === gameId) {
+        entry = getGameRoundsForDisplay(currentGame).find((item) => item.id === entryId);
+      }
+      if (!entry) {
+        for (const game of (state.gamesHistory || [])) {
+          if (gameId && game.id !== gameId) continue;
+          entry = (game.roundEntries || []).find((item) => item.id === entryId);
+          if (entry) break;
+        }
+      }
       if (!entry) return;
       const beerSettlement = getBeerSettlement(entry);
-      await handleSettlementCopyFeedback(entry, beerSettlement, 'Abrechnung');
+      await handleSettlementCopyFeedback(entry, beerSettlement, entry.isLiveRound ? 'Zwischenstand' : 'Abrechnung');
     }
 
-    function renderHistoryEntry(entry, index) {
+    function renderGameHistoryEntry(game, index) {
+      const isCurrent = game.kind === 'current';
+      const rounds = getGameRoundsForDisplay(game);
+      const activeRound = isCurrent ? rounds.find((entry) => entry.isLiveRound) : null;
+      const finishedRounds = isCurrent ? rounds.filter((entry) => !entry.isLiveRound) : rounds;
+      const gameLabel = isCurrent
+        ? `Laufendes Spiel · ${formatDateTime(game.createdAt)} · ${getGameModeLabel(game.roundTarget, game.maxRounds)}`
+        : `Spiel vom ${formatDateTime(game.createdAt)} · ${getGameModeLabel(game.roundTarget, game.maxRounds)}`;
+      const finishedRoundsHtml = finishedRounds.length
+        ? finishedRounds.map((entry) => renderHistoryRoundEntry(entry, game.id)).join('')
+        : '<div class="empty">Noch keine Spielrunde abgeschlossen.</div>';
+
+      if (isCurrent) {
+        const activeTimelineHtml = activeRound
+          ? renderSingleRoundTimeline(activeRound, {
+              wrapperTag: 'div',
+              zoneTitle: 'Verlauf der aktuellen Spielrunde'
+            })
+          : '<div class="empty">Noch keine aktive Spielrunde vorhanden.</div>';
+
+        return `
+          <details class="history-item" ${index === 0 ? 'open' : ''}>
+            <summary><strong>${escapeHtml(gameLabel)}</strong> <span class="tiny muted">· läuft</span></summary>
+            ${activeTimelineHtml}
+            <details class="history-detail-toggle" style="margin-top:10px;">
+              <summary>Zuletzt abgeschlossene Spielrunden</summary>
+              <div class="history-detail-list" style="margin-top:10px;">${finishedRoundsHtml}</div>
+            </details>
+          </details>
+        `;
+      }
+
+      return `
+        <details class="history-item">
+          <summary><strong>${escapeHtml(gameLabel)}</strong></summary>
+          <div class="history-detail-list" style="margin-top:10px;">${finishedRoundsHtml}</div>
+        </details>
+      `;
+    }
+
+    function renderHistoryRoundEntry(entry, gameId) {
       const summary = getHistoryRoundSummary(entry);
       const beerSettlement = getBeerSettlement(entry);
       const pairRows = summary.compactSettlements.length
@@ -2162,41 +2536,21 @@
           return `<div class="settlement-item"><div class="label-row"><span class="pill ${settlement.type === 'exit' ? 'amber' : 'red'}">${settlement.type === 'exit' ? 'Ausstieg' : 'Spielrunde beendet'}</span><span class="tiny muted">${escapeHtml(header)}</span></div>${lines}</div>`;
         }).join('')
         : '<div class="empty">Keine gegengerechneten Biere in dieser Spielrunde.</div>';
-      return `
-        <details class="history-item">
-          <summary><strong>Spielrunde ${entry.roundIndex} von ${entry.maxRounds}</strong> <span class="tiny muted">· ${entry.currentRound.turnsCompleted}/${entry.roundTarget} Durchgänge · ${formatDateTime(entry.finishedAt)}</span></summary>
-          <div class="history-summary-grid" style="margin-top:10px;">
+
+      const counterSection = entry.isLiveRound ? `
             <div class="history-zone">
-              <div class="history-zone-title">Was in der Spielrunde passiert ist</div>
-              <div class="history-kpi-grid">
-                <div class="history-kpi"><div class="tiny muted">Verlorene Runden</div><div><strong>${summary.lossCount}</strong></div></div>
-                <div class="history-kpi"><div class="tiny muted">Lustknobeln</div><div><strong>${summary.lustCount}</strong></div></div>
-                <div class="history-kpi"><div class="tiny muted">Ausstiege</div><div><strong>${summary.exitCount}</strong></div></div>
-                <div class="history-kpi"><div class="tiny muted">Wiedereinstiege</div><div><strong>${summary.rejoinCount}</strong></div></div>
-                <div class="history-kpi"><div class="tiny muted">Matten-Flucht</div><div><strong>${summary.mattenFluchtCount}</strong></div></div>
-                <div class="history-kpi"><div class="tiny muted">Würfel-Flucht</div><div><strong>${summary.wuerfelFluchtCount}</strong></div></div>
-                <div class="history-kpi"><div class="tiny muted">Neu-Würfeln</div><div><strong>${summary.neuWuerfelnCount}</strong></div></div>
-                <div class="history-kpi"><div class="tiny muted">Neue Biere</div><div><strong>${summary.newPoints}</strong></div></div>
-                <div class="history-kpi"><div class="tiny muted">Strafkasse Runde</div><div><strong>${formatCoins(summary.roundCashPenaltyTotalCoins)}</strong></div></div>
-              </div>
-              <div class="small"><strong>Mitspieler:</strong> ${escapeHtml(summary.playerCodesLabel)}</div>
-              <div class="small"><strong>Bierverteilung in dieser Runde:</strong> ${escapeHtml(summary.actorSummaryLabel)}</div>
-              <div class="small"><strong>Strafkasse in dieser Runde:</strong> ${escapeHtml(summary.cashSummaryLabel)}</div>
-              <div class="tiny muted">${summary.compactSettlements.length ? 'Gegenrechnung mit früheren Spielrunden derselben Partie: ja' : 'Gegenrechnung mit früheren Spielrunden derselben Partie: nein'}</div>
+              <div class="history-zone-title">Gegenrechnung</div>
+              <div class="small">Gegenrechnungen werden erst nach Ende der Spielrunde vorgenommen und sind danach im Verlauf der jeweiligen Spielrunde sichtbar.</div>
             </div>
+      ` : `
             <div class="history-zone">
               <div class="history-zone-title">Wie gegengerechnet wurde</div>
               <div class="history-pair-list">${pairRows}</div>
               <div class="small"><strong>In Summe gegengerechnet:</strong> ${summary.cancelledPointsTotal} ${summary.cancelledPointsTotal === 1 ? 'Bier' : 'Biere'}</div>
             </div>
-          </div>
-          <div class="history-zone" style="margin-top:10px;">
-            <div class="label-row" style="justify-content:space-between; align-items:center;">
-              <div class="history-zone-title">Bierabrechnung nach Gegenrechnung</div>
-              <button type="button" class="info" data-history-action="copy-settlement" data-history-id="${escapeHtml(entry.id)}" style="width:auto; min-width:170px; box-shadow:none;">Abrechnungstext kopieren</button>
-            </div>
-            ${renderBeerSettlementSheet(entry, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: false })}
-          </div>
+      `;
+
+      const detailSection = entry.isLiveRound ? '' : `
           <details class="history-detail-toggle" style="margin-top:10px;">
             <summary>Details anzeigen</summary>
             <div class="history-zone" style="margin-top:10px;">
@@ -2208,20 +2562,50 @@
               <div class="settlement-list">${detailSettlements}</div>
             </div>
           </details>
+      `;
+
+      return `
+        <details class="history-item" ${entry.isLiveRound ? 'open' : ''}>
+          <summary><strong>${entry.isLiveRound ? 'Aktuelle Spielrunde' : `Spielrunde ${entry.roundIndex} von ${entry.maxRounds}`}</strong> <span class="tiny muted">· ${entry.currentRound.turnsCompleted}/${entry.currentRound.target} Durchgänge${entry.isLiveRound ? ' · läuft' : ` · ${formatDateTime(entry.finishedAt)}`}</span></summary>
+          <div class="history-summary-grid" style="margin-top:10px;">
+            <div class="history-zone">
+              <div class="history-zone-title">Was in der Spielrunde passiert ist</div>
+              <div class="history-kpi-grid">
+                <div class="history-kpi"><div class="tiny muted">Verlorene Runden</div><div><strong>${summary.lossCount}</strong></div></div>
+                <div class="history-kpi"><div class="tiny muted">Lustknobeln</div><div><strong>${summary.lustCount}</strong></div></div>
+                <div class="history-kpi"><div class="tiny muted">Ausstiege</div><div><strong>${summary.exitCount}</strong></div></div>
+                <div class="history-kpi"><div class="tiny muted">Wiedereinstiege</div><div><strong>${summary.rejoinCount}</strong></div></div>
+                <div class="history-kpi"><div class="tiny muted">Strafkasse-Vergehen</div><div><strong>${summary.cashFaultCount}</strong></div></div>
+                <div class="history-kpi"><div class="tiny muted">Neue Biere</div><div><strong>${summary.newPoints}</strong></div></div>
+                <div class="history-kpi"><div class="tiny muted">Strafkasse Runde</div><div><strong>${formatCoins(summary.roundCashPenaltyTotalCoins)}</strong></div></div>
+              </div>
+              <div class="small"><strong>Mitspieler:</strong> ${escapeHtml(summary.playerCodesLabel)}</div>
+              <div class="small"><strong>Bierverteilung in dieser Runde:</strong> ${escapeHtml(summary.actorSummaryLabel)}</div>
+              <div class="small"><strong>Strafkasse in dieser Runde:</strong> ${escapeHtml(summary.cashSummaryLabel)}</div>
+              <div class="tiny muted">${summary.compactSettlements.length ? 'Gegenrechnung mit früheren Spielrunden derselben Partie: ja' : 'Gegenrechnung mit früheren Spielrunden derselben Partie: nein'}</div>
+            </div>
+            ${counterSection}
+          </div>
+          <div class="history-zone" style="margin-top:10px;">
+            <div class="label-row" style="justify-content:space-between; align-items:center;">
+              <div class="history-zone-title">${entry.isLiveRound ? 'Bisherige Bierabrechnung' : 'Bierabrechnung nach Gegenrechnung'}</div>
+              <button type="button" class="info" data-history-action="copy-settlement" data-history-id="${escapeHtml(entry.id)}" data-game-id="${escapeHtml(gameId)}" style="width:auto; min-width:170px; box-shadow:none;">${entry.isLiveRound ? 'Zwischenstand kopieren' : 'Abrechnungstext kopieren'}</button>
+            </div>
+            ${renderBeerSettlementSheet(entry, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: false })}
+          </div>
+          ${detailSection}
         </details>
       `;
     }
 
     function getHistoryRoundSummary(entry) {
       const events = (entry.currentRound && Array.isArray(entry.currentRound.events) ? entry.currentRound.events : [])
-        .filter((ev) => ['loss', 'lust', 'exit', 'rejoin', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'].includes(ev.type));
+        .filter((ev) => ['loss', 'lust', 'exit', 'rejoin', 'cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln', 'undo', 'redo'].includes(ev.type));
       const lossEvents = events.filter((ev) => ev.type === 'loss');
       const lustEvents = events.filter((ev) => ev.type === 'lust');
       const exitEvents = events.filter((ev) => ev.type === 'exit');
       const rejoinEvents = events.filter((ev) => ev.type === 'rejoin');
-      const mattenFluchtEvents = events.filter((ev) => ev.type === 'mattenflucht');
-      const wuerfelFluchtEvents = events.filter((ev) => ev.type === 'wuerfelflucht');
-      const neuWuerfelnEvents = events.filter((ev) => ev.type === 'neuwuerfeln');
+      const cashFaultEvents = events.filter((ev) => ['cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'].includes(ev.type));
       const actorCounts = new Map();
       let newPoints = 0;
       for (const ev of [...lossEvents, ...lustEvents]) {
@@ -2239,9 +2623,7 @@
       const roundCashPenalties = (entry.cashPenalties || []).filter((item) => item.roundIndex === entry.roundIndex);
       const roundCashPenaltyCounts = {
         lust: roundCashPenalties.filter((item) => item.type === 'lust').length,
-        mattenflucht: roundCashPenalties.filter((item) => item.type === 'mattenflucht').length,
-        wuerfelflucht: roundCashPenalties.filter((item) => item.type === 'wuerfelflucht').length,
-        neuwuerfeln: roundCashPenalties.filter((item) => item.type === 'neuwuerfeln').length
+        cashfault: roundCashPenalties.filter((item) => ['cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'].includes(item.type)).length
       };
       const roundCashPenaltyTotalCoins = roundCashPenalties.reduce((sum, item) => sum + Number(item.amountCoins || 0), 0);
       const cashParts = Object.entries(CASH_PENALTY_TYPES)
@@ -2269,9 +2651,7 @@
         lustCount: lustEvents.length,
         exitCount: exitEvents.length,
         rejoinCount: rejoinEvents.length,
-        mattenFluchtCount: mattenFluchtEvents.length,
-        wuerfelFluchtCount: wuerfelFluchtEvents.length,
-        neuWuerfelnCount: neuWuerfelnEvents.length,
+        cashFaultCount: cashFaultEvents.length,
         roundCashPenaltyTotalCoins,
         cashSummaryLabel: cashParts,
         newPoints,
@@ -2288,7 +2668,7 @@
       document.querySelectorAll('#tabButtons button[data-tab]').forEach((button) => {
         button.classList.toggle('active', button.dataset.tab === openTab);
       });
-      ['rounds', 'audit', 'history'].forEach((tab) => {
+      ['audit', 'history'].forEach((tab) => {
         const panel = document.getElementById(`tabPanel-${tab}`);
         if (panel) panel.classList.toggle('hidden', openTab !== tab);
       });
@@ -2492,22 +2872,14 @@ function groupBeerByFrom(details) {
       return (container.cashPenalties || []).filter((item) => item.playerId === playerId);
     }
 
-    function getNonLustCashPenaltyCount(container, playerId) {
+    function getCashPenaltyViolationCount(container, playerId) {
       return getCashPenaltyEntries(container, playerId)
-        .filter((item) => item.type === 'mattenflucht' || item.type === 'wuerfelflucht' || item.type === 'neuwuerfeln')
+        .filter((item) => ['cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'].includes(item.type))
         .length;
     }
 
-    function getProgressiveCashPenaltyTotalCoins(count) {
-      if (count <= 1) return 0;
-      if (count === 2) return 1;
-      return 2;
-    }
-
-    function getProgressiveCashPenaltyTotalCents(count) {
-      if (count <= 1) return 0;
-      if (count === 2) return 200;
-      return 400;
+    function isCashPenaltyLimitReached(container, playerId) {
+      return CASH_PENALTY_BUTTON_LIMIT > 0 && getCashPenaltyViolationCount(container, playerId) >= CASH_PENALTY_BUTTON_LIMIT;
     }
 
     function getLustCashPenaltyCoins(totalPlayersCount) {
@@ -2527,10 +2899,10 @@ function groupBeerByFrom(details) {
         const activePlayersCount = Math.max(0, session.players.filter((player) => player.status === 'active').length);
         return getLustCashPenaltyCoins(activePlayersCount);
       }
-      const existingCount = getNonLustCashPenaltyCount(session, playerId);
-      const currentTotal = getProgressiveCashPenaltyTotalCoins(existingCount);
-      const nextTotal = getProgressiveCashPenaltyTotalCoins(existingCount + 1);
-      return nextTotal - currentTotal;
+      if (type === 'cashfault' || type === 'mattenflucht' || type === 'wuerfelflucht' || type === 'neuwuerfeln') {
+        return 1;
+      }
+      return 0;
     }
 
     function previewCashPenaltyAmountCents(session, type, playerId) {
@@ -2538,22 +2910,21 @@ function groupBeerByFrom(details) {
         const activePlayersCount = Math.max(0, session.players.filter((player) => player.status === 'active').length);
         return getLustCashPenaltyTotalCents(activePlayersCount);
       }
-      const existingCount = getNonLustCashPenaltyCount(session, playerId);
-      const currentTotal = getProgressiveCashPenaltyTotalCents(existingCount);
-      const nextTotal = getProgressiveCashPenaltyTotalCents(existingCount + 1);
-      return nextTotal - currentTotal;
+      if (type === 'cashfault' || type === 'mattenflucht' || type === 'wuerfelflucht' || type === 'neuwuerfeln') {
+        return 200;
+      }
+      return 0;
     }
 
     function getCashPenaltySummary(container, playerId) {
       const entries = getCashPenaltyEntries(container, playerId);
       const counts = {
         lust: 0,
-        mattenflucht: 0,
-        wuerfelflucht: 0,
-        neuwuerfeln: 0
+        cashfault: 0
       };
       entries.forEach((entry) => {
-        if (counts[entry.type] !== undefined) counts[entry.type] += 1;
+        const normalizedType = ['cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'].includes(entry.type) ? 'cashfault' : entry.type;
+        if (counts[normalizedType] !== undefined) counts[normalizedType] += 1;
       });
       const totalCoins = entries.reduce((sum, item) => sum + Number(item.amountCoins || 0), 0);
       const totalCents = entries.reduce((sum, item) => sum + Number(item.amountCents || 0), 0);
@@ -2881,20 +3252,57 @@ ${playerText}`;
         message: 'Kurze Spielanleitung für die Nutzung der App.',
         bodyHtml: [
           '<div class="drawer-info-list">',
+		  '<div>• Eine Partie läuft über bis zu 3 Spielrunden. Jede Spielrunde hat 5 oder 10 Durchgänge.</div>',
           '<div>• Tippe auf „Neue Partie anlegen“ und wähle 5 oder 10 Durchgänge pro Spielrunde.</div>',
-          '<div>• Füge Spieler über die Plus-Karte hinzu. Du kannst einen Namen aus der Liste wählen oder neu eingeben.</div>',
-          '<div>• Das Kürzel auf der jeweiligen Spielerkarte oben rechts ist für Falscheingaben gedacht. Dort kann ein Spielername gelöscht werden (nur vor Spielbeginn).</div>',
-          '<div>• Eine Partie läuft über bis zu 3 Spielrunden. Jede Spielrunde hat 5 oder 10 Durchgänge.</div>',
+          '<div>• Füge Spieler über die Plus-Karte hinzu. Preset-Spieler kommen aus der Liste, Gastspieler werden neu eingetragen.</div>',
+          '<div>• Das Kürzel auf der jeweiligen Spielerkarte oben rechts ist für Falscheingaben gedacht. Dort kann ein Spielername gelöscht werden (nur vor Spielbeginn).</div>',		            
           '<div>• Der erste Durchgang der ersten Spielrunde startet immer mit „Schuss einfach“.</div>',
           '<div>• Eine Partie kann jederzeit sofort vorzeitig über den roten Button „Spielrunde beenden“ beendet werden.</div>',
           '<div>• Grün markierte Spieler-Karten sind aktiv, graue Karten sind ausgestiegen.</div>',
-          '<div>• Nutze auf der Spielerkarte die Buttons Verloren, Lustknobeln, Ausstieg oder Wiedereinsteigen.</div>',
-          '<div>• Verloren oder Lustknobeln verteilt automatisch je 1 Strafpunkt an alle anderen aktiven Spieler.</div>',
+          '<div>• Nutze auf der Spielerkarte die Buttons Verloren, Lustknobeln, Strafkasse (nicht bei Gästen) Ausstieg oder Wiedereinsteigen.</div>',
+		  '<div>• Verloren verteilt automatisch je 1 Strafpunkt an alle anderen aktiven Spieler.</div>',
+          '<div>• Lustknobeln bei Gastspielern zählt wie verloren. Lustknobeln bei Preset-Spielern geht in die Strafkasse. Sind aktive Gäste dabei, bekommen nur diese 1 Freibier zusätzlich zu den Strafkassen-Coins.</div>',
+		  '<div>• Der Button „Strafkasse“ kostet 1 Coin (Wert=2€) und wird nach dem dritten Vergehen gesperrt.</div>',
           '<div>• Nach dem letzten Durchgang (5/5 oder 10/10) jeder Spielrunde muss die Spielrunde über den roten Button „Spielrunde beenden“ immer zuerst beendet werden.</div>',
           '<div>• Danach wird immer die Zwischen-/End-Abrechnung angezeigt, die bei Bedarf als Text in die Zwischenablage kopiert werden kann.</div>',
           '<div>• Erst danach kann es mit der nächsten Spielrunde weitergehen.</div>',
-          '<div>• Verlauf und Historie sind über die Bereiche unten oder das Menü erreichbar. Dort kann auch immer der letzte vergebene Strafpunkt rückgängig gemacht werden.</div>',
+          '<div>• Unten findest du die letzten Aktionen zum Rückgängigmachen und in der Historie das laufende Spiel sowie die letzten Spiele.</div>',
           '<div>• Sicherungsdateien eines Spiels und ein sauberer Neustart liegen im Burger-Menü unter Werkzeuge.</div>',
+          '</div>'
+        ].join(''),
+        actions: [
+          { label: 'Schließen', value: 'ok', className: 'primary' }
+        ]
+      });
+    }
+
+
+    function openAgbDialog() {
+      showCustomDialog({
+        title: 'Knobelrunde Sander Treff',
+        message: 'Allgemeine Geschäftsbedingungen',
+        bodyHtml: [
+          '<div class="grid small" style="gap:12px; line-height:1.55;">',
+          '<div><strong>Knobelrunde Sander Treff</strong><br>Allgemeine Geschäftsbedingungen</div>',
+          '<div>Stand: Neugefasst durch Bek. vom 19.06.2026<br>zuletzt geändert: ./.</div>',
+          '<div><strong>Präambel</strong><br>Knobeln ist die hohe Kunst, dem Zufall ins Angesicht zu blicken und ihn für einen flüchtigen Augenblick herauszufordern. Mit drei Würfeln und einem Becher entfaltet sich ein kultiviertes Ritual der Ungewissheit, ein verdichtetes Schauspiel von Mut, Kalkül und Schicksal. Was dem Unkundigen als schlichtes Spiel erscheinen mag, offenbart sich dem Eingeweihten als feierliche Prüfung von Nervenstärke, Risikobereitschaft und Charakter. Seit Generationen versammelt es Menschen an Tischen, Theken und Festen, wo in wenigen Augenblicken Ruhm errungen, Ehre verteidigt und Niederlagen mit Würde getragen werden. Knobeln ist kein Spiel gegen andere – es ist ein Dialog mit dem Zufall.</div>',
+          '<div><strong>I. Geltungsbereich</strong><br>¹ Die vorliegenden AGB gelten für alle Knobelrunden, die unter Mitgliedern der Whatsappgruppe „Knobeln im Sander“ ausgetragen werden. ² Dabei ist keine Voraussetzung, dass die Partie im Sander Treff ausgespielt werden muss.</div>',
+          '<div><strong>II. Das Spiel</strong></div>',
+          '<div><strong>1. Anzahl Mitspieler</strong><br>Geknobelt wird ab zwei Personen, wobei die Anzahl der Mitspielenden nach oben nicht begrenzt ist.</div>',
+          '<div><strong>2. Spielprinzip</strong></div>',
+          '<div><strong>a) Start</strong><br>¹ Das Spiel startet grundsätzlich mit einem Schuss. ² Ein Schuss bedeutet das einmalige Würfeln. ³ Eine Reihenfolge ist hierbei sowohl beim Würfeln als auch beim Aufdecken entbehrlich. ⁴ Sodann setzt der Spieler mit dem niedrigsten Würfelbild das Spiel fort.</div>',
+          '<div><strong>b) Bricken</strong><br>¹ In der Mitte des Tisches werden 15 Bricken aufgetürmt. ² Diese sind jeweils vom verlierenden Spieler in entsprechender Höhe an sich zu nehmen. ³ Die Höhe orientiert sich am Wurfbild des stärksten Spielers, wobei bei Vorliegen einer bloßen Zahl ein Bricken, bei einer Straße, die aus drei aufeinanderfolgenden Zahlen besteht, zwei Bricken, bei einem Harten, der aus drei gleichlautenden Zahlen besteht, drei Bricken aufzunehmen sind. ⁴ Würfelt ein Spieler zwei Einsen (sog. „Max“), so sind Bricken in Höhe des dritten Würfels zu entnehmen. ⁵ Zeigt auch der dritte Würfel eine Eins, so ist die Hälfte bzw. das Finale direkt zulasten des Unterlegenen beendet. ⁶ Bei Straßen und Harten schlägt jeweils das höhere Trefferbild das niedrigere. ⁷ Würfeln zwei Spieler das gleiche und handelt es sich dabei um das gewinnende oder verlierende Wurfbild, so würfeln diese beiden Spieler erneut, wobei der Spieler mit der niedrigen Summe an Augen unterliegt. ⁸ Sind die 15 Bricken unter den Mitspielern verteilt, so gibt jeweils der Gewinnende einer Runde Bricken aus seinem Stock an den Spieler mit dem schwächsten Wurfbild. ⁹ Das Spiel endet, sobald ein Spieler 15 Bricken in seinem Stock und er damit verloren hat.</div>',
+          '<div><strong>c) Würfe</strong><br>¹ Der beginnende Spieler entscheidet, wie oft maximal gewürfelt werden darf, wobei das Maximum drei Würfe nicht überschreiten darf. ² Nach jedem Wurf kann der jeweilige Spieler mit einem, zwei oder drei Würfeln fortsetzen. ³ Würfelt der Spieler zwei Sechsen, so kann er diese zu einer Eins umwandeln, wobei der verbleibende Würfel zwingend erneut gewürfelt werden muss. ⁴ Würfelt der Spieler drei Sechsen, so kann er diese zu zwei Einsen umwandeln, wobei auch hier der verbleibende Würfel erneut geworfen werden muss. ⁵ Entstehen oder stehen nach dem dritten Wurf zwei oder drei Sechsen und werden diese gedreht, so ist ausnahmsweise ein vierter Wurf gestattet. ⁶ Entstehen durch diesen erneut mehrere Sechsen ist ein fünfter Wurf jedoch ausgeschlossen.</div>',
+          '<div><strong>d) Schuss</strong><br>¹ Der jeweils erste Spieler in einer Hälfte oder einem Finale hat die Möglichkeit, den ersten Wurf ungesehen stehen- und zwei- oder dreifach werten zu lassen. ² Er sagt dies deutlich mit einem „Schuss zwei-/ dreifach“ an. ³ Kommt es hierbei zu drei Einsen so verliert der Unterlegene auch die Folgehälfte(n) bzw. das folgende Finale.</div>',
+          '<div><strong>e) Rundenende</strong><br>¹ Hat ein Spieler alle 15 Bricken gesammelt so verliert er eine Hälfte. ² Verliert ein Spieler beide Hälften so verliert er die Runde. ³ Teilen sich die Hälften auf zwei Spieler auf, so spielen diese unter Ausschluss der anderen ein Finale nach den gleichen Regeln. ⁴ Derjenige, der die erste Hälfte verlor, darf das Finale beginnen. ⁵ Der Spieler, der das Finale verliert, verliert die Runde. ⁶ Es wird sodann händisch oder elektronisch jeweils ein Getränk im Gegenwert von 2€ für jeden anderen an der Runde beteiligten gutgeschrieben. ⁷ Schulden sich zwei Knobler gegenseitig Getränke, so ist ein Aufrechnen möglich.</div>',
+          '<div><strong>f) Lustknobeln</strong><br>¹ Ist ein Spieler nicht mehr Teil der Runde, weil das Finale ohne ihn ausgetragen wird oder ist er bei einem leeren Stock brickenlos und würfelt trotzdem, so lustknobelt er.  ² Lustknobeln wird pauschal umgerechnet, als hätte der Spieler eine Runde verloren. ³ Lustknobeln liegt dabei vor, wenn die Würfel auf die Matte geworfen wurden. ⁴ Ob der Würfelbecher daraufhin bereits abgehoben wurde, ist unerheblich.</div>',
+          '<div><strong>g) Strafkasse</strong><br>¹ Mit einem Ordnungsgeld in Höhe von 0,50€ werden getrennt von der Endabrechnung folgende Verstöße geahndet:<br>1. Das Verlassen der Matte eines oder mehrerer Würfel infolge des Wurfes (Mattenflucht).<br>2. Das Verlassen des Tisches von einem oder mehrerer Würfel (Würfelflucht).<br>3. Beim nicht komplett ebenerdigen Liegenbleiben der drei Würfel auf der Matte (Neu würfeln).<br>² Das Strafgeld wird von Burak verwaltet. ³ Über die Ausgabe zu Gruppenaktivitäten entscheidet die Gruppe konsensual.</div>',
+          '<div><strong>3. Spieler Ein- und Ausstieg</strong></div>',
+          '<div><strong>a) Einstieg</strong><br>¹ Möchte ein neuer Spieler hinzustoßen, so ist dies nicht möglich, wenn sich die bereits bestehende Runde mehrheitlich dagegen ausspricht. ² Im Falle eines Neueinstiegs beginnt die Wertung des neuhinzugetretenen bei 0. ³ Neu hinzutretende Knobler müssen mindestens fünf komplette Runden absolvieren, ehe sie das Spiel verlassen dürfen.</div>',
+          '<div><strong>b) Ausstieg</strong><br>¹ Ein Ausstieg aus der Runde ist grundsätzlich nur möglich, wenn der Knobler zuvor die für ihn vorletzte Runde angesagt hat. ² Wird dies nicht getan, so entscheidet die Runde mit Mehrheit, ob ein den vorzeitigen Ausstieg begründender wichtiger Grund vorliegt. ³ Der infrage stehende Spieler ist in diesem Fall nicht stimmberechtigt.</div>',
+          '<div><strong>III. Abrechnung</strong><br>¹ Die physisch oder elektronisch festgehaltene Gesamtabrechnung ist durch Möglichkeit der Einsichtnahme oder das Einstellen in die Whattsappgruppe zu transparent zu machen. ² Sodann wird die Abrechnung dem Wirt zur Kenntnis gereicht, etwaige Minuswerte auf der Wirtshausabrechnung vermerkt und entsprechende Sander Coins ausgegeben.</div>',
+          '<div><strong>IV. Inkrafttreten</strong><br>¹ Diese AGB treten mit Wirkung zum 19.06.2026 in Kraft. ² Über sich nicht aus diesen AGB ergebende hinausgehende Unklarheiten, ist konsensual in der Gruppe zu entscheiden. ³ Im Übrigen gelten die allgemeinen zivil- und strafrechtlichen Gesetze und Vorschriften.</div>',
+          '<div>Hamburg, 19.06.2026</div>',
           '</div>'
         ].join(''),
         actions: [
@@ -2910,6 +3318,7 @@ ${playerText}`;
       const fresh = createDefaultState();
       state.currentSession = fresh.currentSession;
       state.history = fresh.history;
+      state.gamesHistory = fresh.gamesHistory;
       state.actionAudit = fresh.actionAudit;
       state.favoritePlayers = Array.isArray(state.favoritePlayers) ? state.favoritePlayers.slice(0, MAX_FAVORITES) : [];
       state.ui = fresh.ui;
@@ -2920,7 +3329,7 @@ ${playerText}`;
     }
 
     async function maybeExportBeforeDanger(title, message) {
-      const hasAnyData = Boolean(state.currentSession || state.history.length || state.actionAudit.length);
+      const hasAnyData = Boolean(state.currentSession || (state.gamesHistory || []).length || state.actionAudit.length);
       if (!hasAnyData) return true;
       const answer = await showDialog({
         title,
@@ -2965,6 +3374,7 @@ ${playerText}`;
           const migrated = migrateState(parsed);
           state.currentSession = migrated.currentSession;
           state.history = migrated.history;
+          state.gamesHistory = migrated.gamesHistory || [];
           state.actionAudit = migrated.actionAudit;
           state.ui = migrated.ui;
           saveState(true);
@@ -3150,9 +3560,11 @@ ${playerText}`;
       if (type === 'loss') return 'blue';
       if (type === 'lust') return 'violet';
       if (type === 'exit') return 'amber';
-      if (type === 'mattenflucht' || type === 'wuerfelflucht' || type === 'neuwuerfeln') return 'cash';
+      if (type === 'cashfault' || type === 'mattenflucht' || type === 'wuerfelflucht' || type === 'neuwuerfeln') return 'cash';
       if (type === 'roundFinish') return 'red';
       if (type === 'playerAdd' || type === 'rejoin') return 'green';
+      if (type === 'undo') return 'amber';
+      if (type === 'redo') return 'green';
       return 'blue';
     }
 
@@ -3164,10 +3576,13 @@ ${playerText}`;
         lust: 'Lustknobeln',
         exit: 'Ausstieg',
         rejoin: 'Wiedereinstieg',
+        cashfault: 'Strafkasse',
         mattenflucht: 'Matten-Flucht',
         wuerfelflucht: 'Würfel-Flucht',
         neuwuerfeln: 'Neu-Würfeln',
-        roundFinish: 'Endabrechnung'
+        roundFinish: 'Endabrechnung',
+        undo: 'Rückgängig',
+        redo: 'Wiederhergestellt'
       };
       return map[type] || type;
     }
