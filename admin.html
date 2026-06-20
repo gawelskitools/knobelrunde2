@@ -1225,12 +1225,41 @@
       }
     }
 
-    function generateSuggestedRoundCode() {
+    function generateSuggestedRoundCode(suffix = '') {
       const now = new Date();
       const pad = (value) => String(value).padStart(2, '0');
       const datePart = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
       const timePart = `${pad(now.getHours())}${pad(now.getMinutes())}`;
-      return `knobeln-${datePart}-${timePart}`;
+      const extra = suffix ? `-${suffix}` : '';
+      return `knobeln-${datePart}-${timePart}${extra}`;
+    }
+
+    async function readOnlinePayloadForCode(code) {
+      const db = await initFirebaseOnline();
+      const sdk = await loadFirebaseSdk();
+      const safeCode = sanitizeOnlineGameId(code);
+      const snapshot = await sdk.get(sdk.ref(db, `games/${safeCode}/live`));
+      return snapshot.val();
+    }
+
+    async function generateUnusedRoundCode() {
+      const base = generateSuggestedRoundCode();
+      for (let index = 0; index < 20; index += 1) {
+        const candidate = index === 0 ? base : `${base}-${index + 1}`;
+        const existing = await readOnlinePayloadForCode(candidate);
+        if (!existing || !existing.state) return candidate;
+      }
+      return `${base}-${Date.now().toString(36).slice(-4)}`;
+    }
+
+    function markNextSessionNeedsFreshCode(value = true) {
+      onlineSettings.nextSessionRequiresNewCode = Boolean(value);
+      saveOnlineSettings();
+      renderOnlineStatus();
+    }
+
+    function currentOnlineRoundNeedsFreshCodeForNewSession() {
+      return Boolean(onlineSettings.enabled && onlineSettings.nextSessionRequiresNewCode);
     }
 
     function prepareAdminOnlineSettingsFromUrl() {
@@ -1274,7 +1303,8 @@
         enabled: false,
         gameId: 'knobelklub-live',
         deviceName: '',
-        lastKnownUpdatedAt: 0
+        lastKnownUpdatedAt: 0,
+        nextSessionRequiresNewCode: false
       };
     }
 
@@ -1855,6 +1885,8 @@
       state.actionAudit = migrated.actionAudit || [];
       state.favoritePlayers = migrated.favoritePlayers || [];
       state.ui = migrated.ui || { openTab: null };
+      onlineSettings.nextSessionRequiresNewCode = Boolean(!state.currentSession && ((state.gamesHistory || []).length || (state.history || []).length));
+      saveOnlineSettings();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       onlineRuntime.applyingRemote = false;
 
@@ -1889,18 +1921,47 @@
     }
 
         async function readOnlinePayloadOnce() {
-      const db = await initFirebaseOnline();
-      const sdk = await loadFirebaseSdk();
-      const snapshot = await sdk.get(sdk.ref(db, getOnlineGamePath()));
-      return snapshot.val();
+      return readOnlinePayloadForCode(onlineSettings.gameId);
     }
 
-    function resetCurrentLocalRoundForOnlineCode() {
+    function resetCurrentLocalRoundForOnlineCode({ clearHistory = true } = {}) {
       state.currentSession = null;
+      if (clearHistory) {
+        state.history = [];
+        state.gamesHistory = [];
+      }
       state.actionAudit = [];
       state.ui = { ...(state.ui || {}), openTab: null };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       render();
+    }
+
+    async function prepareFreshOnlineRoundForNewSession() {
+      if (!isFirebaseConfigured()) return false;
+      const newCode = await generateUnusedRoundCode();
+      onlineRuntime.syncToken += 1;
+      if (onlineRuntime.unsubscribe) {
+        onlineRuntime.unsubscribe();
+        onlineRuntime.unsubscribe = null;
+      }
+      onlineRuntime.listening = false;
+      onlineRuntime.connected = false;
+      onlineRuntime.connecting = false;
+      onlineRuntime.localDirty = false;
+      onlineRuntime.applyingRemote = false;
+      onlineRuntime.error = '';
+      onlineSettings.enabled = true;
+      onlineSettings.gameId = sanitizeOnlineGameId(newCode);
+      if (!onlineSettings.deviceName) onlineSettings.deviceName = 'Admin';
+      onlineSettings.lastKnownUpdatedAt = 0;
+      onlineSettings.nextSessionRequiresNewCode = false;
+      saveOnlineSettings();
+      resetCurrentLocalRoundForOnlineCode({ clearHistory: true });
+      await writeOnlineState();
+      onlineRuntime.connected = true;
+      renderOnlineStatus();
+      showToast(`Neue Online-Knobelrunde vorbereitet: ${sanitizeOnlineGameId(newCode)}`);
+      return true;
     }
 
     async function connectAdminRoundFromCode(gameIdInput, options = {}) {
@@ -1933,6 +1994,9 @@
         });
 
         if (answer === 'load') {
+          const loadedState = migrateState(existingPayload.state);
+          onlineSettings.nextSessionRequiresNewCode = Boolean(!loadedState.currentSession && ((loadedState.gamesHistory || []).length || (loadedState.history || []).length));
+          saveOnlineSettings();
           applyRemoteState(existingPayload.state, {
             updatedAt: Number(existingPayload.updatedAt || 0),
             updatedBy: existingPayload.updatedBy || '',
@@ -1970,7 +2034,9 @@
       }
 
       // Neuer Code: lokal auf sauber setzen und leeren Startstand reservieren.
-      resetCurrentLocalRoundForOnlineCode();
+      onlineSettings.nextSessionRequiresNewCode = false;
+      saveOnlineSettings();
+      resetCurrentLocalRoundForOnlineCode({ clearHistory: true });
       await writeOnlineState();
       await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: false });
       showToast(`Online-Runde ${sanitized} vorbereitet.`);
@@ -2158,6 +2224,10 @@
     async function handleNewGameButton() {
       const session = state.currentSession;
       if (!session) {
+        if (currentOnlineRoundNeedsFreshCodeForNewSession()) {
+          const prepared = await prepareFreshOnlineRoundForNewSession();
+          if (!prepared) return;
+        }
         const choice = await chooseRoundTarget();
         if (!choice) return;
         createSession(choice);
@@ -2205,6 +2275,8 @@
       ensureSessionShape(state.currentSession);
       state.actionAudit = [];
       state.ui.openTab = null;
+      onlineSettings.nextSessionRequiresNewCode = false;
+      saveOnlineSettings();
       saveState(true);
       render();
       if (onlineSettings.enabled) window.setTimeout(() => openFanLinkDialog({ afterNewSession: true }), 120);
@@ -2869,6 +2941,8 @@
         state.gamesHistory.unshift(gameArchive);
         state.gamesHistory = state.gamesHistory.slice(0, MAX_HISTORY);
         await saveOnlineGameArchive(gameArchive);
+        onlineSettings.nextSessionRequiresNewCode = Boolean(onlineSettings.enabled);
+        saveOnlineSettings();
         state.currentSession = null;
         state.ui.openTab = null;
         saveState();
@@ -4116,6 +4190,10 @@ ${playerText}`;
       state.ui = fresh.ui;
       saveState();
       render();
+      if (onlineSettings.enabled) {
+        const prepared = await prepareFreshOnlineRoundForNewSession();
+        if (!prepared) return;
+      }
       const choice = await chooseRoundTarget();
       if (choice) createSession(choice);
     }
