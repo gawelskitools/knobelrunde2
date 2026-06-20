@@ -1142,7 +1142,7 @@
       return Boolean(session && (session.players || []).some((player) => getPlayerType(player) === 'guest' && player.status === 'active'));
     }
 
-    const state = loadState();
+    const state = VIEW_ONLY_MODE ? createDefaultState() : loadState();
     const onlineSettings = loadOnlineSettings();
     prepareOnlineSettingsForMode();
     const onlineRuntime = {
@@ -1222,15 +1222,17 @@
 
     function prepareOnlineSettingsForMode() {
       const urlGameId = getUrlGameId();
-      if (urlGameId) onlineSettings.gameId = sanitizeOnlineGameId(urlGameId);
       if (VIEW_ONLY_MODE) {
-        if (!onlineSettings.gameId) onlineSettings.gameId = 'knobelklub-live';
-        if (!onlineSettings.deviceName) onlineSettings.deviceName = 'Zuschauer';
-        // Zuschauer sollen beim direkten Aufruf bewusst eine Runde wählen.
-        // Nur ein Link mit ?game=... verbindet automatisch.
+        // Fan-Seite darf beim Start keinen alten lokal gespeicherten Spielstand/Rundencode vorladen.
+        // Nur ein Link mit ?game=... verbindet automatisch; sonst fragt das Begrüßungspopup den Runden-Code ab.
         onlineSettings.enabled = Boolean(urlGameId);
+        onlineSettings.gameId = urlGameId ? sanitizeOnlineGameId(urlGameId) : '';
+        onlineSettings.deviceName = 'Zuschauer';
+        onlineSettings.lastKnownUpdatedAt = 0;
         saveOnlineSettings();
+        return;
       }
+      if (urlGameId) onlineSettings.gameId = sanitizeOnlineGameId(urlGameId);
     }
 
     async function maybeShowViewerWelcomeDialog() {
@@ -1659,7 +1661,7 @@
       if (el.closeDrawerBtn) el.closeDrawerBtn.addEventListener('click', closeDrawer);
       if (el.drawerBackdrop) el.drawerBackdrop.addEventListener('click', closeDrawer);
       if (el.drawerOnlineBtn) el.drawerOnlineBtn.addEventListener('click', () => { closeDrawer(); openOnlineMenu(); });
-      if (el.onlineSetupBtn) el.onlineSetupBtn.addEventListener('click', setupViewerOnlineSync);
+      if (el.onlineSetupBtn) el.onlineSetupBtn.addEventListener('click', handleViewerOnlineToggle);
       if (el.onlineDisconnectBtn) el.onlineDisconnectBtn.addEventListener('click', stopOnlineSync);
       if (el.onlineRefreshBtn) el.onlineRefreshBtn.addEventListener('click', refreshOnlineState);
       if (el.drawerImportBtn) el.drawerImportBtn.addEventListener('click', () => { closeDrawer(); el.importInput.click(); });
@@ -1909,7 +1911,11 @@
       state.favoritePlayers = migrated.favoritePlayers || [];
       state.ui = migrated.ui || { openTab: null };
       if (VIEW_ONLY_MODE) state.ui = { ...(state.ui || {}), openTab: 'history' };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      // Die Fan-Seite ist reine Live-Ansicht: Remote-Spielstände nicht als lokalen Spielstand cachen.
+      // Dadurch erscheint beim nächsten Aufruf kein alter Stand vorab.
+      if (!VIEW_ONLY_MODE) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
       onlineRuntime.applyingRemote = false;
 
       onlineRuntime.connected = true;
@@ -1936,9 +1942,11 @@
     }
 
     async function autoStartOnlineSync() {
+      // In der Fan-Seite ohne ?game=... nicht automatisch mit einem alten lokal gespeicherten Code verbinden.
+      // Sonst wird kurz eine alte Runde angezeigt, bevor der richtige Code eingegeben wurde.
       if (VIEW_ONLY_MODE && !onlineSettings.enabled) {
-        onlineSettings.enabled = true;
-        saveOnlineSettings();
+        renderOnlineStatus();
+        return;
       }
       if (!onlineSettings.enabled) {
         renderOnlineStatus();
@@ -2022,6 +2030,15 @@
       } else if (answer === 'disconnect') {
         stopOnlineSync();
       }
+    }
+
+    function handleViewerOnlineToggle() {
+      const isOnline = Boolean(onlineSettings.enabled && onlineRuntime.connected && !onlineRuntime.error);
+      if (isOnline) {
+        stopOnlineSync();
+        return;
+      }
+      setupViewerOnlineSync();
     }
 
     async function setupViewerOnlineSync() {
