@@ -2063,6 +2063,38 @@
       showToast('Online-Spielstand getrennt.');
     }
 
+
+    function leaveFinishedOnlineRoundForPicker() {
+      // Nach Partieende bewusst aus der alten Live-Runde herausgehen.
+      // Der alte Code bleibt in Firebase/Archiv erhalten, aber neue Spiele starten nicht mehr im alten Live-Pfad.
+      onlineRuntime.syncToken += 1;
+      window.clearTimeout(onlineSaveTimer);
+      onlineSaveTimer = null;
+      if (onlineRuntime.unsubscribe) {
+        onlineRuntime.unsubscribe();
+        onlineRuntime.unsubscribe = null;
+      }
+      onlineSettings.enabled = false;
+      onlineSettings.lastKnownUpdatedAt = 0;
+      onlineSettings.nextSessionRequiresNewCode = true;
+      saveOnlineSettings();
+      onlineRuntime.listening = false;
+      onlineRuntime.connected = false;
+      onlineRuntime.localDirty = false;
+      onlineRuntime.connecting = false;
+      onlineRuntime.applyingRemote = false;
+      onlineRuntime.error = '';
+      renderOnlineStatus();
+    }
+
+    async function returnToInitialPickerAfterFinishedGame() {
+      leaveFinishedOnlineRoundForPicker();
+      render();
+      if (shouldShowAdminWelcomePicker()) {
+        await maybeShowAdminWelcomeDialog();
+      }
+    }
+
         async function readOnlinePayloadOnce() {
       return readOnlinePayloadForCode(onlineSettings.gameId);
     }
@@ -3124,14 +3156,27 @@
         state.gamesHistory = state.gamesHistory || [];
         state.gamesHistory.unshift(gameArchive);
         state.gamesHistory = state.gamesHistory.slice(0, MAX_HISTORY);
+        const wasOnlineAtFinish = Boolean(onlineSettings.enabled);
         await saveOnlineGameArchive(gameArchive);
         onlineSettings.nextSessionRequiresNewCode = Boolean(onlineSettings.enabled);
         saveOnlineSettings();
         state.currentSession = null;
         state.ui.openTab = null;
         saveState();
+        if (wasOnlineAtFinish) {
+          window.clearTimeout(onlineSaveTimer);
+          onlineSaveTimer = null;
+          try {
+            await writeOnlineState();
+          } catch (error) {
+            console.error(error);
+            onlineRuntime.error = error && error.message ? error.message : 'Finaler Online-Stand konnte nicht aktualisiert werden.';
+            renderOnlineStatus();
+          }
+        }
         render();
         showToast('Partie beendet und im Online-Archiv gesichert.');
+        await returnToInitialPickerAfterFinishedGame();
         return;
       }
 
