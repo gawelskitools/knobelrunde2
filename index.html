@@ -775,10 +775,91 @@
 
 
     body.viewer-mode .control-buttons { display: none; }
+    body.viewer-mode #menuBtn { display: none !important; }
+    body.viewer-mode #drawerBackdrop,
+    body.viewer-mode #drawer { display: none !important; }
+    body.viewer-mode #tabButtons { display: none !important; }
+    body.viewer-mode #tabButtons button[data-tab="audit"],
+    body.viewer-mode #tabPanel-audit { display: none !important; }
+    body.viewer-mode button[data-tab="audit"],
+    body.viewer-mode #tabPanel-audit,
+    body.viewer-mode #tabCountAudit { display: none !important; }
+    body.viewer-mode .tab-buttons { grid-template-columns: 1fr !important; }
     body.viewer-mode #drawerImportBtn,
     body.viewer-mode #drawerExportBtn,
     body.viewer-mode #drawerCleanStartBtn { display: none !important; }
     body.viewer-mode .player-code-btn:disabled { opacity: 1; cursor: default; }
+
+    .online-status-card {
+      display: grid;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .online-status-row {
+      display: grid;
+      gap: 6px;
+    }
+    .online-status-row.compact {
+      grid-template-columns: 1fr 1fr;
+    }
+    .online-status-kpi {
+      border-radius: 12px;
+      padding: 7px 9px;
+      background: rgba(255,255,255,.045);
+      border: 1px solid rgba(255,255,255,.08);
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+    .online-status-kpi .label {
+      color: var(--muted);
+      font-size: .68rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .online-status-kpi .value {
+      color: var(--text);
+      font-weight: 900;
+      font-size: .96rem;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
+    .online-status-note {
+      display: none;
+    }
+
+    .online-status {
+      gap: 8px;
+      padding: 10px 12px;
+    }
+    .online-status.offline {
+      background: linear-gradient(180deg, rgba(239,68,68,.12), rgba(239,68,68,.045));
+      border-color: rgba(239,68,68,.22);
+    }
+    .online-status-title {
+      font-size: .98rem;
+      line-height: 1.2;
+    }
+    .online-actions {
+      display: grid;
+      gap: 6px;
+    }
+    .online-actions button {
+      box-shadow: none;
+      min-height: 44px;
+      font-weight: 900;
+    }
+    .online-main-toggle.danger {
+      background: var(--red);
+      color: #fff;
+      border: none;
+    }
+    .online-main-toggle.primary {
+      background: var(--green);
+      color: #06210e;
+      border: none;
+    }
 
     @media (min-width: 760px) {
       .grid-2 { grid-template-columns: 1fr 1fr; }
@@ -788,8 +869,9 @@
       .tab-buttons { grid-template-columns: repeat(2, 1fr); }
       .final-grid { grid-template-columns: 1fr 1fr; }
       .beer-kpi-row { grid-template-columns: 1fr 1fr; }
-      .online-status { grid-template-columns: 1fr auto; }
-      .online-status button { width: auto; min-width: 230px; }
+      .online-status { grid-template-columns: 1fr minmax(170px, 230px); align-items: center; }
+      .online-status button { width: 100%; min-width: 0; }
+      .online-status-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .history-summary-grid { grid-template-columns: 1fr 1fr; }
       .history-kpi-grid { grid-template-columns: repeat(2, 1fr); }
       .modal-actions { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
@@ -833,7 +915,7 @@
               <button id="helpBtn" class="help-btn" aria-label="Hilfe öffnen">?</button>
               <button id="agbBtn" class="help-btn" aria-label="AGB öffnen">§</button>
             </div>
-            <p class="section-subtitle">Live-Zuschaueransicht für die Knobelrunde. Diese Seite zeigt den gemeinsamen Firebase-Spielstand ohne Bedienrechte.</p>
+            <p class="section-subtitle">Live-Mitspieleransicht für die Knobelrunde.</p>
           </div>
         </div>
       </div>
@@ -848,12 +930,14 @@
         <button id="finishRoundBtn" class="danger" disabled>Spielrunde beenden</button>
         <button id="newGameBtn" class="primary">Neue Partie anlegen</button>
       </div>
-      <div id="onlineStatusBox" class="online-status" style="margin-top: 12px;">
+      <div id="onlineStatusBox" class="online-status" style="margin-top: 10px;">
         <div class="online-status-copy">
-          <div id="onlineStatusTitle" class="online-status-title">Online-Spielstand: Aus</div>
-          <div id="onlineStatusMeta" class="section-subtitle">Lokal gespeichert. Für Live-Anzeige Firebase verbinden.</div>
+          <div id="onlineStatusTitle" class="online-status-title">Status: Live-Spielstandsanzeige: Offline</div>
+          <div id="onlineStatusMeta" class="section-subtitle">Knobelrunde noch nicht verbunden.</div>
         </div>
-        <button id="onlineSetupBtn" class="info">Online-Spielstand verbinden</button>
+        <div class="online-actions">
+          <button id="onlineSetupBtn" class="danger online-main-toggle">Online verbinden</button>
+        </div>
       </div>
     </section>
 
@@ -884,20 +968,20 @@
     <section id="tabsSection" class="card tabs-card hidden">
       <div class="tabs-header">
         <div class="section-title">Bereiche</div>
-        <div class="section-subtitle">Beide Bereiche starten eingeklappt und lassen sich bei Bedarf öffnen.</div>
+        <div class="section-subtitle">In der Zuschaueransicht bleibt nur die Historie sichtbar.</div>
       </div>
       <div id="tabButtons" class="tab-buttons">
-        <button data-tab="audit">
+        <button data-tab="audit" class="hidden" aria-hidden="true" tabindex="-1">
           <span>
-            <strong>Letzte Aktionen rückgängig machen</strong>
-            <span class="tab-meta">maximal 3 Aktionen</span>
+            <strong>Ausgeblendeter Bereich</strong>
+            <span class="tab-meta">nicht sichtbar</span>
           </span>
           <span id="tabCountAudit" class="tab-count">0</span>
         </button>
         <button data-tab="history">
           <span>
             <strong>Historie</strong>
-            <span class="tab-meta">abgeschlossene Spielrunden</span>
+            <span class="tab-meta">laufendes Spiel und abgeschlossene Spielrunden</span>
           </span>
           <span id="tabCountHistory" class="tab-count">0</span>
         </button>
@@ -905,8 +989,8 @@
 
       <div id="tabPanel-audit" class="tab-panel hidden">
         <div class="label-row">
-          <span class="pill amber">Letzte Aktionen rückgängig machen</span>
-          <span class="tiny muted">hier stehen nur die letzten maximal 3 Aktionen der laufenden Partie</span>
+          <span class="pill amber">Ausgeblendeter Bereich</span>
+          <span class="tiny muted">in der Zuschaueransicht nicht sichtbar</span>
         </div>
         <div id="auditList" class="audit-list scroll-limit"></div>
       </div>
@@ -914,7 +998,7 @@
       <div id="tabPanel-history" class="tab-panel hidden">
         <div class="label-row">
           <span class="pill violet">Historie</span>
-          <span class="tiny muted">laufendes Spiel plus maximal die letzten 3 kompletten Spiele</span>
+          <span class="tiny muted">laufendes Spiel und abgeschlossene Spielrunden dauerhaft sichtbar</span>
         </div>
         <div id="historyList" class="history-list"></div>
       </div>
@@ -1076,6 +1160,7 @@
       error: ''
     };
     let onlineSaveTimer = null;
+    let viewerWelcomePromptOpen = false;
 
     const el = {
       menuBtn: document.getElementById('menuBtn'),
@@ -1097,6 +1182,8 @@
       onlineStatusTitle: document.getElementById('onlineStatusTitle'),
       onlineStatusMeta: document.getElementById('onlineStatusMeta'),
       onlineSetupBtn: document.getElementById('onlineSetupBtn'),
+      onlineDisconnectBtn: document.getElementById('onlineDisconnectBtn'),
+      onlineRefreshBtn: document.getElementById('onlineRefreshBtn'),
       scoreboardSection: document.getElementById('scoreboardSection'),
       scoreRound: document.getElementById('scoreRound'),
       scoreTurn: document.getElementById('scoreTurn'),
@@ -1122,6 +1209,7 @@
     bindEvents();
     render();
     autoStartOnlineSync();
+    maybeShowViewerWelcomeDialog();
 
     function getUrlGameId() {
       try {
@@ -1136,10 +1224,43 @@
       const urlGameId = getUrlGameId();
       if (urlGameId) onlineSettings.gameId = sanitizeOnlineGameId(urlGameId);
       if (VIEW_ONLY_MODE) {
-        onlineSettings.enabled = true;
         if (!onlineSettings.gameId) onlineSettings.gameId = 'knobelklub-live';
         if (!onlineSettings.deviceName) onlineSettings.deviceName = 'Zuschauer';
+        // Zuschauer sollen beim direkten Aufruf bewusst eine Runde wählen.
+        // Nur ein Link mit ?game=... verbindet automatisch.
+        onlineSettings.enabled = Boolean(urlGameId);
         saveOnlineSettings();
+      }
+    }
+
+    async function maybeShowViewerWelcomeDialog() {
+      if (!VIEW_ONLY_MODE || viewerWelcomePromptOpen) return;
+      if (getUrlGameId()) return;
+      if (onlineSettings.enabled && onlineRuntime.connected) return;
+      viewerWelcomePromptOpen = true;
+      try {
+        const gameIdInput = await showInputDialog({
+          title: 'Willkommen zur Knobelrunde',
+          message: 'Bitte gib den Runden-Code ein, damit du direkt den richtigen Live-Spielstand siehst.',
+          placeholder: onlineSettings.gameId || 'test1',
+          confirmLabel: 'Knobelrunde verbinden'
+        });
+        if (!gameIdInput) {
+          onlineSettings.enabled = false;
+          saveOnlineSettings();
+          renderOnlineStatus();
+          return;
+        }
+        onlineSettings.enabled = true;
+        onlineSettings.gameId = sanitizeOnlineGameId(gameIdInput);
+        onlineSettings.deviceName = 'Zuschauer';
+        onlineSettings.lastKnownUpdatedAt = 0;
+        saveOnlineSettings();
+        await refreshOnlineState({ silent: true });
+        await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: true });
+        showToast(`Knobelrunde ${sanitizeOnlineGameId(onlineSettings.gameId)} verbunden.`);
+      } finally {
+        viewerWelcomePromptOpen = false;
       }
     }
 
@@ -1151,9 +1272,14 @@
         if (el.drawerImportBtn) el.drawerImportBtn.classList.add('hidden');
         if (el.drawerExportBtn) el.drawerExportBtn.classList.add('hidden');
         if (el.drawerCleanStartBtn) el.drawerCleanStartBtn.classList.add('hidden');
-        if (el.onlineSetupBtn) el.onlineSetupBtn.textContent = 'Zuschauer-Stand verbinden';
+        if (el.onlineSetupBtn) el.onlineSetupBtn.textContent = 'Knobelrunde verbinden';
+        state.ui = { ...(state.ui || {}), openTab: 'history' };
+        const tabsTitle = document.querySelector('#tabsSection .tabs-header .section-title');
+        if (tabsTitle) tabsTitle.textContent = 'Historie';
+        const tabsSubtitle = document.querySelector('#tabsSection .tabs-header .section-subtitle');
+        if (tabsSubtitle) tabsSubtitle.textContent = '';
         const playerSubtitle = document.querySelector('#playersSection .section-subtitle');
-        if (playerSubtitle) playerSubtitle.textContent = 'Reine Zuschaueransicht: Der Stand wird live aus Firebase geladen. Änderungen sind hier nicht möglich.';
+        if (playerSubtitle) playerSubtitle.textContent = 'Reine Zuschaueransicht: Der Stand wird live von der Admin-Seite geladen. Das Gegenrechnung findet immer erst nach Abschluss der Spielrunde oder bei Spielende statt.';
         const drawerHero = document.querySelector('.drawer-hero .section-subtitle');
         if (drawerHero) drawerHero.textContent = 'Diese Ansicht ist nur zum Zuschauen. Spielaktionen laufen über die Admin-Seite.';
         const drawerLabel = document.querySelector('.drawer-section-label');
@@ -1322,21 +1448,25 @@
         return new Date(a.finishedAt || 0) - new Date(b.finishedAt || 0);
       });
       if (game.kind === 'current' && game.currentRound) {
-        return [{
-          id: `live-round-${game.currentRound.index}`,
-          sessionId: game.id,
-          sessionTitle: game.title,
-          roundIndex: game.currentRound.index,
-          maxRounds: game.maxRounds,
-          roundTarget: game.roundTarget,
-          finishedAt: game.currentRound.finishedAt || new Date().toISOString(),
-          players: deepClone(game.players || []),
-          points: deepClone(game.points || []),
-          settlements: deepClone((game.settlements || []).filter((item) => item.roundIndex === game.currentRound.index)),
-          cashPenalties: deepClone(game.cashPenalties || []),
-          currentRound: deepClone(game.currentRound),
-          isLiveRound: true
-        }, ...finishedRounds];
+        const currentRoundAlreadyArchived = finishedRounds.some((entry) => entry.roundIndex === game.currentRound.index);
+        const currentRoundIsOpen = game.currentRound.status === 'open';
+        if (currentRoundIsOpen || !currentRoundAlreadyArchived) {
+          return [{
+            id: currentRoundIsOpen ? `live-round-${game.currentRound.index}` : `finished-current-round-${game.currentRound.index}`,
+            sessionId: game.id,
+            sessionTitle: game.title,
+            roundIndex: game.currentRound.index,
+            maxRounds: game.maxRounds,
+            roundTarget: game.roundTarget,
+            finishedAt: game.currentRound.finishedAt || new Date().toISOString(),
+            players: deepClone(game.players || []),
+            points: deepClone(game.points || []),
+            settlements: deepClone((game.settlements || []).filter((item) => item.roundIndex === game.currentRound.index)),
+            cashPenalties: deepClone(game.cashPenalties || []),
+            currentRound: deepClone(game.currentRound),
+            isLiveRound: currentRoundIsOpen
+          }, ...finishedRounds];
+        }
       }
       return finishedRounds;
     }
@@ -1523,24 +1653,26 @@
     }
 
     function bindEvents() {
-      el.menuBtn.addEventListener('click', openDrawer);
-      el.helpBtn.addEventListener('click', openHelpDialog);
-      el.agbBtn.addEventListener('click', openAgbDialog);
-      el.closeDrawerBtn.addEventListener('click', closeDrawer);
-      el.drawerBackdrop.addEventListener('click', closeDrawer);
-      el.drawerOnlineBtn.addEventListener('click', () => { closeDrawer(); openOnlineMenu(); });
-      el.onlineSetupBtn.addEventListener('click', openOnlineMenu);
-      el.drawerImportBtn.addEventListener('click', () => { closeDrawer(); el.importInput.click(); });
-      el.drawerExportBtn.addEventListener('click', () => { closeDrawer(); exportBackup(); });
-      el.drawerCleanStartBtn.addEventListener('click', async () => { closeDrawer(); await cleanStartNewGame(); });
-      el.importInput.addEventListener('change', importBackup);
+      if (el.menuBtn) el.menuBtn.addEventListener('click', openDrawer);
+      if (el.helpBtn) el.helpBtn.addEventListener('click', openHelpDialog);
+      if (el.agbBtn) el.agbBtn.addEventListener('click', openAgbDialog);
+      if (el.closeDrawerBtn) el.closeDrawerBtn.addEventListener('click', closeDrawer);
+      if (el.drawerBackdrop) el.drawerBackdrop.addEventListener('click', closeDrawer);
+      if (el.drawerOnlineBtn) el.drawerOnlineBtn.addEventListener('click', () => { closeDrawer(); openOnlineMenu(); });
+      if (el.onlineSetupBtn) el.onlineSetupBtn.addEventListener('click', setupViewerOnlineSync);
+      if (el.onlineDisconnectBtn) el.onlineDisconnectBtn.addEventListener('click', stopOnlineSync);
+      if (el.onlineRefreshBtn) el.onlineRefreshBtn.addEventListener('click', refreshOnlineState);
+      if (el.drawerImportBtn) el.drawerImportBtn.addEventListener('click', () => { closeDrawer(); el.importInput.click(); });
+      if (el.drawerExportBtn) el.drawerExportBtn.addEventListener('click', () => { closeDrawer(); exportBackup(); });
+      if (el.drawerCleanStartBtn) el.drawerCleanStartBtn.addEventListener('click', async () => { closeDrawer(); await cleanStartNewGame(); });
+      if (el.importInput) el.importInput.addEventListener('change', importBackup);
 
-      el.newGameBtn.addEventListener('click', handleNewGameButton);
-      el.finishRoundBtn.addEventListener('click', finishCurrentRound);
-      el.playersGrid.addEventListener('click', handlePlayerCardClick);
-      el.auditList.addEventListener('click', handleAuditClick);
-      el.historyList.addEventListener('click', handleHistoryClick);
-      el.tabButtons.addEventListener('click', handleTabClick);
+      if (el.newGameBtn) el.newGameBtn.addEventListener('click', handleNewGameButton);
+      if (el.finishRoundBtn) el.finishRoundBtn.addEventListener('click', finishCurrentRound);
+      if (el.playersGrid) el.playersGrid.addEventListener('click', handlePlayerCardClick);
+      if (el.auditList) el.auditList.addEventListener('click', handleAuditClick);
+      if (el.historyList) el.historyList.addEventListener('click', handleHistoryClick);
+      if (el.tabButtons) el.tabButtons.addEventListener('click', handleTabClick);
     }
 
 
@@ -1707,6 +1839,66 @@
       }
     }
 
+
+    async function refreshOnlineState(options = {}) {
+      const silent = Boolean(options.silent);
+      try {
+        if (!isFirebaseConfigured()) {
+          if (!silent) {
+            await showDialog({
+              title: 'Firebase noch nicht eingetragen',
+              message: 'Trage zuerst FIREBASE_CONFIG und databaseURL im Code ein.',
+              actions: [{ label: 'OK', value: 'ok', className: 'primary' }]
+            });
+          }
+          return;
+        }
+        onlineSettings.enabled = true;
+        saveOnlineSettings();
+        onlineRuntime.connecting = true;
+        onlineRuntime.error = '';
+        renderOnlineStatus();
+
+        const db = await initFirebaseOnline();
+        const sdk = await loadFirebaseSdk();
+        const snapshot = await sdk.get(sdk.ref(db, getOnlineGamePath()));
+        const payload = snapshot.val();
+
+        onlineRuntime.connecting = false;
+        if (!payload || !payload.state) {
+          onlineRuntime.connected = Boolean(onlineSettings.enabled);
+          onlineRuntime.error = '';
+          onlineRuntime.lastSyncAt = new Date().toISOString();
+          onlineRuntime.lastRemoteBy = '';
+          renderOnlineStatus();
+          if (!silent) showToast('Noch kein Online-Spielstand für diese Knobelrunde gefunden.');
+          return;
+        }
+
+        const remoteUpdatedAt = Number(payload.updatedAt || Date.now());
+        onlineSettings.enabled = true;
+        onlineSettings.lastKnownUpdatedAt = remoteUpdatedAt;
+        saveOnlineSettings();
+        applyRemoteState(payload.state, {
+          updatedAt: remoteUpdatedAt,
+          updatedBy: payload.updatedBy || ''
+        });
+        renderOnlineStatus();
+        if (!silent) {
+          const last = formatTimeOnly(new Date(remoteUpdatedAt).toISOString());
+          const by = payload.updatedBy ? ` · von ${payload.updatedBy}` : '';
+          showToast(`Online-Spielstand aktualisiert: ${last}${by}`);
+        }
+      } catch (error) {
+        onlineRuntime.connecting = false;
+        onlineRuntime.connected = false;
+        onlineRuntime.error = error && error.message ? error.message : 'Online-Aktualisierung fehlgeschlagen.';
+        renderOnlineStatus();
+        console.error(error);
+        if (!silent) showToast(onlineRuntime.error);
+      }
+    }
+
     function applyRemoteState(remoteState, meta = {}) {
       const migrated = migrateState(remoteState);
       onlineRuntime.applyingRemote = true;
@@ -1716,6 +1908,7 @@
       state.actionAudit = migrated.actionAudit || [];
       state.favoritePlayers = migrated.favoritePlayers || [];
       state.ui = migrated.ui || { openTab: null };
+      if (VIEW_ONLY_MODE) state.ui = { ...(state.ui || {}), openTab: 'history' };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       onlineRuntime.applyingRemote = false;
 
@@ -1757,6 +1950,18 @@
         return;
       }
       await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: VIEW_ONLY_MODE });
+    }
+
+    async function handleOnlineToggleButton() {
+      if (onlineSettings.enabled && onlineRuntime.connected && !onlineRuntime.error) {
+        stopOnlineSync();
+        return;
+      }
+      if (VIEW_ONLY_MODE) {
+        await setupViewerOnlineSync();
+        return;
+      }
+      await openOnlineMenu();
     }
 
     async function openOnlineMenu() {
@@ -1807,8 +2012,8 @@
         title: 'Zuschauer-Live-Stand',
         message: `Diese Seite lädt nur den Spielstand der Runde ${sanitizeOnlineGameId(onlineSettings.gameId)}. Änderungen sind hier gesperrt.`,
         actions: [
-          { label: 'Neu verbinden / andere Runde', value: 'setup', className: 'info' },
-          { label: 'Online trennen', value: 'disconnect', className: 'warn' },
+          { label: 'Neu verbinden / andere Knobelrunde', value: 'setup', className: 'info' },
+          { label: 'Onlineverbindung trennen', value: 'disconnect', className: 'warn' },
           { label: 'Abbrechen', value: 'cancel' }
         ]
       });
@@ -1831,9 +2036,11 @@
       onlineSettings.enabled = true;
       onlineSettings.gameId = sanitizeOnlineGameId(gameIdInput);
       onlineSettings.deviceName = 'Zuschauer';
+      onlineSettings.lastKnownUpdatedAt = 0;
       saveOnlineSettings();
+      await refreshOnlineState({ silent: true });
       await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: true });
-      showToast('Zuschauer-Live-Stand verbunden.');
+      showToast(`Zuschauer-Live-Stand verbunden: ${sanitizeOnlineGameId(onlineSettings.gameId)}.`);
     }
 
     async function setupOnlineSync() {
@@ -1888,52 +2095,83 @@
     function renderOnlineStatus() {
       if (!el.onlineStatusBox) return;
       const configured = isFirebaseConfigured();
-      el.onlineStatusBox.classList.toggle('connected', onlineSettings.enabled && onlineRuntime.connected && !onlineRuntime.error);
+      const isOnlineNow = Boolean(onlineSettings.enabled && onlineRuntime.connected && !onlineRuntime.error);
+      el.onlineStatusBox.classList.toggle('connected', isOnlineNow);
+      el.onlineStatusBox.classList.toggle('offline', !isOnlineNow && !onlineRuntime.error);
       el.onlineStatusBox.classList.toggle('error', Boolean(onlineRuntime.error));
 
+      const setButtonState = () => {
+        if (!el.onlineSetupBtn) return;
+        const isOnline = Boolean(onlineSettings.enabled && onlineRuntime.connected && !onlineRuntime.error);
+        el.onlineSetupBtn.textContent = isOnline ? 'Onlineverbindung trennen' : 'Online verbinden';
+        el.onlineSetupBtn.disabled = !configured || onlineRuntime.connecting;
+        el.onlineSetupBtn.classList.toggle('primary', isOnline);
+        el.onlineSetupBtn.classList.toggle('danger', !isOnline);
+        el.onlineSetupBtn.classList.add('online-main-toggle');
+      };
+
+      const renderStatusCards = ({ round = '–', last = '–' } = {}) => {
+        el.onlineStatusMeta.innerHTML = `
+          <div class="online-status-card" aria-label="Live-Spielstand Details">
+            <div class="online-status-row compact">
+              <div class="online-status-kpi">
+                <div class="label">Knobelrunde</div>
+                <div class="value">${escapeHtml(round)}</div>
+              </div>
+              <div class="online-status-kpi">
+                <div class="label">Zuletzt</div>
+                <div class="value">${escapeHtml(last)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      };
+
       if (!configured) {
-        el.onlineStatusTitle.textContent = 'Online-Spielstand: Firebase fehlt';
-        el.onlineStatusMeta.textContent = 'Trage FIREBASE_CONFIG und databaseURL im Code ein.';
-        el.onlineSetupBtn.textContent = 'Firebase eintragen';
-        if (el.drawerOnlineBtn) {
-          el.drawerOnlineBtn.querySelector('.menu-subtitle').textContent = 'Firebase-Konfiguration ist im Code noch nicht eingetragen.';
-        }
+        el.onlineStatusTitle.textContent = 'Status: Live-Spielstandsanzeige: Offline';
+        renderStatusCards({ round: 'Firebase fehlt', last: '–' });
+        setButtonState();
         return;
       }
 
       if (!onlineSettings.enabled) {
-        el.onlineStatusTitle.textContent = 'Online-Spielstand: Aus';
-        el.onlineStatusMeta.textContent = 'Lokal gespeichert. Verbinden, damit alle Geräte denselben Stand sehen.';
-        el.onlineSetupBtn.textContent = 'Online-Spielstand verbinden';
-        if (el.drawerOnlineBtn) {
-          el.drawerOnlineBtn.querySelector('.menu-subtitle').textContent = 'Firebase-Live-Spielstand verbinden, trennen oder den lokalen Stand hochladen.';
-        }
+        el.onlineStatusTitle.textContent = 'Status: Live-Spielstandsanzeige: Offline';
+        renderStatusCards({
+          round: 'nicht verbunden',
+          last: '–'
+        });
+        setButtonState();
         return;
       }
 
       if (onlineRuntime.error) {
-        el.onlineStatusTitle.textContent = 'Online-Spielstand: Fehler';
-        el.onlineStatusMeta.textContent = onlineRuntime.error;
-        el.onlineSetupBtn.textContent = 'Online prüfen';
+        el.onlineStatusTitle.textContent = 'Status: Live-Spielstandsanzeige: Offline';
+        renderStatusCards({
+          round: sanitizeOnlineGameId(onlineSettings.gameId),
+          last: 'Fehler'
+        });
+        setButtonState();
         return;
       }
 
       if (onlineRuntime.connecting) {
-        el.onlineStatusTitle.textContent = 'Online-Spielstand: Verbindung läuft';
-        el.onlineStatusMeta.textContent = `Runde: ${sanitizeOnlineGameId(onlineSettings.gameId)}`;
-        el.onlineSetupBtn.textContent = 'Online verwalten';
+        el.onlineStatusTitle.textContent = 'Status: Live-Spielstandsanzeige: Offline';
+        renderStatusCards({
+          round: sanitizeOnlineGameId(onlineSettings.gameId),
+          last: 'lädt …'
+        });
+        setButtonState();
         return;
       }
 
-      const last = onlineRuntime.lastSyncAt ? ` · zuletzt ${formatTimeOnly(onlineRuntime.lastSyncAt)}` : '';
-      const by = onlineRuntime.lastRemoteBy ? ` · von ${onlineRuntime.lastRemoteBy}` : '';
-      el.onlineStatusTitle.textContent = onlineRuntime.connected ? 'Online-Spielstand: Verbunden' : 'Online-Spielstand: Bereit';
-      el.onlineStatusMeta.textContent = `Runde: ${sanitizeOnlineGameId(onlineSettings.gameId)}${last}${by}`;
-      el.onlineSetupBtn.textContent = 'Online verwalten';
-
-      if (el.drawerOnlineBtn) {
-        el.drawerOnlineBtn.querySelector('.menu-subtitle').textContent = `Verbunden mit Runde ${sanitizeOnlineGameId(onlineSettings.gameId)}.`;
-      }
+      const round = sanitizeOnlineGameId(onlineSettings.gameId);
+      const last = onlineRuntime.lastSyncAt ? formatTimeOnly(onlineRuntime.lastSyncAt) : 'noch nicht geladen';
+      el.onlineStatusTitle.textContent = onlineRuntime.connected ? 'Status: Live-Spielstandsanzeige: Online' : 'Status: Live-Spielstandsanzeige: Offline';
+      renderStatusCards({
+        round,
+        last
+      });
+      setButtonState();
     }
 
     function deepClone(value) {
@@ -1942,6 +2180,7 @@
     }
 
     function normalizeOpenTab(tab) {
+      if (VIEW_ONLY_MODE) return tab === 'history' ? 'history' : null;
       return tab === 'history' || tab === 'audit' ? tab : null;
     }
 
@@ -2844,11 +3083,13 @@
         if (el.finishRoundBtn) el.finishRoundBtn.classList.add('hidden');
         if (el.newGameBtn) el.newGameBtn.classList.add('hidden');
       }
+      if (VIEW_ONLY_MODE) state.ui = { ...(state.ui || {}), openTab: 'history' };
       const session = state.currentSession;
       const hasSession = Boolean(session);
       el.scoreboardSection.classList.toggle('hidden', !hasSession);
       el.playersSection.classList.toggle('hidden', !hasSession);
-      el.tabsSection.classList.toggle('hidden', !(hasSession || (state.gamesHistory || []).length));
+      const shouldShowHistorySection = VIEW_ONLY_MODE || hasSession || (state.gamesHistory || []).length;
+      el.tabsSection.classList.toggle('hidden', !shouldShowHistorySection);
 
       if (!hasSession) {
         el.topGameName.textContent = 'Keine offene Partie';
@@ -2888,8 +3129,7 @@
       const cards = players.map((player) => {
         const view = getPlayerView(session, player.id);
         const receivesChips = renderBeerReceiveChips(view.incomingOpenDetails);
-        const owesBeerLabel = renderBeerOwesLabel(view.outgoingOpenDetails.length);
-        const openFromRows = renderBeerOpenFromRows(view.incomingOpenDetails);
+        const owesBeerChips = renderBeerDebtChips(view.outgoingOpenDetails);
         const cashPenaltySummary = getCashPenaltySummary(session, player.id);
         const actionDisabled = player.status !== 'active' || session.currentRound.status !== 'open';
         const lossDisabled = actionDisabled || session.currentRound.turnsCompleted >= session.currentRound.target;
@@ -2937,15 +3177,12 @@
               <div class="summary-value">${receivesChips}</div>
             </div>
 
+            <div class="summary-box">
+              <div class="tiny muted">Schuldet Freibier</div>
+              <div class="summary-value">${owesBeerChips}</div>
+            </div>
+
             <div class="info-rows">
-              <div class="info-row">
-                <div class="muted">Schuldet Freibier</div>
-                <div>${owesBeerLabel}</div>
-              </div>
-              <div class="info-row">
-                <div class="muted">Offen von Mitspielern</div>
-                <div class="beer-mini-list">${openFromRows}</div>
-              </div>
               ${isGuest ? '' : `
               <div class="info-row">
                 <div class="muted">Summe Strafkasse</div>
@@ -3063,14 +3300,15 @@
               wrapperTag: 'div',
               zoneTitle: 'Verlauf der aktuellen Spielrunde'
             })
-          : '<div class="empty">Noch keine aktive Spielrunde vorhanden.</div>';
+          : '<div class="history-zone"><div class="history-zone-title">Zwischenstand</div><div class="small">Die letzte Spielrunde ist beendet. Die Historie bleibt sichtbar, bis die nächste Spielrunde gestartet wird.</div></div>';
+        const currentStatusLabel = activeRound ? '· läuft' : '· wartet auf nächste Spielrunde';
 
         return `
-          <details class="history-item" ${index === 0 ? 'open' : ''}>
-            <summary><strong>${escapeHtml(gameLabel)}</strong> <span class="tiny muted">· läuft</span></summary>
+          <details class="history-item" open>
+            <summary><strong>${escapeHtml(gameLabel)}</strong> <span class="tiny muted">${currentStatusLabel}</span></summary>
             ${activeTimelineHtml}
-            <details class="history-detail-toggle" style="margin-top:10px;">
-              <summary>Zuletzt abgeschlossene Spielrunden</summary>
+            <details class="history-detail-toggle" style="margin-top:10px;" open>
+              <summary>Abgeschlossene Spielrunden</summary>
               <div class="history-detail-list" style="margin-top:10px;">${finishedRoundsHtml}</div>
             </details>
           </details>
@@ -3078,7 +3316,7 @@
       }
 
       return `
-        <details class="history-item">
+        <details class="history-item" ${VIEW_ONLY_MODE ? 'open' : ''}>
           <summary><strong>${escapeHtml(gameLabel)}</strong></summary>
           <div class="history-detail-list" style="margin-top:10px;">${finishedRoundsHtml}</div>
         </details>
@@ -3137,7 +3375,7 @@
       `;
 
       const detailSection = entry.isLiveRound ? '' : `
-          <details class="history-detail-toggle" style="margin-top:10px;">
+          <details class="history-detail-toggle" style="margin-top:10px;" ${VIEW_ONLY_MODE ? 'open' : ''}>
             <summary>Details anzeigen</summary>
             <div class="history-zone" style="margin-top:10px;">
               <div class="history-zone-title">Einzelereignisse dieser Spielrunde</div>
@@ -3151,7 +3389,7 @@
       `;
 
       return `
-        <details class="history-item" ${entry.isLiveRound ? 'open' : ''}>
+        <details class="history-item" ${(VIEW_ONLY_MODE || entry.isLiveRound) ? 'open' : ''}>
           <summary><strong>${entry.isLiveRound ? 'Aktuelle Spielrunde' : `Spielrunde ${entry.roundIndex} von ${entry.maxRounds}`}</strong> <span class="tiny muted">· ${entry.currentRound.turnsCompleted}/${entry.currentRound.target} Durchgänge${entry.isLiveRound ? ' · läuft' : ` · ${formatDateTime(entry.finishedAt)}`}</span></summary>
           <div class="history-summary-grid" style="margin-top:10px;">
             <div class="history-zone">
@@ -3250,7 +3488,18 @@
     }
 
     function renderTabs() {
-      const openTab = state.ui.openTab;
+      if (VIEW_ONLY_MODE) {
+        state.ui = { ...(state.ui || {}), openTab: 'history' };
+        document.querySelectorAll('#tabButtons button[data-tab]').forEach((button) => {
+          button.classList.toggle('active', button.dataset.tab === 'history');
+        });
+        const auditPanel = document.getElementById('tabPanel-audit');
+        const historyPanel = document.getElementById('tabPanel-history');
+        if (auditPanel) auditPanel.classList.add('hidden');
+        if (historyPanel) historyPanel.classList.remove('hidden');
+        return;
+      }
+      let openTab = state.ui.openTab;
       document.querySelectorAll('#tabButtons button[data-tab]').forEach((button) => {
         button.classList.toggle('active', button.dataset.tab === openTab);
       });
@@ -3433,6 +3682,29 @@ function groupBeerByFrom(details) {
       const grouped = groupBeerByFrom(details);
       if (!grouped.length) return '<span class="empty">keins</span>';
       return grouped.map((item) => `<span class="chip ${item.kind === 'lust' ? 'lust' : 'loss'}" title="${escapeHtml(item.fromName)}">${escapeHtml(item.code)}×${item.count}</span>`).join('');
+    }
+
+    function groupBeerByTo(details) {
+      const grouped = new Map();
+      for (const item of details || []) {
+        const key = item.toId || item.code || item.title;
+        const existing = grouped.get(key) || {
+          toId: item.toId || null,
+          toName: item.toName || item.title || item.code,
+          code: item.code,
+          kind: item.kind,
+          count: 0
+        };
+        existing.count += 1;
+        grouped.set(key, existing);
+      }
+      return Array.from(grouped.values()).sort((a, b) => String(a.toName).localeCompare(String(b.toName), 'de'));
+    }
+
+    function renderBeerDebtChips(details) {
+      const grouped = groupBeerByTo(details);
+      if (!grouped.length) return '<span class="empty">keins</span>';
+      return grouped.map((item) => `<span class="chip counter" title="${escapeHtml(item.toName)}">${escapeHtml(item.code)}×${item.count}</span>`).join('');
     }
 
     function renderBeerOpenFromRows(details) {
@@ -3827,6 +4099,7 @@ ${playerText}`;
       const button = event.target.closest('button[data-tab]');
       if (!button) return;
       const tab = button.dataset.tab;
+      if (VIEW_ONLY_MODE && tab !== 'history') return;
       state.ui.openTab = state.ui.openTab === tab ? null : tab;
       saveState();
       renderTabs();
