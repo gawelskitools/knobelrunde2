@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Knobelclubrunde 1.0</title>
+  <title>Knobelclubrunde 1.0 – Admin</title>
   <style>
     :root {
       --bg: #0b1220;
@@ -379,6 +379,31 @@
     .toggle-inline { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     .toggle-inline button { width: auto; min-width: 220px; }
 
+    .online-status {
+      display: grid;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 16px;
+      background: rgba(8,13,23,.40);
+      border: 1px solid rgba(255,255,255,.08);
+      align-items: center;
+    }
+    .online-status.connected {
+      background: linear-gradient(180deg, rgba(34,197,94,.14), rgba(34,197,94,.06));
+      border-color: rgba(34,197,94,.28);
+    }
+    .online-status.error {
+      background: linear-gradient(180deg, rgba(239,68,68,.14), rgba(239,68,68,.06));
+      border-color: rgba(239,68,68,.28);
+    }
+    .online-status-title {
+      font-weight: 900;
+      margin-bottom: 2px;
+    }
+    .online-status button {
+      box-shadow: none;
+    }
+
     .tabs-card { display: grid; gap: 12px; }
     .tabs-header { display: grid; gap: 8px; }
     .tab-buttons { display: grid; gap: 8px; }
@@ -748,6 +773,13 @@
       text-align: center;
     }
 
+
+    body.viewer-mode .control-buttons { display: none; }
+    body.viewer-mode #drawerImportBtn,
+    body.viewer-mode #drawerExportBtn,
+    body.viewer-mode #drawerCleanStartBtn { display: none !important; }
+    body.viewer-mode .player-code-btn:disabled { opacity: 1; cursor: default; }
+
     @media (min-width: 760px) {
       .grid-2 { grid-template-columns: 1fr 1fr; }
       .control-buttons { grid-template-columns: repeat(2, 1fr); }
@@ -756,6 +788,8 @@
       .tab-buttons { grid-template-columns: repeat(2, 1fr); }
       .final-grid { grid-template-columns: 1fr 1fr; }
       .beer-kpi-row { grid-template-columns: 1fr 1fr; }
+      .online-status { grid-template-columns: 1fr auto; }
+      .online-status button { width: auto; min-width: 230px; }
       .history-summary-grid { grid-template-columns: 1fr 1fr; }
       .history-kpi-grid { grid-template-columns: repeat(2, 1fr); }
       .modal-actions { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
@@ -795,7 +829,7 @@
           <button id="menuBtn" class="menu-btn" aria-label="Menü öffnen">☰</button>
           <div class="header-copy">
             <div class="header-title-row">
-              <h1>Knobelclubrunde 1.0</h1>
+              <h1>Knobelclubrunde 1.0 – Admin</h1>
               <button id="helpBtn" class="help-btn" aria-label="Hilfe öffnen">?</button>
               <button id="agbBtn" class="help-btn" aria-label="AGB öffnen">§</button>
             </div>
@@ -813,6 +847,13 @@
       <div class="control-buttons" style="margin-top: 12px;">
         <button id="finishRoundBtn" class="danger" disabled>Spielrunde beenden</button>
         <button id="newGameBtn" class="primary">Neue Partie anlegen</button>
+      </div>
+      <div id="onlineStatusBox" class="online-status" style="margin-top: 12px;">
+        <div class="online-status-copy">
+          <div id="onlineStatusTitle" class="online-status-title">Online-Spielstand: Aus</div>
+          <div id="onlineStatusMeta" class="section-subtitle">Lokal gespeichert. Für Live-Anzeige Firebase verbinden.</div>
+        </div>
+        <button id="onlineSetupBtn" class="info">Online-Spielstand verbinden</button>
       </div>
     </section>
 
@@ -896,6 +937,10 @@
     <div class="drawer-section">
       <div class="drawer-section-label">Werkzeuge</div>
       <nav>
+        <button id="drawerOnlineBtn">
+          <span class="menu-title">Online-Spielstand</span>
+          <span class="menu-subtitle">Firebase-Live-Spielstand verbinden, trennen oder den lokalen Stand hochladen.</span>
+        </button>
         <button id="drawerImportBtn">
           <span class="menu-title">Spielstand laden</span>
           <span class="menu-subtitle">Eine exportierte JSON-Datei laden und den Stand in das Tool übernehmen.</span>
@@ -930,6 +975,39 @@
 
   <script>
     const STORAGE_KEY = 'knobeln-strafpunkte-v5';
+    const ONLINE_SETTINGS_KEY = 'knobelklub-online-settings-v1';
+    const APP_MODE = 'admin';
+    const VIEW_ONLY_MODE = APP_MODE === 'viewer';
+
+
+    /*
+      FIREBASE EINBAU:
+      1) Ersetze null durch deinen kopierten firebaseConfig-Block aus Firebase.
+      2) Wichtig: databaseURL muss enthalten sein. Falls sie in deinem Block fehlt,
+         trage sie bei FIREBASE_DATABASE_URL ein.
+      Beispiel:
+      const FIREBASE_CONFIG = {
+        apiKey: "...",
+        authDomain: "knobelklub.firebaseapp.com",
+        databaseURL: "https://knobelklub-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "knobelklub",
+        storageBucket: "knobelklub.appspot.com",
+        messagingSenderId: "...",
+        appId: "..."
+      };
+    */
+    const FIREBASE_CONFIG = {
+     apiKey: "AIzaSyAho0XYtG4P5nfwQVcgY9Gb3k_aUwF_1mA",
+     authDomain: "knobelklub.firebaseapp.com",
+	 databaseURL: "https://knobelklub-default-rtdb.europe-west1.firebasedatabase.app/",
+     projectId: "knobelklub",
+     storageBucket: "knobelklub.firebasestorage.app",
+     messagingSenderId: "429666869030",
+     appId: "1:429666869030:web:cee5bc7cf01af7976c6be7",
+     measurementId: "G-317V3N4SHZ"
+    };
+    const FIREBASE_DATABASE_URL = '';
+
     const STORAGE_FALLBACK_KEYS = [
       'knobeln-strafpunkte-v5',
       'knobeln-strafpunkte-v4-fixed',
@@ -981,6 +1059,23 @@
     }
 
     const state = loadState();
+    const onlineSettings = loadOnlineSettings();
+    prepareOnlineSettingsForMode();
+    const onlineRuntime = {
+      sdk: null,
+      app: null,
+      db: null,
+      unsubscribe: null,
+      connecting: false,
+      connected: false,
+      listening: false,
+      applyingRemote: false,
+      localDirty: false,
+      lastSyncAt: null,
+      lastRemoteBy: '',
+      error: ''
+    };
+    let onlineSaveTimer = null;
 
     const el = {
       menuBtn: document.getElementById('menuBtn'),
@@ -990,6 +1085,7 @@
       drawer: document.getElementById('drawer'),
       drawerBackdrop: document.getElementById('drawerBackdrop'),
       importInput: document.getElementById('importInput'),
+      drawerOnlineBtn: document.getElementById('drawerOnlineBtn'),
       drawerImportBtn: document.getElementById('drawerImportBtn'),
       drawerExportBtn: document.getElementById('drawerExportBtn'),
       drawerCleanStartBtn: document.getElementById('drawerCleanStartBtn'),
@@ -997,6 +1093,10 @@
       topGameMeta: document.getElementById('topGameMeta'),
       finishRoundBtn: document.getElementById('finishRoundBtn'),
       newGameBtn: document.getElementById('newGameBtn'),
+      onlineStatusBox: document.getElementById('onlineStatusBox'),
+      onlineStatusTitle: document.getElementById('onlineStatusTitle'),
+      onlineStatusMeta: document.getElementById('onlineStatusMeta'),
+      onlineSetupBtn: document.getElementById('onlineSetupBtn'),
       scoreboardSection: document.getElementById('scoreboardSection'),
       scoreRound: document.getElementById('scoreRound'),
       scoreTurn: document.getElementById('scoreTurn'),
@@ -1018,8 +1118,50 @@
       toast: document.getElementById('toast')
     };
 
+    applyAppModeUi();
     bindEvents();
     render();
+    autoStartOnlineSync();
+
+    function getUrlGameId() {
+      try {
+        const params = new URLSearchParams(window.location.search || '');
+        return params.get('game') || params.get('runde') || params.get('r') || '';
+      } catch (error) {
+        return '';
+      }
+    }
+
+    function prepareOnlineSettingsForMode() {
+      const urlGameId = getUrlGameId();
+      if (urlGameId) onlineSettings.gameId = sanitizeOnlineGameId(urlGameId);
+      if (VIEW_ONLY_MODE) {
+        onlineSettings.enabled = true;
+        if (!onlineSettings.gameId) onlineSettings.gameId = 'knobelklub-live';
+        if (!onlineSettings.deviceName) onlineSettings.deviceName = 'Zuschauer';
+        saveOnlineSettings();
+      }
+    }
+
+    function applyAppModeUi() {
+      document.body.classList.toggle('viewer-mode', VIEW_ONLY_MODE);
+      if (VIEW_ONLY_MODE) {
+        if (el.finishRoundBtn) el.finishRoundBtn.classList.add('hidden');
+        if (el.newGameBtn) el.newGameBtn.classList.add('hidden');
+        if (el.drawerImportBtn) el.drawerImportBtn.classList.add('hidden');
+        if (el.drawerExportBtn) el.drawerExportBtn.classList.add('hidden');
+        if (el.drawerCleanStartBtn) el.drawerCleanStartBtn.classList.add('hidden');
+        if (el.onlineSetupBtn) el.onlineSetupBtn.textContent = 'Zuschauer-Stand verbinden';
+        const playerSubtitle = document.querySelector('#playersSection .section-subtitle');
+        if (playerSubtitle) playerSubtitle.textContent = 'Reine Zuschaueransicht: Der Stand wird live aus Firebase geladen. Änderungen sind hier nicht möglich.';
+        const drawerHero = document.querySelector('.drawer-hero .section-subtitle');
+        if (drawerHero) drawerHero.textContent = 'Diese Ansicht ist nur zum Zuschauen. Spielaktionen laufen über die Admin-Seite.';
+        const drawerLabel = document.querySelector('.drawer-section-label');
+        if (drawerLabel) drawerLabel.textContent = 'Live-Anzeige';
+        const foot = document.querySelector('.drawer-footnote');
+        if (foot) foot.textContent = 'Tipp: Teile diesen Zuschauer-Link in der Runde. Den Admin-Link behält nur der Spielleiter.';
+      }
+    }
 
     function createDefaultState() {
       return {
@@ -1030,6 +1172,29 @@
         favoritePlayers: [],
         ui: { openTab: null }
       };
+    }
+
+    function createDefaultOnlineSettings() {
+      return {
+        enabled: false,
+        gameId: 'knobelklub-live',
+        deviceName: '',
+        lastKnownUpdatedAt: 0
+      };
+    }
+
+    function loadOnlineSettings() {
+      try {
+        const raw = localStorage.getItem(ONLINE_SETTINGS_KEY);
+        if (!raw) return createDefaultOnlineSettings();
+        return { ...createDefaultOnlineSettings(), ...JSON.parse(raw) };
+      } catch (error) {
+        return createDefaultOnlineSettings();
+      }
+    }
+
+    function saveOnlineSettings() {
+      localStorage.setItem(ONLINE_SETTINGS_KEY, JSON.stringify(onlineSettings));
     }
 
     function loadState() {
@@ -1347,7 +1512,14 @@
 
     function saveState(showMessage = false) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      if (showMessage) showToast('Gespeichert.');
+      if (!VIEW_ONLY_MODE && !onlineRuntime.applyingRemote) {
+        onlineRuntime.localDirty = true;
+        scheduleOnlineSave();
+      }
+      if (showMessage) {
+        if (VIEW_ONLY_MODE) showToast('Zuschaueransicht: Änderungen sind hier gesperrt.');
+        else showToast(onlineSettings.enabled ? 'Lokal gespeichert, Online-Abgleich läuft.' : 'Gespeichert.');
+      }
     }
 
     function bindEvents() {
@@ -1356,6 +1528,8 @@
       el.agbBtn.addEventListener('click', openAgbDialog);
       el.closeDrawerBtn.addEventListener('click', closeDrawer);
       el.drawerBackdrop.addEventListener('click', closeDrawer);
+      el.drawerOnlineBtn.addEventListener('click', () => { closeDrawer(); openOnlineMenu(); });
+      el.onlineSetupBtn.addEventListener('click', openOnlineMenu);
       el.drawerImportBtn.addEventListener('click', () => { closeDrawer(); el.importInput.click(); });
       el.drawerExportBtn.addEventListener('click', () => { closeDrawer(); exportBackup(); });
       el.drawerCleanStartBtn.addEventListener('click', async () => { closeDrawer(); await cleanStartNewGame(); });
@@ -1369,6 +1543,399 @@
       el.tabButtons.addEventListener('click', handleTabClick);
     }
 
+
+    function isFirebaseConfigured() {
+      if (!FIREBASE_CONFIG || typeof FIREBASE_CONFIG !== 'object') return false;
+      const apiKey = String(FIREBASE_CONFIG.apiKey || '');
+      const projectId = String(FIREBASE_CONFIG.projectId || '');
+      const databaseUrl = String(FIREBASE_CONFIG.databaseURL || FIREBASE_DATABASE_URL || '');
+      return Boolean(apiKey && projectId && databaseUrl && !apiKey.includes('HIER') && !databaseUrl.includes('HIER'));
+    }
+
+    function sanitizeOnlineGameId(value) {
+      return String(value || 'knobelklub-live')
+        .trim()
+        .toLowerCase()
+        .replace(/[ä]/g, 'ae')
+        .replace(/[ö]/g, 'oe')
+        .replace(/[ü]/g, 'ue')
+        .replace(/[ß]/g, 'ss')
+        .replace(/[^a-z0-9_-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 60) || 'knobelklub-live';
+    }
+
+    function getOnlineGamePath() {
+      return `games/${sanitizeOnlineGameId(onlineSettings.gameId)}/live`;
+    }
+
+    function getOnlineDeviceName() {
+      const stored = String(onlineSettings.deviceName || '').trim();
+      return stored || 'Unbekanntes Gerät';
+    }
+
+    async function loadFirebaseSdk() {
+      if (onlineRuntime.sdk) return onlineRuntime.sdk;
+      const [appModule, databaseModule] = await Promise.all([
+        import('https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js'),
+        import('https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js')
+      ]);
+      onlineRuntime.sdk = { ...appModule, ...databaseModule };
+      return onlineRuntime.sdk;
+    }
+
+    async function initFirebaseOnline() {
+      if (!isFirebaseConfigured()) {
+        throw new Error('Firebase-Konfiguration fehlt. Bitte FIREBASE_CONFIG und databaseURL im Code eintragen.');
+      }
+      if (onlineRuntime.db) return onlineRuntime.db;
+      onlineRuntime.connecting = true;
+      onlineRuntime.error = '';
+      renderOnlineStatus();
+
+      const sdk = await loadFirebaseSdk();
+      const config = { ...FIREBASE_CONFIG };
+      if (!config.databaseURL && FIREBASE_DATABASE_URL) config.databaseURL = FIREBASE_DATABASE_URL;
+
+      onlineRuntime.app = sdk.initializeApp(config);
+      onlineRuntime.db = sdk.getDatabase(onlineRuntime.app);
+      onlineRuntime.connecting = false;
+      onlineRuntime.connected = true;
+      renderOnlineStatus();
+      return onlineRuntime.db;
+    }
+
+    function scheduleOnlineSave() {
+      if (VIEW_ONLY_MODE) return;
+      if (!onlineSettings.enabled) return;
+      window.clearTimeout(onlineSaveTimer);
+      onlineSaveTimer = window.setTimeout(() => {
+        writeOnlineState().catch((error) => {
+          onlineRuntime.error = error && error.message ? error.message : 'Online-Speichern fehlgeschlagen.';
+          onlineRuntime.connected = false;
+          renderOnlineStatus();
+          console.error(error);
+        });
+      }, 250);
+    }
+
+    async function writeOnlineState() {
+      if (VIEW_ONLY_MODE) return;
+      if (!onlineSettings.enabled) return;
+      const db = await initFirebaseOnline();
+      const sdk = await loadFirebaseSdk();
+      const payload = {
+        schema: 'knobelklub-live-state-v1',
+        updatedAt: Date.now(),
+        updatedBy: getOnlineDeviceName(),
+        state: deepClone(state)
+      };
+      await sdk.set(sdk.ref(db, getOnlineGamePath()), payload);
+      onlineRuntime.localDirty = false;
+      onlineSettings.lastKnownUpdatedAt = payload.updatedAt;
+      saveOnlineSettings();
+      onlineRuntime.lastSyncAt = new Date().toISOString();
+      onlineRuntime.lastRemoteBy = payload.updatedBy;
+      onlineRuntime.connected = true;
+      onlineRuntime.error = '';
+      renderOnlineStatus();
+    }
+
+    async function startOnlineSync(options = {}) {
+      if (!onlineSettings.enabled) return;
+      try {
+        const db = await initFirebaseOnline();
+        const sdk = await loadFirebaseSdk();
+
+        if (onlineRuntime.unsubscribe) {
+          onlineRuntime.unsubscribe();
+          onlineRuntime.unsubscribe = null;
+        }
+
+        const gameRef = sdk.ref(db, getOnlineGamePath());
+        onlineRuntime.listening = true;
+        onlineRuntime.error = '';
+        renderOnlineStatus();
+
+        let firstSnapshot = true;
+        onlineRuntime.unsubscribe = sdk.onValue(gameRef, async (snapshot) => {
+          const payload = snapshot.val();
+          if (!payload || !payload.state) {
+            if (firstSnapshot && options.uploadLocalIfEmpty) {
+              await writeOnlineState();
+            }
+            firstSnapshot = false;
+            return;
+          }
+
+          const remoteUpdatedAt = Number(payload.updatedAt || 0);
+          const localKnown = Number(onlineSettings.lastKnownUpdatedAt || 0);
+          const forceFirstLoad = Boolean(options.forceApplyFirst && firstSnapshot);
+          const isKnownOrOlder = Boolean(remoteUpdatedAt && localKnown && remoteUpdatedAt <= localKnown);
+
+          // Wichtig: Alte Firebase-Snapshots dürfen lokale Spielaktionen nicht zurückdrehen.
+          // Das war der Hauptgrund, warum Spieler/Einträge nach dem Verbinden wieder verschwinden konnten.
+          if (!forceFirstLoad && (isKnownOrOlder || onlineRuntime.localDirty)) {
+            firstSnapshot = false;
+            onlineRuntime.connected = true;
+            onlineRuntime.error = '';
+            renderOnlineStatus();
+            return;
+          }
+
+          onlineSettings.lastKnownUpdatedAt = Math.max(localKnown, remoteUpdatedAt);
+          saveOnlineSettings();
+
+          applyRemoteState(payload.state, {
+            updatedAt: remoteUpdatedAt,
+            updatedBy: payload.updatedBy || ''
+          });
+          firstSnapshot = false;
+        }, (error) => {
+          onlineRuntime.error = error && error.message ? error.message : 'Online-Lesen fehlgeschlagen.';
+          onlineRuntime.connected = false;
+          renderOnlineStatus();
+          console.error(error);
+        });
+      } catch (error) {
+        onlineRuntime.error = error && error.message ? error.message : 'Online-Verbindung fehlgeschlagen.';
+        onlineRuntime.connected = false;
+        onlineRuntime.connecting = false;
+        renderOnlineStatus();
+        showToast(onlineRuntime.error);
+        console.error(error);
+      }
+    }
+
+    function applyRemoteState(remoteState, meta = {}) {
+      const migrated = migrateState(remoteState);
+      onlineRuntime.applyingRemote = true;
+      state.currentSession = migrated.currentSession;
+      state.history = migrated.history;
+      state.gamesHistory = migrated.gamesHistory || [];
+      state.actionAudit = migrated.actionAudit || [];
+      state.favoritePlayers = migrated.favoritePlayers || [];
+      state.ui = migrated.ui || { openTab: null };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      onlineRuntime.applyingRemote = false;
+
+      onlineRuntime.connected = true;
+      onlineRuntime.error = '';
+      onlineRuntime.lastSyncAt = meta.updatedAt ? new Date(meta.updatedAt).toISOString() : new Date().toISOString();
+      onlineRuntime.lastRemoteBy = meta.updatedBy || '';
+      render();
+    }
+
+    function stopOnlineSync() {
+      if (onlineRuntime.unsubscribe) {
+        onlineRuntime.unsubscribe();
+        onlineRuntime.unsubscribe = null;
+      }
+      onlineSettings.enabled = false;
+      saveOnlineSettings();
+      onlineRuntime.listening = false;
+      onlineRuntime.connected = false;
+      onlineRuntime.localDirty = false;
+      onlineRuntime.connecting = false;
+      onlineRuntime.error = '';
+      renderOnlineStatus();
+      showToast('Online-Spielstand getrennt.');
+    }
+
+    async function autoStartOnlineSync() {
+      if (VIEW_ONLY_MODE && !onlineSettings.enabled) {
+        onlineSettings.enabled = true;
+        saveOnlineSettings();
+      }
+      if (!onlineSettings.enabled) {
+        renderOnlineStatus();
+        return;
+      }
+      if (!isFirebaseConfigured()) {
+        onlineRuntime.error = 'Firebase-Konfiguration fehlt im Code.';
+        renderOnlineStatus();
+        return;
+      }
+      await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: VIEW_ONLY_MODE });
+    }
+
+    async function openOnlineMenu() {
+      if (!isFirebaseConfigured()) {
+        await showDialog({
+          title: 'Firebase noch nicht eingetragen',
+          message: 'Trage zuerst deinen firebaseConfig-Block und die databaseURL oben im Code bei FIREBASE_CONFIG ein. Danach diese Datei neu öffnen.',
+          actions: [
+            { label: 'OK', value: 'ok', className: 'primary' }
+          ]
+        });
+        return;
+      }
+
+
+      if (VIEW_ONLY_MODE) {
+        await openViewerOnlineMenu();
+        return;
+      }
+
+      if (onlineSettings.enabled) {
+        const answer = await showDialog({
+          title: 'Online-Spielstand',
+          message: `Aktuelle Online-Runde: ${sanitizeOnlineGameId(onlineSettings.gameId)}. Was möchtest du tun?`,
+          actions: [
+            { label: 'Lokalen Stand jetzt hochladen', value: 'upload', className: 'primary' },
+            { label: 'Neu verbinden / andere Runde', value: 'setup', className: 'info' },
+            { label: 'Online trennen', value: 'disconnect', className: 'warn' },
+            { label: 'Abbrechen', value: 'cancel' }
+          ]
+        });
+        if (answer === 'upload') {
+          await writeOnlineState();
+          showToast('Lokaler Stand online hochgeladen.');
+        } else if (answer === 'setup') {
+          await setupOnlineSync();
+        } else if (answer === 'disconnect') {
+          stopOnlineSync();
+        }
+        return;
+      }
+
+      await setupOnlineSync();
+    }
+
+    async function openViewerOnlineMenu() {
+      const answer = await showDialog({
+        title: 'Zuschauer-Live-Stand',
+        message: `Diese Seite lädt nur den Spielstand der Runde ${sanitizeOnlineGameId(onlineSettings.gameId)}. Änderungen sind hier gesperrt.`,
+        actions: [
+          { label: 'Neu verbinden / andere Runde', value: 'setup', className: 'info' },
+          { label: 'Online trennen', value: 'disconnect', className: 'warn' },
+          { label: 'Abbrechen', value: 'cancel' }
+        ]
+      });
+      if (answer === 'setup') {
+        await setupViewerOnlineSync();
+      } else if (answer === 'disconnect') {
+        stopOnlineSync();
+      }
+    }
+
+    async function setupViewerOnlineSync() {
+      const gameIdInput = await showInputDialog({
+        title: 'Zuschauer-Stand verbinden',
+        message: 'Gib den Runden-Code ein. Zuschauer sehen denselben Stand wie die Admin-Seite, können aber nichts ändern.',
+        placeholder: onlineSettings.gameId || 'knobelklub-live',
+        confirmLabel: 'Live-Stand laden'
+      });
+      if (!gameIdInput) return;
+
+      onlineSettings.enabled = true;
+      onlineSettings.gameId = sanitizeOnlineGameId(gameIdInput);
+      onlineSettings.deviceName = 'Zuschauer';
+      saveOnlineSettings();
+      await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: true });
+      showToast('Zuschauer-Live-Stand verbunden.');
+    }
+
+    async function setupOnlineSync() {
+      const gameIdInput = await showInputDialog({
+        title: 'Online-Spielstand verbinden',
+        message: 'Gib einen Runden-Code ein. Alle Geräte mit demselben Code sehen denselben Spielstand.',
+        placeholder: onlineSettings.gameId || 'knobelklub-live',
+        confirmLabel: 'Weiter'
+      });
+      if (!gameIdInput) return;
+
+      const deviceInput = await showInputDialog({
+        title: 'Gerätename',
+        message: 'Dieser Name erscheint nur intern als Hinweis, wer zuletzt gespeichert hat.',
+        placeholder: onlineSettings.deviceName || 'Saschas Handy',
+        confirmLabel: 'Verbinden'
+      });
+
+      onlineSettings.enabled = true;
+      onlineSettings.gameId = sanitizeOnlineGameId(gameIdInput);
+      onlineSettings.deviceName = String(deviceInput || onlineSettings.deviceName || 'Unbekanntes Gerät').trim();
+      saveOnlineSettings();
+
+      const upload = await showDialog({
+        title: 'Startzustand wählen',
+        message: 'Soll dieser lokale Stand jetzt als Online-Spielstand gesetzt werden? Wenn bereits ein Online-Spiel existiert, wird es dadurch überschrieben.',
+        actions: [
+          { label: 'Ja, lokalen Stand hochladen', value: 'upload', className: 'primary' },
+          { label: 'Nein, Online-Stand laden', value: 'load', className: 'info' },
+          { label: 'Abbrechen', value: 'cancel' }
+        ]
+      });
+
+      if (upload === 'cancel') {
+        onlineSettings.enabled = false;
+        saveOnlineSettings();
+        renderOnlineStatus();
+        return;
+      }
+
+      if (upload === 'upload') {
+        // Erst den lokalen Stand hochladen, dann den Live-Listener starten.
+        // Sonst kann ein alter Online-Snapshot den lokalen Spielstand direkt wieder überschreiben.
+        await writeOnlineState();
+        await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: false });
+      } else {
+        await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: true });
+      }
+      showToast('Online-Spielstand verbunden.');
+    }
+
+    function renderOnlineStatus() {
+      if (!el.onlineStatusBox) return;
+      const configured = isFirebaseConfigured();
+      el.onlineStatusBox.classList.toggle('connected', onlineSettings.enabled && onlineRuntime.connected && !onlineRuntime.error);
+      el.onlineStatusBox.classList.toggle('error', Boolean(onlineRuntime.error));
+
+      if (!configured) {
+        el.onlineStatusTitle.textContent = 'Online-Spielstand: Firebase fehlt';
+        el.onlineStatusMeta.textContent = 'Trage FIREBASE_CONFIG und databaseURL im Code ein.';
+        el.onlineSetupBtn.textContent = 'Firebase eintragen';
+        if (el.drawerOnlineBtn) {
+          el.drawerOnlineBtn.querySelector('.menu-subtitle').textContent = 'Firebase-Konfiguration ist im Code noch nicht eingetragen.';
+        }
+        return;
+      }
+
+      if (!onlineSettings.enabled) {
+        el.onlineStatusTitle.textContent = 'Online-Spielstand: Aus';
+        el.onlineStatusMeta.textContent = 'Lokal gespeichert. Verbinden, damit alle Geräte denselben Stand sehen.';
+        el.onlineSetupBtn.textContent = 'Online-Spielstand verbinden';
+        if (el.drawerOnlineBtn) {
+          el.drawerOnlineBtn.querySelector('.menu-subtitle').textContent = 'Firebase-Live-Spielstand verbinden, trennen oder den lokalen Stand hochladen.';
+        }
+        return;
+      }
+
+      if (onlineRuntime.error) {
+        el.onlineStatusTitle.textContent = 'Online-Spielstand: Fehler';
+        el.onlineStatusMeta.textContent = onlineRuntime.error;
+        el.onlineSetupBtn.textContent = 'Online prüfen';
+        return;
+      }
+
+      if (onlineRuntime.connecting) {
+        el.onlineStatusTitle.textContent = 'Online-Spielstand: Verbindung läuft';
+        el.onlineStatusMeta.textContent = `Runde: ${sanitizeOnlineGameId(onlineSettings.gameId)}`;
+        el.onlineSetupBtn.textContent = 'Online verwalten';
+        return;
+      }
+
+      const last = onlineRuntime.lastSyncAt ? ` · zuletzt ${formatTimeOnly(onlineRuntime.lastSyncAt)}` : '';
+      const by = onlineRuntime.lastRemoteBy ? ` · von ${onlineRuntime.lastRemoteBy}` : '';
+      el.onlineStatusTitle.textContent = onlineRuntime.connected ? 'Online-Spielstand: Verbunden' : 'Online-Spielstand: Bereit';
+      el.onlineStatusMeta.textContent = `Runde: ${sanitizeOnlineGameId(onlineSettings.gameId)}${last}${by}`;
+      el.onlineSetupBtn.textContent = 'Online verwalten';
+
+      if (el.drawerOnlineBtn) {
+        el.drawerOnlineBtn.querySelector('.menu-subtitle').textContent = `Verbunden mit Runde ${sanitizeOnlineGameId(onlineSettings.gameId)}.`;
+      }
+    }
+
     function deepClone(value) {
       if (typeof structuredClone === 'function') return structuredClone(value);
       return JSON.parse(JSON.stringify(value));
@@ -1379,6 +1946,7 @@
     }
 
     async function handleNewGameButton() {
+      if (VIEW_ONLY_MODE) { showToast('Zuschaueransicht: Neue Partien werden nur in der Admin-Seite angelegt.'); return; }
       const session = state.currentSession;
       if (!session) {
         const choice = await chooseRoundTarget();
@@ -1506,6 +2074,7 @@
     async function handlePlayerCardClick(event) {
       const button = event.target.closest('button[data-action]');
       if (!button) return;
+      if (VIEW_ONLY_MODE) { showToast('Zuschaueransicht: Einträge sind hier gesperrt.'); return; }
       const action = button.dataset.action;
       if (action === 'add-player') {
         openAddPlayerDialog();
@@ -2270,6 +2839,11 @@
     }
 
     function render() {
+      renderOnlineStatus();
+      if (VIEW_ONLY_MODE) {
+        if (el.finishRoundBtn) el.finishRoundBtn.classList.add('hidden');
+        if (el.newGameBtn) el.newGameBtn.classList.add('hidden');
+      }
       const session = state.currentSession;
       const hasSession = Boolean(session);
       el.scoreboardSection.classList.toggle('hidden', !hasSession);
@@ -2322,6 +2896,30 @@
         const cashPenaltyLocked = isCashPenaltyLimitReached(session, player.id);
         const playerType = getPlayerType(player);
         const isGuest = playerType === 'guest';
+        const codeControl = VIEW_ONLY_MODE
+          ? `<button class="player-code-btn" disabled title="Zuschaueransicht">${escapeHtml(player.code)}</button>`
+          : `<button data-action="delete-player" data-player-id="${escapeHtml(player.id)}" class="player-code-btn" title="Für Falscheingaben löschen">${escapeHtml(player.code)}</button>`;
+        const actionControls = VIEW_ONLY_MODE ? '' : `
+            <div class="player-actions full-width-row">
+              <button data-action="loss" data-player-id="${escapeHtml(player.id)}" class="danger full-width" ${lossDisabled ? 'disabled' : ''}>Verloren</button>
+            </div>
+            ${player.status === 'active' ? `
+              ${isGuest ? `
+              <div class="player-actions full-width-row">
+                <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="violet full-width" ${(actionDisabled || session.currentRound.turnsCompleted >= session.currentRound.target) ? 'disabled' : ''}>Lust-Knobeln</button>
+              </div>` : `
+              <div class="player-actions cash-grid">
+                <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${actionDisabled ? 'disabled' : ''}>Lust-Knobeln</button>
+                <button data-action="cashfault" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${(actionDisabled || cashPenaltyLocked) ? 'disabled' : ''}>Strafkasse</button>
+              </div>`}
+              <div class="player-actions full-width-row">
+                <button data-action="exit" data-player-id="${escapeHtml(player.id)}" class="warn full-width" ${lossDisabled ? 'disabled' : ''}>Ausstieg</button>
+              </div>
+            ` : `
+              <div class="player-actions full-width-row">
+                <button data-action="rejoin" data-player-id="${escapeHtml(player.id)}" class="info rejoin full-width" ${session.currentRound.status !== 'open' ? 'disabled' : ''}>Wiedereinsteigen</button>
+              </div>
+            `}`;
         return `
           <article class="player-card ${player.status === 'active' ? 'active' : 'exited'}">
             <div class="player-head">
@@ -2330,7 +2928,7 @@
                 <div class="tiny muted">${player.status === 'active' ? (isGuest ? 'Gastspieler aktiv' : 'aktiv') : `ausgestiegen ${formatDateTime(player.exitedAtTs)}`}</div>
               </div>
               <div class="player-code-stack">
-                <button data-action="delete-player" data-player-id="${escapeHtml(player.id)}" class="player-code-btn" title="Für Falscheingaben löschen">${escapeHtml(player.code)}</button>
+                ${codeControl}
               </div>
             </div>
 
@@ -2354,35 +2952,23 @@
                 <div>${renderCashPenaltyCompact(cashPenaltySummary)}</div>
               </div>`}
             </div>
-
-            <div class="player-actions full-width-row">
-              <button data-action="loss" data-player-id="${escapeHtml(player.id)}" class="danger full-width" ${lossDisabled ? 'disabled' : ''}>Verloren</button>
-            </div>
-            ${player.status === 'active' ? `
-              ${isGuest ? `
-              <div class="player-actions full-width-row">
-                <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="violet full-width" ${(actionDisabled || session.currentRound.turnsCompleted >= session.currentRound.target) ? 'disabled' : ''}>Lust-Knobeln</button>
-              </div>` : `
-              <div class="player-actions cash-grid">
-                <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${actionDisabled ? 'disabled' : ''}>Lust-Knobeln</button>
-                <button data-action="cashfault" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${(actionDisabled || cashPenaltyLocked) ? 'disabled' : ''}>Strafkasse</button>
-              </div>`}
-              <div class="player-actions full-width-row">
-                <button data-action="exit" data-player-id="${escapeHtml(player.id)}" class="warn full-width" ${lossDisabled ? 'disabled' : ''}>Ausstieg</button>
-              </div>
-            ` : `
-              <div class="player-actions full-width-row">
-                <button data-action="rejoin" data-player-id="${escapeHtml(player.id)}" class="info rejoin full-width" ${session.currentRound.status !== 'open' ? 'disabled' : ''}>Wiedereinsteigen</button>
-              </div>
-            `}
+            ${actionControls}
           </article>
         `;
       });
-      if (session.players.length < MAX_PLAYERS && session.currentRound.status === 'open' && session.currentRound.turnsCompleted < session.currentRound.target) {
+      if (!VIEW_ONLY_MODE && session.players.length < MAX_PLAYERS && session.currentRound.status === 'open' && session.currentRound.turnsCompleted < session.currentRound.target) {
         cards.push(`
           <article class="player-card add-card active">
             <button data-action="add-player" class="info">+ Spieler hinzufügen</button>
             <div class="section-subtitle">Name per Popup eingeben. Preset-Namen bleiben reserviert und gelten automatisch mit voller Logik.</div>
+          </article>
+        `);
+      }
+      if (VIEW_ONLY_MODE && !cards.length) {
+        cards.push(`
+          <article class="player-card add-card">
+            <div class="section-title">Noch keine Spieler im Live-Stand</div>
+            <div class="section-subtitle">Sobald die Admin-Seite eine Partie startet und Spieler anlegt, erscheinen sie hier automatisch.</div>
           </article>
         `);
       }
