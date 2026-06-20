@@ -1259,7 +1259,14 @@
     }
 
     function currentOnlineRoundNeedsFreshCodeForNewSession() {
-      return Boolean(onlineSettings.enabled && onlineSettings.nextSessionRequiresNewCode);
+      if (!onlineSettings.enabled) return false;
+      if (onlineSettings.nextSessionRequiresNewCode) return true;
+      if (state.currentSession) return false;
+      const hasFinishedLocalGame = Boolean(
+        (Array.isArray(state.gamesHistory) && state.gamesHistory.length) ||
+        (Array.isArray(state.history) && state.history.length)
+      );
+      return hasFinishedLocalGame;
     }
 
     function prepareAdminOnlineSettingsFromUrl() {
@@ -1938,29 +1945,40 @@
 
     async function prepareFreshOnlineRoundForNewSession() {
       if (!isFirebaseConfigured()) return false;
-      const newCode = await generateUnusedRoundCode();
+      const newCode = sanitizeOnlineGameId(await generateUnusedRoundCode());
+
+      // Wichtig: Beim Start einer neuen Partie nach einem beendeten Spiel muss die alte
+      // Online-Runde genauso sauber verlassen werden wie bei „Online trennen“.
+      // Sonst bleiben Timer/Flags vom alten Code aktiv und die neue Partie landet wieder im alten Live-Pfad.
       onlineRuntime.syncToken += 1;
+      window.clearTimeout(onlineSaveTimer);
+      onlineSaveTimer = null;
       if (onlineRuntime.unsubscribe) {
         onlineRuntime.unsubscribe();
         onlineRuntime.unsubscribe = null;
       }
+      onlineSettings.enabled = false;
+      onlineSettings.lastKnownUpdatedAt = 0;
+      saveOnlineSettings();
       onlineRuntime.listening = false;
       onlineRuntime.connected = false;
       onlineRuntime.connecting = false;
       onlineRuntime.localDirty = false;
       onlineRuntime.applyingRemote = false;
       onlineRuntime.error = '';
+      renderOnlineStatus();
+
+      // Neuer Code = neuer Firebase-Pfad. Alte Fanseiten mit altem Code bleiben unberührt.
       onlineSettings.enabled = true;
-      onlineSettings.gameId = sanitizeOnlineGameId(newCode);
+      onlineSettings.gameId = newCode;
       if (!onlineSettings.deviceName) onlineSettings.deviceName = 'Admin';
       onlineSettings.lastKnownUpdatedAt = 0;
       onlineSettings.nextSessionRequiresNewCode = false;
       saveOnlineSettings();
       resetCurrentLocalRoundForOnlineCode({ clearHistory: true });
-      await writeOnlineState();
       onlineRuntime.connected = true;
       renderOnlineStatus();
-      showToast(`Neue Online-Knobelrunde vorbereitet: ${sanitizeOnlineGameId(newCode)}`);
+      showToast(`Neue Online-Knobelrunde vorbereitet: ${newCode}`);
       return true;
     }
 
@@ -2224,12 +2242,13 @@
     async function handleNewGameButton() {
       const session = state.currentSession;
       if (!session) {
-        if (currentOnlineRoundNeedsFreshCodeForNewSession()) {
+        const needsFreshOnlineCode = currentOnlineRoundNeedsFreshCodeForNewSession();
+        const choice = await chooseRoundTarget();
+        if (!choice) return;
+        if (needsFreshOnlineCode) {
           const prepared = await prepareFreshOnlineRoundForNewSession();
           if (!prepared) return;
         }
-        const choice = await chooseRoundTarget();
-        if (!choice) return;
         createSession(choice);
         return;
       }
@@ -2279,7 +2298,16 @@
       saveOnlineSettings();
       saveState(true);
       render();
-      if (onlineSettings.enabled) window.setTimeout(() => openFanLinkDialog({ afterNewSession: true }), 120);
+      if (onlineSettings.enabled) {
+        window.clearTimeout(onlineSaveTimer);
+        onlineSaveTimer = null;
+        writeOnlineState().catch((error) => {
+          console.error(error);
+          onlineRuntime.error = error && error.message ? error.message : 'Online-Speichern fehlgeschlagen.';
+          renderOnlineStatus();
+        });
+        window.setTimeout(() => openFanLinkDialog({ afterNewSession: true }), 120);
+      }
     }
 
     function createRoundObject(index, target, ts) {
