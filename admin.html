@@ -1166,6 +1166,7 @@
       error: ''
     };
     let onlineSaveTimer = null;
+    let adminWelcomePickerOpen = false;
 
     const el = {
       menuBtn: document.getElementById('menuBtn'),
@@ -1279,12 +1280,31 @@
       saveOnlineSettings();
     }
 
+    function isLocalSessionStillPlayable(session) {
+      if (!session || typeof session !== 'object') return false;
+      const round = session.currentRound || {};
+      if (round.status === 'open') return true;
+      if (round.status === 'finished' && Number(session.roundIndex || 0) < Number(session.maxRounds || MAX_ROUNDS_PER_SESSION)) return true;
+      return false;
+    }
+
+    function clearFinishedLocalSessionForPicker() {
+      if (!state.currentSession) return false;
+      if (isLocalSessionStillPlayable(state.currentSession)) return false;
+      state.currentSession = null;
+      state.actionAudit = [];
+      state.ui = { ...(state.ui || {}), openTab: null };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      return true;
+    }
+
     function shouldShowAdminWelcomePicker() {
       if (!isFirebaseConfigured()) return false;
       if (getUrlGameId()) return false;
+      if (onlineSettings.nextSessionRequiresNewCode) return true;
       // Bei einer laufenden oder zwischen Runden stehenden lokalen Partie nicht stören.
-      // Wenn keine offene Partie mehr vorhanden ist, soll der Admin beim Start/Reload bewusst eine Runde wählen.
-      if (state.currentSession) return false;
+      // Beendete Reststände werden im Picker-Ablauf bereinigt.
+      if (isLocalSessionStillPlayable(state.currentSession)) return false;
       return true;
     }
 
@@ -1412,22 +1432,59 @@
       });
     }
 
-    async function maybeShowAdminWelcomeDialog() {
-      if (!shouldShowAdminWelcomePicker()) return;
-      const suggestedCode = generateSuggestedRoundCode();
-      const { games: todayGames, error: listError } = await readTodaysOnlineGames();
-      const choice = await showAdminWelcomePicker({ suggestedCode, todayGames, listError });
-      if (!choice || !choice.code) {
+    async function maybeShowAdminWelcomeDialog(options = {}) {
+      const force = Boolean(options.force);
+      if (adminWelcomePickerOpen) return;
+      if (!force && !shouldShowAdminWelcomePicker()) return;
+      if (!isFirebaseConfigured()) return;
+      adminWelcomePickerOpen = true;
+      try {
+        // Vor dem Picker keine alte Online-Runde als aktiv anzeigen.
+        // Das ist wichtig nach Partieende und nach Browser-Reloads ohne offene Partie.
+        onlineRuntime.syncToken += 1;
+        window.clearTimeout(onlineSaveTimer);
+        onlineSaveTimer = null;
+        if (onlineRuntime.unsubscribe) {
+          onlineRuntime.unsubscribe();
+          onlineRuntime.unsubscribe = null;
+        }
         onlineSettings.enabled = false;
+        onlineSettings.lastKnownUpdatedAt = 0;
+        onlineSettings.nextSessionRequiresNewCode = false;
         saveOnlineSettings();
+        onlineRuntime.listening = false;
+        onlineRuntime.connected = false;
+        onlineRuntime.connecting = false;
+        onlineRuntime.localDirty = false;
+        onlineRuntime.applyingRemote = false;
+        onlineRuntime.error = '';
+        clearFinishedLocalSessionForPicker();
+        render();
         renderOnlineStatus();
-        return;
+
+        const suggestedCode = generateSuggestedRoundCode();
+        const { games: todayGames, error: listError } = await readTodaysOnlineGames();
+        onlineRuntime.connected = false;
+        renderOnlineStatus();
+        const choice = await showAdminWelcomePicker({ suggestedCode, todayGames, listError });
+        if (!choice || !choice.code) {
+          onlineSettings.enabled = false;
+          onlineSettings.nextSessionRequiresNewCode = false;
+          saveOnlineSettings();
+          onlineRuntime.connected = false;
+          onlineRuntime.connecting = false;
+          onlineRuntime.localDirty = false;
+          renderOnlineStatus();
+          return;
+        }
+        if (choice.type === 'existing') {
+          await connectAdminRoundFromCode(choice.code, { initialPrompt: true, autoLoadExisting: true });
+          return;
+        }
+        await connectAdminRoundFromCode(choice.code, { initialPrompt: true });
+      } finally {
+        adminWelcomePickerOpen = false;
       }
-      if (choice.type === 'existing') {
-        await connectAdminRoundFromCode(choice.code, { initialPrompt: true, autoLoadExisting: true });
-        return;
-      }
-      await connectAdminRoundFromCode(choice.code, { initialPrompt: true });
     }
 
     function createDefaultState() {
@@ -1914,7 +1971,7 @@
       onlineRuntime.app = sdk.initializeApp(config);
       onlineRuntime.db = sdk.getDatabase(onlineRuntime.app);
       onlineRuntime.connecting = false;
-      onlineRuntime.connected = true;
+      onlineRuntime.connected = Boolean(onlineSettings.enabled);
       renderOnlineStatus();
       return onlineRuntime.db;
     }
@@ -2089,10 +2146,12 @@
 
     async function returnToInitialPickerAfterFinishedGame() {
       leaveFinishedOnlineRoundForPicker();
+      state.currentSession = null;
+      state.actionAudit = [];
+      state.ui = { ...(state.ui || {}), openTab: null };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       render();
-      if (shouldShowAdminWelcomePicker()) {
-        await maybeShowAdminWelcomeDialog();
-      }
+      await maybeShowAdminWelcomeDialog({ force: true });
     }
 
         async function readOnlinePayloadOnce() {
@@ -2244,12 +2303,20 @@
 
     async function autoStartOnlineSync() {
       if (shouldShowAdminWelcomePicker()) {
+        onlineRuntime.syncToken += 1;
+        window.clearTimeout(onlineSaveTimer);
+        onlineSaveTimer = null;
         onlineSettings.enabled = false;
+        onlineSettings.lastKnownUpdatedAt = 0;
         saveOnlineSettings();
+        onlineRuntime.connected = false;
+        onlineRuntime.connecting = false;
+        onlineRuntime.localDirty = false;
         renderOnlineStatus();
         return;
       }
       if (!onlineSettings.enabled) {
+        onlineRuntime.connected = false;
         renderOnlineStatus();
         return;
       }
@@ -2430,6 +2497,10 @@
     async function handleNewGameButton() {
       const session = state.currentSession;
       if (!session) {
+        if (!onlineSettings.enabled && shouldShowAdminWelcomePicker()) {
+          await maybeShowAdminWelcomeDialog({ force: true });
+          return;
+        }
         const needsFreshOnlineCode = currentOnlineRoundNeedsFreshCodeForNewSession();
         const choice = await chooseRoundTarget();
         if (!choice) return;
