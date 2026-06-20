@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Knobelclubrunde 1.0 – Admin</title>
+  <title>Knobelclubrunde 1.0</title>
   <style>
     :root {
       --bg: #0b1220;
@@ -774,11 +774,82 @@
     }
 
 
-    body.viewer-mode .control-buttons { display: none; }
-    body.viewer-mode #drawerImportBtn,
-    body.viewer-mode #drawerExportBtn,
-    body.viewer-mode #drawerCleanStartBtn { display: none !important; }
-    body.viewer-mode .player-code-btn:disabled { opacity: 1; cursor: default; }
+    .admin-online-actions {
+      display: grid;
+      gap: 6px;
+    }
+    .admin-online-actions button {
+      width: 100%;
+      min-width: 0;
+      min-height: 44px;
+      font-weight: 900;
+      box-shadow: none;
+    }
+    .online-status-card {
+      display: grid;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .online-status-row {
+      display: grid;
+      gap: 6px;
+      grid-template-columns: 1fr 1fr;
+    }
+    .online-status-kpi {
+      border-radius: 12px;
+      padding: 7px 9px;
+      background: rgba(255,255,255,.045);
+      border: 1px solid rgba(255,255,255,.08);
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+    .online-status-kpi .label {
+      color: var(--muted);
+      font-size: .68rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .online-status-kpi .value {
+      color: var(--text);
+      font-weight: 900;
+      font-size: .96rem;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
+    .online-status {
+      gap: 8px;
+      padding: 10px 12px;
+    }
+    .online-status.offline {
+      background: linear-gradient(180deg, rgba(239,68,68,.12), rgba(239,68,68,.045));
+      border-color: rgba(239,68,68,.22);
+    }
+    .online-status-title {
+      font-size: .98rem;
+      line-height: 1.2;
+    }
+    .online-main-toggle.danger {
+      background: var(--red);
+      color: #fff;
+      border: none;
+    }
+    .online-main-toggle.primary {
+      background: var(--green);
+      color: #06210e;
+      border: none;
+    }
+    .share-link-box {
+      width: 100%;
+      min-height: 140px;
+      background: rgba(8, 13, 23, .88);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      resize: vertical;
+    }
 
     @media (min-width: 760px) {
       .grid-2 { grid-template-columns: 1fr 1fr; }
@@ -788,8 +859,8 @@
       .tab-buttons { grid-template-columns: repeat(2, 1fr); }
       .final-grid { grid-template-columns: 1fr 1fr; }
       .beer-kpi-row { grid-template-columns: 1fr 1fr; }
-      .online-status { grid-template-columns: 1fr auto; }
-      .online-status button { width: auto; min-width: 230px; }
+      .online-status { grid-template-columns: 1fr minmax(170px, 230px); align-items: center; }
+      .online-status button { width: 100%; min-width: 0; }
       .history-summary-grid { grid-template-columns: 1fr 1fr; }
       .history-kpi-grid { grid-template-columns: repeat(2, 1fr); }
       .modal-actions { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
@@ -829,7 +900,7 @@
           <button id="menuBtn" class="menu-btn" aria-label="Menü öffnen">☰</button>
           <div class="header-copy">
             <div class="header-title-row">
-              <h1>Knobelclubrunde 1.0 – Admin</h1>
+              <h1>Knobelclubrunde 1.0</h1>
               <button id="helpBtn" class="help-btn" aria-label="Hilfe öffnen">?</button>
               <button id="agbBtn" class="help-btn" aria-label="AGB öffnen">§</button>
             </div>
@@ -844,16 +915,18 @@
         <div id="topGameName" class="top-title">Keine offene Partie</div>
         <div id="topGameMeta" class="section-subtitle">Knobelpartie mit Datum und Uhrzeit erscheint hier automatisch.</div>
       </div>
+      <div id="onlineStatusBox" class="online-status offline" style="margin-top: 10px;">
+        <div class="online-status-copy">
+          <div id="onlineStatusTitle" class="online-status-title">Status: Online-Spielstand: Offline</div>
+          <div id="onlineStatusMeta" class="section-subtitle">Knobelrunde noch nicht verbunden.</div>
+        </div>
+        <div class="admin-online-actions">
+          <button id="onlineSetupBtn" class="danger online-main-toggle">Online verbinden</button>
+        </div>
+      </div>
       <div class="control-buttons" style="margin-top: 12px;">
         <button id="finishRoundBtn" class="danger" disabled>Spielrunde beenden</button>
         <button id="newGameBtn" class="primary">Neue Partie anlegen</button>
-      </div>
-      <div id="onlineStatusBox" class="online-status" style="margin-top: 12px;">
-        <div class="online-status-copy">
-          <div id="onlineStatusTitle" class="online-status-title">Online-Spielstand: Aus</div>
-          <div id="onlineStatusMeta" class="section-subtitle">Lokal gespeichert. Für Live-Anzeige Firebase verbinden.</div>
-        </div>
-        <button id="onlineSetupBtn" class="info">Online-Spielstand verbinden</button>
       </div>
     </section>
 
@@ -938,8 +1011,20 @@
       <div class="drawer-section-label">Werkzeuge</div>
       <nav>
         <button id="drawerOnlineBtn">
-          <span class="menu-title">Online-Spielstand</span>
-          <span class="menu-subtitle">Firebase-Live-Spielstand verbinden, trennen oder den lokalen Stand hochladen.</span>
+          <span class="menu-title">Aktuellen Stand Online aktualisieren</span>
+          <span class="menu-subtitle">Den aktuellen lokalen Spielstand in die verbundene Online-Runde hochladen.</span>
+        </button>
+        <button id="drawerSwitchOnlineBtn">
+          <span class="menu-title">Andere Onlinepartie öffnen</span>
+          <span class="menu-subtitle">Eine andere Knobelrunde per Runden-Code laden oder neu vorbereiten.</span>
+        </button>
+        <button id="drawerDisconnectOnlineBtn">
+          <span class="menu-title">Online trennen</span>
+          <span class="menu-subtitle">Diese Admin-Seite von der aktuellen Online-Runde trennen.</span>
+        </button>
+        <button id="drawerArchiveBtn">
+          <span class="menu-title">Online-Archiv öffnen</span>
+          <span class="menu-subtitle">Beendete Partien dieser Knobelrunde aus Firebase laden oder herunterladen.</span>
         </button>
         <button id="drawerImportBtn">
           <span class="menu-title">Spielstand laden</span>
@@ -976,9 +1061,6 @@
   <script>
     const STORAGE_KEY = 'knobeln-strafpunkte-v5';
     const ONLINE_SETTINGS_KEY = 'knobelklub-online-settings-v1';
-    const APP_MODE = 'admin';
-    const VIEW_ONLY_MODE = APP_MODE === 'viewer';
-
 
     /*
       FIREBASE EINBAU:
@@ -1020,11 +1102,18 @@
     const MAX_ROUNDS_PER_SESSION = 3;
     const MAX_UNDO = 3;
     const MAX_FAVORITES = 12;
-    const CASH_PENALTY_VALUE_CENTS = 50;
-    // 0 = unbegrenzt, sonst nach X Vergehen sperren.
-    const CASH_PENALTY_BUTTON_LIMIT = 3;
+    // Strafkassen-Regel zentral pflegen:
+    // 1. Vergehen frei, 2. Vergehen = 1 Coin, danach Buttons sperren.
+    // Zum Ändern später nur diese Werte anfassen.
+    const CASH_PENALTY_RULES = {
+      freeViolations: 1,
+      paidViolationCoins: 1,
+      maxViolationsBeforeLock: 2,
+      coinValueCents: 100
+    };
+    // 0 = unbegrenzt, sonst nach X Strafkassen-Vergehen sperren.
+    const CASH_PENALTY_BUTTON_LIMIT = CASH_PENALTY_RULES.maxViolationsBeforeLock;
     const CASH_PENALTY_TYPES = {
-      lust: { label: 'Lust-Knobeln', shortLabel: 'Lust-Knobeln' },
       cashfault: { label: 'Strafkasse', shortLabel: 'Strafkasse' }
     };
 
@@ -1060,7 +1149,7 @@
 
     const state = loadState();
     const onlineSettings = loadOnlineSettings();
-    prepareOnlineSettingsForMode();
+    prepareAdminOnlineSettingsFromUrl();
     const onlineRuntime = {
       sdk: null,
       app: null,
@@ -1086,6 +1175,9 @@
       drawerBackdrop: document.getElementById('drawerBackdrop'),
       importInput: document.getElementById('importInput'),
       drawerOnlineBtn: document.getElementById('drawerOnlineBtn'),
+      drawerSwitchOnlineBtn: document.getElementById('drawerSwitchOnlineBtn'),
+      drawerDisconnectOnlineBtn: document.getElementById('drawerDisconnectOnlineBtn'),
+      drawerArchiveBtn: document.getElementById('drawerArchiveBtn'),
       drawerImportBtn: document.getElementById('drawerImportBtn'),
       drawerExportBtn: document.getElementById('drawerExportBtn'),
       drawerCleanStartBtn: document.getElementById('drawerCleanStartBtn'),
@@ -1118,10 +1210,10 @@
       toast: document.getElementById('toast')
     };
 
-    applyAppModeUi();
     bindEvents();
     render();
     autoStartOnlineSync();
+    maybeShowAdminWelcomeDialog();
 
     function getUrlGameId() {
       try {
@@ -1132,35 +1224,37 @@
       }
     }
 
-    function prepareOnlineSettingsForMode() {
-      const urlGameId = getUrlGameId();
-      if (urlGameId) onlineSettings.gameId = sanitizeOnlineGameId(urlGameId);
-      if (VIEW_ONLY_MODE) {
-        onlineSettings.enabled = true;
-        if (!onlineSettings.gameId) onlineSettings.gameId = 'knobelklub-live';
-        if (!onlineSettings.deviceName) onlineSettings.deviceName = 'Zuschauer';
-        saveOnlineSettings();
-      }
+    function generateSuggestedRoundCode() {
+      const now = new Date();
+      const pad = (value) => String(value).padStart(2, '0');
+      const datePart = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+      const timePart = `${pad(now.getHours())}${pad(now.getMinutes())}`;
+      return `knobeln-${datePart}-${timePart}`;
     }
 
-    function applyAppModeUi() {
-      document.body.classList.toggle('viewer-mode', VIEW_ONLY_MODE);
-      if (VIEW_ONLY_MODE) {
-        if (el.finishRoundBtn) el.finishRoundBtn.classList.add('hidden');
-        if (el.newGameBtn) el.newGameBtn.classList.add('hidden');
-        if (el.drawerImportBtn) el.drawerImportBtn.classList.add('hidden');
-        if (el.drawerExportBtn) el.drawerExportBtn.classList.add('hidden');
-        if (el.drawerCleanStartBtn) el.drawerCleanStartBtn.classList.add('hidden');
-        if (el.onlineSetupBtn) el.onlineSetupBtn.textContent = 'Zuschauer-Stand verbinden';
-        const playerSubtitle = document.querySelector('#playersSection .section-subtitle');
-        if (playerSubtitle) playerSubtitle.textContent = 'Reine Zuschaueransicht: Der Stand wird live aus Firebase geladen. Änderungen sind hier nicht möglich.';
-        const drawerHero = document.querySelector('.drawer-hero .section-subtitle');
-        if (drawerHero) drawerHero.textContent = 'Diese Ansicht ist nur zum Zuschauen. Spielaktionen laufen über die Admin-Seite.';
-        const drawerLabel = document.querySelector('.drawer-section-label');
-        if (drawerLabel) drawerLabel.textContent = 'Live-Anzeige';
-        const foot = document.querySelector('.drawer-footnote');
-        if (foot) foot.textContent = 'Tipp: Teile diesen Zuschauer-Link in der Runde. Den Admin-Link behält nur der Spielleiter.';
-      }
+    function prepareAdminOnlineSettingsFromUrl() {
+      const urlGameId = getUrlGameId();
+      if (!urlGameId) return;
+      onlineSettings.enabled = true;
+      onlineSettings.gameId = sanitizeOnlineGameId(urlGameId);
+      if (!onlineSettings.deviceName) onlineSettings.deviceName = 'Admin';
+      onlineSettings.lastKnownUpdatedAt = 0;
+      saveOnlineSettings();
+    }
+
+    async function maybeShowAdminWelcomeDialog() {
+      if (onlineSettings.enabled) return;
+      if (!isFirebaseConfigured()) return;
+      const suggestedCode = generateSuggestedRoundCode();
+      const gameIdInput = await showInputDialog({
+        title: 'Knobelrunde vorbereiten',
+        message: 'Gib zuerst einen Runden-Code ein. Du kannst den vorgeschlagenen Code direkt verwenden oder ändern.',
+        placeholder: suggestedCode,
+        defaultValue: suggestedCode,
+        confirmLabel: 'Runden-Code verwenden'
+      });
+      if (!gameIdInput) return;
+      await connectAdminRoundFromCode(gameIdInput, { initialPrompt: true });
     }
 
     function createDefaultState() {
@@ -1512,14 +1606,11 @@
 
     function saveState(showMessage = false) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      if (!VIEW_ONLY_MODE && !onlineRuntime.applyingRemote) {
+      if (!onlineRuntime.applyingRemote) {
         onlineRuntime.localDirty = true;
         scheduleOnlineSave();
       }
-      if (showMessage) {
-        if (VIEW_ONLY_MODE) showToast('Zuschaueransicht: Änderungen sind hier gesperrt.');
-        else showToast(onlineSettings.enabled ? 'Lokal gespeichert, Online-Abgleich läuft.' : 'Gespeichert.');
-      }
+      if (showMessage) showToast(onlineSettings.enabled ? 'Lokal gespeichert, Online-Abgleich läuft.' : 'Gespeichert.');
     }
 
     function bindEvents() {
@@ -1528,7 +1619,10 @@
       el.agbBtn.addEventListener('click', openAgbDialog);
       el.closeDrawerBtn.addEventListener('click', closeDrawer);
       el.drawerBackdrop.addEventListener('click', closeDrawer);
-      el.drawerOnlineBtn.addEventListener('click', () => { closeDrawer(); openOnlineMenu(); });
+      el.drawerOnlineBtn.addEventListener('click', async () => { closeDrawer(); await updateCurrentOnlineState(); });
+      if (el.drawerSwitchOnlineBtn) el.drawerSwitchOnlineBtn.addEventListener('click', async () => { closeDrawer(); await openDifferentOnlineRound(); });
+      if (el.drawerDisconnectOnlineBtn) el.drawerDisconnectOnlineBtn.addEventListener('click', () => { closeDrawer(); stopOnlineSync(); });
+      if (el.drawerArchiveBtn) el.drawerArchiveBtn.addEventListener('click', () => { closeDrawer(); openOnlineArchiveDialog(); });
       el.onlineSetupBtn.addEventListener('click', openOnlineMenu);
       el.drawerImportBtn.addEventListener('click', () => { closeDrawer(); el.importInput.click(); });
       el.drawerExportBtn.addEventListener('click', () => { closeDrawer(); exportBackup(); });
@@ -1606,7 +1700,6 @@
     }
 
     function scheduleOnlineSave() {
-      if (VIEW_ONLY_MODE) return;
       if (!onlineSettings.enabled) return;
       window.clearTimeout(onlineSaveTimer);
       onlineSaveTimer = window.setTimeout(() => {
@@ -1620,7 +1713,6 @@
     }
 
     async function writeOnlineState() {
-      if (VIEW_ONLY_MODE) return;
       if (!onlineSettings.enabled) return;
       const db = await initFirebaseOnline();
       const sdk = await loadFirebaseSdk();
@@ -1742,11 +1834,82 @@
       showToast('Online-Spielstand getrennt.');
     }
 
-    async function autoStartOnlineSync() {
-      if (VIEW_ONLY_MODE && !onlineSettings.enabled) {
-        onlineSettings.enabled = true;
-        saveOnlineSettings();
+    async function readOnlinePayloadOnce() {
+      const db = await initFirebaseOnline();
+      const sdk = await loadFirebaseSdk();
+      const snapshot = await sdk.get(sdk.ref(db, getOnlineGamePath()));
+      return snapshot.val();
+    }
+
+    function resetCurrentLocalRoundForOnlineCode() {
+      state.currentSession = null;
+      state.actionAudit = [];
+      state.ui = { ...(state.ui || {}), openTab: null };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      render();
+    }
+
+    async function connectAdminRoundFromCode(gameIdInput, options = {}) {
+      const sanitized = sanitizeOnlineGameId(gameIdInput);
+      onlineSettings.enabled = true;
+      onlineSettings.gameId = sanitized;
+      if (!onlineSettings.deviceName) onlineSettings.deviceName = 'Admin';
+      onlineSettings.lastKnownUpdatedAt = 0;
+      saveOnlineSettings();
+
+      let existingPayload = null;
+      try {
+        existingPayload = await readOnlinePayloadOnce();
+      } catch (error) {
+        onlineRuntime.error = error && error.message ? error.message : 'Online-Runde konnte nicht geprüft werden.';
+        renderOnlineStatus();
+        showToast(onlineRuntime.error);
+        return;
       }
+
+      if (existingPayload && existingPayload.state) {
+        const answer = await showDialog({
+          title: 'Runden-Code ist bereits vorhanden',
+          message: `Unter dem Code ${sanitized} liegt bereits ein Online-Spielstand. Bestehende Codes können nicht überschrieben werden.`,
+          actions: [
+            { label: 'Bestehende Runde laden', value: 'load', className: 'info' },
+            { label: 'Anderen Code eingeben', value: 'again' },
+            { label: 'Offline abbrechen', value: 'cancel' }
+          ]
+        });
+
+        if (answer === 'load') {
+          applyRemoteState(existingPayload.state, {
+            updatedAt: Number(existingPayload.updatedAt || 0),
+            updatedBy: existingPayload.updatedBy || ''
+          });
+          await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: false });
+          showToast(`Online-Runde ${sanitized} geladen.`);
+          return;
+        }
+
+        if (answer === 'again') {
+          onlineSettings.enabled = false;
+          saveOnlineSettings();
+          renderOnlineStatus();
+          await openDifferentOnlineRound();
+          return;
+        }
+
+        onlineSettings.enabled = false;
+        saveOnlineSettings();
+        renderOnlineStatus();
+        return;
+      }
+
+      // Neuer Code: lokal auf sauber setzen und leeren Startstand reservieren.
+      resetCurrentLocalRoundForOnlineCode();
+      await writeOnlineState();
+      await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: false });
+      showToast(`Online-Runde ${sanitized} vorbereitet.`);
+    }
+
+    async function autoStartOnlineSync() {
       if (!onlineSettings.enabled) {
         renderOnlineStatus();
         return;
@@ -1756,7 +1919,7 @@
         renderOnlineStatus();
         return;
       }
-      await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: VIEW_ONLY_MODE });
+      await startOnlineSync({ uploadLocalIfEmpty: false });
     }
 
     async function openOnlineMenu() {
@@ -1771,168 +1934,144 @@
         return;
       }
 
-
-      if (VIEW_ONLY_MODE) {
-        await openViewerOnlineMenu();
+      if (!onlineSettings.enabled) {
+        await openDifferentOnlineRound();
         return;
       }
 
-      if (onlineSettings.enabled) {
-        const answer = await showDialog({
-          title: 'Online-Spielstand',
-          message: `Aktuelle Online-Runde: ${sanitizeOnlineGameId(onlineSettings.gameId)}. Was möchtest du tun?`,
-          actions: [
-            { label: 'Lokalen Stand jetzt hochladen', value: 'upload', className: 'primary' },
-            { label: 'Neu verbinden / andere Runde', value: 'setup', className: 'info' },
-            { label: 'Online trennen', value: 'disconnect', className: 'warn' },
-            { label: 'Abbrechen', value: 'cancel' }
-          ]
-        });
-        if (answer === 'upload') {
-          await writeOnlineState();
-          showToast('Lokaler Stand online hochgeladen.');
-        } else if (answer === 'setup') {
-          await setupOnlineSync();
-        } else if (answer === 'disconnect') {
-          stopOnlineSync();
-        }
-        return;
-      }
-
-      await setupOnlineSync();
-    }
-
-    async function openViewerOnlineMenu() {
       const answer = await showDialog({
-        title: 'Zuschauer-Live-Stand',
-        message: `Diese Seite lädt nur den Spielstand der Runde ${sanitizeOnlineGameId(onlineSettings.gameId)}. Änderungen sind hier gesperrt.`,
+        title: 'Online verwalten',
+        message: `Aktuelle Online-Runde: ${sanitizeOnlineGameId(onlineSettings.gameId)}.`,
         actions: [
-          { label: 'Neu verbinden / andere Runde', value: 'setup', className: 'info' },
-          { label: 'Online trennen', value: 'disconnect', className: 'warn' },
+          { label: 'Aktuellen Stand Online aktualisieren', value: 'upload', className: 'primary' },
+          { label: 'Fan-Link anzeigen/kopieren', value: 'fanlink', className: 'info' },
           { label: 'Abbrechen', value: 'cancel' }
         ]
       });
-      if (answer === 'setup') {
-        await setupViewerOnlineSync();
-      } else if (answer === 'disconnect') {
-        stopOnlineSync();
+      if (answer === 'upload') {
+        await updateCurrentOnlineState();
+      } else if (answer === 'fanlink') {
+        await openFanLinkDialog();
       }
     }
 
-    async function setupViewerOnlineSync() {
+    async function updateCurrentOnlineState() {
+      if (!isFirebaseConfigured()) {
+        showToast('Firebase-Konfiguration fehlt.');
+        return;
+      }
+      if (!onlineSettings.enabled) {
+        await openDifferentOnlineRound();
+        return;
+      }
+      await writeOnlineState();
+      showToast('Aktueller Stand wurde online aktualisiert.');
+    }
+
+    async function openDifferentOnlineRound() {
+      if (!isFirebaseConfigured()) {
+        showToast('Firebase-Konfiguration fehlt.');
+        return;
+      }
+      const suggestedCode = generateSuggestedRoundCode();
       const gameIdInput = await showInputDialog({
-        title: 'Zuschauer-Stand verbinden',
-        message: 'Gib den Runden-Code ein. Zuschauer sehen denselben Stand wie die Admin-Seite, können aber nichts ändern.',
-        placeholder: onlineSettings.gameId || 'knobelklub-live',
-        confirmLabel: 'Live-Stand laden'
+        title: 'Andere Onlinepartie öffnen',
+        message: 'Gib einen Runden-Code ein. Bestehende Codes werden geladen, neue Codes werden sauber vorbereitet.',
+        placeholder: suggestedCode,
+        defaultValue: suggestedCode,
+        confirmLabel: 'Runden-Code öffnen'
       });
       if (!gameIdInput) return;
-
-      onlineSettings.enabled = true;
-      onlineSettings.gameId = sanitizeOnlineGameId(gameIdInput);
-      onlineSettings.deviceName = 'Zuschauer';
-      saveOnlineSettings();
-      await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: true });
-      showToast('Zuschauer-Live-Stand verbunden.');
+      if (onlineRuntime.unsubscribe) {
+        onlineRuntime.unsubscribe();
+        onlineRuntime.unsubscribe = null;
+      }
+      onlineRuntime.listening = false;
+      onlineRuntime.connected = false;
+      onlineRuntime.localDirty = false;
+      await connectAdminRoundFromCode(gameIdInput, { initialPrompt: false });
     }
 
     async function setupOnlineSync() {
-      const gameIdInput = await showInputDialog({
-        title: 'Online-Spielstand verbinden',
-        message: 'Gib einen Runden-Code ein. Alle Geräte mit demselben Code sehen denselben Spielstand.',
-        placeholder: onlineSettings.gameId || 'knobelklub-live',
-        confirmLabel: 'Weiter'
-      });
-      if (!gameIdInput) return;
-
-      const deviceInput = await showInputDialog({
-        title: 'Gerätename',
-        message: 'Dieser Name erscheint nur intern als Hinweis, wer zuletzt gespeichert hat.',
-        placeholder: onlineSettings.deviceName || 'Saschas Handy',
-        confirmLabel: 'Verbinden'
-      });
-
-      onlineSettings.enabled = true;
-      onlineSettings.gameId = sanitizeOnlineGameId(gameIdInput);
-      onlineSettings.deviceName = String(deviceInput || onlineSettings.deviceName || 'Unbekanntes Gerät').trim();
-      saveOnlineSettings();
-
-      const upload = await showDialog({
-        title: 'Startzustand wählen',
-        message: 'Soll dieser lokale Stand jetzt als Online-Spielstand gesetzt werden? Wenn bereits ein Online-Spiel existiert, wird es dadurch überschrieben.',
-        actions: [
-          { label: 'Ja, lokalen Stand hochladen', value: 'upload', className: 'primary' },
-          { label: 'Nein, Online-Stand laden', value: 'load', className: 'info' },
-          { label: 'Abbrechen', value: 'cancel' }
-        ]
-      });
-
-      if (upload === 'cancel') {
-        onlineSettings.enabled = false;
-        saveOnlineSettings();
-        renderOnlineStatus();
-        return;
-      }
-
-      if (upload === 'upload') {
-        // Erst den lokalen Stand hochladen, dann den Live-Listener starten.
-        // Sonst kann ein alter Online-Snapshot den lokalen Spielstand direkt wieder überschreiben.
-        await writeOnlineState();
-        await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: false });
-      } else {
-        await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: true });
-      }
-      showToast('Online-Spielstand verbunden.');
+      await openDifferentOnlineRound();
     }
 
     function renderOnlineStatus() {
       if (!el.onlineStatusBox) return;
       const configured = isFirebaseConfigured();
-      el.onlineStatusBox.classList.toggle('connected', onlineSettings.enabled && onlineRuntime.connected && !onlineRuntime.error);
+      const isOnline = Boolean(onlineSettings.enabled && onlineRuntime.connected && !onlineRuntime.error);
+      const hasRound = Boolean(sanitizeOnlineGameId(onlineSettings.gameId || ''));
+
+      el.onlineStatusBox.classList.toggle('connected', isOnline);
+      el.onlineStatusBox.classList.toggle('offline', !isOnline && !onlineRuntime.error);
       el.onlineStatusBox.classList.toggle('error', Boolean(onlineRuntime.error));
 
       if (!configured) {
-        el.onlineStatusTitle.textContent = 'Online-Spielstand: Firebase fehlt';
-        el.onlineStatusMeta.textContent = 'Trage FIREBASE_CONFIG und databaseURL im Code ein.';
+        el.onlineStatusTitle.textContent = 'Status: Online-Spielstand: Firebase fehlt';
+        el.onlineStatusMeta.innerHTML = 'Trage FIREBASE_CONFIG und databaseURL im Code ein.';
         el.onlineSetupBtn.textContent = 'Firebase eintragen';
-        if (el.drawerOnlineBtn) {
-          el.drawerOnlineBtn.querySelector('.menu-subtitle').textContent = 'Firebase-Konfiguration ist im Code noch nicht eingetragen.';
-        }
+        el.onlineSetupBtn.className = 'danger online-main-toggle';
+        updateDrawerOnlineLabels(false);
         return;
       }
 
       if (!onlineSettings.enabled) {
-        el.onlineStatusTitle.textContent = 'Online-Spielstand: Aus';
-        el.onlineStatusMeta.textContent = 'Lokal gespeichert. Verbinden, damit alle Geräte denselben Stand sehen.';
-        el.onlineSetupBtn.textContent = 'Online-Spielstand verbinden';
-        if (el.drawerOnlineBtn) {
-          el.drawerOnlineBtn.querySelector('.menu-subtitle').textContent = 'Firebase-Live-Spielstand verbinden, trennen oder den lokalen Stand hochladen.';
-        }
+        el.onlineStatusTitle.textContent = 'Status: Online-Spielstand: Offline';
+        el.onlineStatusMeta.innerHTML = 'Knobelrunde noch nicht verbunden.';
+        el.onlineSetupBtn.textContent = 'Online verbinden';
+        el.onlineSetupBtn.className = 'danger online-main-toggle';
+        updateDrawerOnlineLabels(false);
         return;
       }
 
       if (onlineRuntime.error) {
-        el.onlineStatusTitle.textContent = 'Online-Spielstand: Fehler';
-        el.onlineStatusMeta.textContent = onlineRuntime.error;
+        el.onlineStatusTitle.textContent = 'Status: Online-Spielstand: Fehler';
+        el.onlineStatusMeta.innerHTML = escapeHtml(onlineRuntime.error);
         el.onlineSetupBtn.textContent = 'Online prüfen';
+        el.onlineSetupBtn.className = 'danger online-main-toggle';
+        updateDrawerOnlineLabels(false);
         return;
       }
 
-      if (onlineRuntime.connecting) {
-        el.onlineStatusTitle.textContent = 'Online-Spielstand: Verbindung läuft';
-        el.onlineStatusMeta.textContent = `Runde: ${sanitizeOnlineGameId(onlineSettings.gameId)}`;
-        el.onlineSetupBtn.textContent = 'Online verwalten';
-        return;
-      }
+      const code = sanitizeOnlineGameId(onlineSettings.gameId);
+      const last = onlineRuntime.lastSyncAt ? formatTimeOnly(onlineRuntime.lastSyncAt) : '–';
+      const stateLabel = onlineRuntime.connecting ? 'Verbindung läuft' : (onlineRuntime.connected ? 'Online' : 'Bereit');
+      el.onlineStatusTitle.textContent = `Status: Online-Spielstand: ${stateLabel}`;
+      el.onlineStatusMeta.innerHTML = `
+        <div class="online-status-card">
+          <div class="online-status-row">
+            <div class="online-status-kpi">
+              <span class="label">Knobelrunde</span>
+              <span class="value">${escapeHtml(code || '–')}</span>
+            </div>
+            <div class="online-status-kpi">
+              <span class="label">Zuletzt</span>
+              <span class="value">${escapeHtml(last)}</span>
+            </div>
+          </div>
+        </div>
+      `;
+      el.onlineSetupBtn.textContent = onlineRuntime.connected ? 'Online verwalten' : 'Online verbinden';
+      el.onlineSetupBtn.className = onlineRuntime.connected ? 'primary online-main-toggle' : 'danger online-main-toggle';
+      updateDrawerOnlineLabels(Boolean(hasRound));
+    }
 
-      const last = onlineRuntime.lastSyncAt ? ` · zuletzt ${formatTimeOnly(onlineRuntime.lastSyncAt)}` : '';
-      const by = onlineRuntime.lastRemoteBy ? ` · von ${onlineRuntime.lastRemoteBy}` : '';
-      el.onlineStatusTitle.textContent = onlineRuntime.connected ? 'Online-Spielstand: Verbunden' : 'Online-Spielstand: Bereit';
-      el.onlineStatusMeta.textContent = `Runde: ${sanitizeOnlineGameId(onlineSettings.gameId)}${last}${by}`;
-      el.onlineSetupBtn.textContent = 'Online verwalten';
-
+    function updateDrawerOnlineLabels(hasRound) {
       if (el.drawerOnlineBtn) {
-        el.drawerOnlineBtn.querySelector('.menu-subtitle').textContent = `Verbunden mit Runde ${sanitizeOnlineGameId(onlineSettings.gameId)}.`;
+        const subtitle = el.drawerOnlineBtn.querySelector('.menu-subtitle');
+        if (subtitle) subtitle.textContent = hasRound
+          ? `Aktuellen Stand in Runde ${sanitizeOnlineGameId(onlineSettings.gameId)} hochladen.`
+          : 'Erst eine Online-Runde verbinden, danach kann der Stand hochgeladen werden.';
+      }
+      if (el.drawerSwitchOnlineBtn) {
+        const subtitle = el.drawerSwitchOnlineBtn.querySelector('.menu-subtitle');
+        if (subtitle) subtitle.textContent = 'Eine andere Knobelrunde per Runden-Code laden oder neu vorbereiten.';
+      }
+      if (el.drawerDisconnectOnlineBtn) {
+        const subtitle = el.drawerDisconnectOnlineBtn.querySelector('.menu-subtitle');
+        if (subtitle) subtitle.textContent = hasRound
+          ? `Verbindung zu Runde ${sanitizeOnlineGameId(onlineSettings.gameId)} trennen.`
+          : 'Aktuell ist keine Online-Runde verbunden.';
       }
     }
 
@@ -1946,7 +2085,6 @@
     }
 
     async function handleNewGameButton() {
-      if (VIEW_ONLY_MODE) { showToast('Zuschaueransicht: Neue Partien werden nur in der Admin-Seite angelegt.'); return; }
       const session = state.currentSession;
       if (!session) {
         const choice = await chooseRoundTarget();
@@ -1997,6 +2135,7 @@
       state.ui.openTab = null;
       saveState(true);
       render();
+      if (onlineSettings.enabled) window.setTimeout(() => openFanLinkDialog({ afterNewSession: true }), 120);
     }
 
     function createRoundObject(index, target, ts) {
@@ -2074,7 +2213,6 @@
     async function handlePlayerCardClick(event) {
       const button = event.target.closest('button[data-action]');
       if (!button) return;
-      if (VIEW_ONLY_MODE) { showToast('Zuschaueransicht: Einträge sind hier gesperrt.'); return; }
       const action = button.dataset.action;
       if (action === 'add-player') {
         openAddPlayerDialog();
@@ -2125,7 +2263,7 @@
       }
 
       const isCashPenaltyAction = action === 'cashfault';
-      const countsAsTurn = action === 'loss' || (action === 'lust' && isGuest);
+      const countsAsTurn = action === 'loss' || action === 'lust';
       if (countsAsTurn && session.currentRound.turnsCompleted >= session.currentRound.target) {
         showToast('Die maximale Anzahl an Durchgängen ist erreicht. Bitte die Spielrunde jetzt beenden.');
         return;
@@ -2149,33 +2287,15 @@
       }
 
       if (action === 'lust') {
-        if (isGuest) {
-          const ok = await showDialog({
-            title: 'Lustknobeln eintragen',
-            message: `Wirklich eintragen, dass ${player.name} Lustknobeln gemacht hat? Alle anderen aktiven Mitspieler bekommen dadurch 1 Freibier.`,
-            actions: [
-              { label: 'Ja, eintragen', value: 'yes', className: 'violet' },
-              { label: 'Abbrechen', value: 'no' }
-            ]
-          });
-          if (ok === 'yes') applyUndoablePlayerAction('lust', player.id);
-          return;
-        }
-
-        const activeGuests = (session.players || []).filter((item) => item.status === 'active' && getPlayerType(item) === 'guest');
-        const amountCoins = previewCashPenaltyAmountCoins(session, 'lust', player.id);
-        const guestText = activeGuests.length
-          ? ` Zusätzlich bekommen alle aktiven Gastspieler je 1 Freibier.`
-          : '';
         const ok = await showDialog({
           title: 'Lustknobeln eintragen',
-          message: `Wirklich ${player.name} Lustknobeln eintragen? Das zählt ${formatCoins(amountCoins)} für die Strafkasse.${guestText}`,
+          message: `Wirklich eintragen, dass ${player.name} Lustknobeln gemacht hat? Alle anderen aktiven Mitspieler bekommen dadurch 1 Freibier. Lustknobeln zählt wieder normal als Durchgang und geht nicht in die Strafkasse.`,
           actions: [
-            { label: 'Ja, eintragen', value: 'yes', className: 'cashpenalty' },
+            { label: 'Ja, eintragen', value: 'yes', className: 'violet' },
             { label: 'Abbrechen', value: 'no' }
           ]
         });
-        if (ok === 'yes') applyPresetLustKnobeln(player.id);
+        if (ok === 'yes') applyUndoablePlayerAction('lust', player.id);
         return;
       }
 
@@ -2193,10 +2313,14 @@
       }
 
       if (isCashPenaltyAction) {
+        const violationNo = getCashPenaltyUpcomingViolationNumber(session, player.id);
         const amountCoins = previewCashPenaltyAmountCoins(session, action, player.id);
+        const penaltyText = amountCoins > 0
+          ? `Das kostet ${formatCoins(amountCoins)} für die Strafkasse. Danach ist der Strafkassen-Button für diesen Spieler gesperrt.`
+          : `Dieses Vergehen bleibt straffrei. Beim nächsten Vergehen kostet es ${formatCoins(CASH_PENALTY_RULES.paidViolationCoins)}.`;
         const ok = await showDialog({
           title: 'Strafkasse eintragen',
-          message: `Wirklich ein Spiel-Vergehen für ${player.name} eintragen? Das zählt ${formatCoins(amountCoins)} für die Strafkasse und nicht als Durchgang.`,
+          message: `Wirklich ein Spiel-Vergehen Nr. ${violationNo} für ${player.name} eintragen? ${penaltyText} Es zählt nicht als Durchgang.`,
           actions: [
             { label: 'Ja, eintragen', value: 'yes', className: 'warn' },
             { label: 'Abbrechen', value: 'no' }
@@ -2406,7 +2530,7 @@
         actorCode: actor.code,
         actorName: actor.name,
         auditId: null,
-        label: `${actor.name} (${actor.code}) erhält ${config.label} für die Strafkasse (${formatCoins(amountCoins)}).`
+        label: amountCoins > 0 ? `${actor.name} (${actor.code}) erhält ${config.label} für die Strafkasse (${formatCoins(amountCoins)}).` : `${actor.name} (${actor.code}) erhält ${config.label}: erstes Vergehen straffrei.`
       };
 
       session.cashPenalties.push({
@@ -2652,14 +2776,16 @@
       });
 
       if (endSession || session.roundIndex >= session.maxRounds) {
+        const gameArchive = createGameArchive(session);
         state.gamesHistory = state.gamesHistory || [];
-        state.gamesHistory.unshift(createGameArchive(session));
+        state.gamesHistory.unshift(gameArchive);
         state.gamesHistory = state.gamesHistory.slice(0, MAX_HISTORY);
+        await saveOnlineGameArchive(gameArchive);
         state.currentSession = null;
         state.ui.openTab = null;
         saveState();
         render();
-        showToast('Partie beendet.');
+        showToast('Partie beendet und im Online-Archiv gesichert.');
         return;
       }
 
@@ -2840,10 +2966,6 @@
 
     function render() {
       renderOnlineStatus();
-      if (VIEW_ONLY_MODE) {
-        if (el.finishRoundBtn) el.finishRoundBtn.classList.add('hidden');
-        if (el.newGameBtn) el.newGameBtn.classList.add('hidden');
-      }
       const session = state.currentSession;
       const hasSession = Boolean(session);
       el.scoreboardSection.classList.toggle('hidden', !hasSession);
@@ -2888,28 +3010,55 @@
       const cards = players.map((player) => {
         const view = getPlayerView(session, player.id);
         const receivesChips = renderBeerReceiveChips(view.incomingOpenDetails);
-        const owesBeerLabel = renderBeerOwesLabel(view.outgoingOpenDetails.length);
-        const openFromRows = renderBeerOpenFromRows(view.incomingOpenDetails);
+        const owesBeerChips = renderBeerDebtChips(view.outgoingOpenDetails);
         const cashPenaltySummary = getCashPenaltySummary(session, player.id);
         const actionDisabled = player.status !== 'active' || session.currentRound.status !== 'open';
-        const lossDisabled = actionDisabled || session.currentRound.turnsCompleted >= session.currentRound.target;
+        const turnTargetReached = session.currentRound.turnsCompleted >= session.currentRound.target;
+        const lossDisabled = actionDisabled || turnTargetReached;
+        const lustDisabled = actionDisabled || turnTargetReached;
         const cashPenaltyLocked = isCashPenaltyLimitReached(session, player.id);
         const playerType = getPlayerType(player);
         const isGuest = playerType === 'guest';
-        const codeControl = VIEW_ONLY_MODE
-          ? `<button class="player-code-btn" disabled title="Zuschaueransicht">${escapeHtml(player.code)}</button>`
-          : `<button data-action="delete-player" data-player-id="${escapeHtml(player.id)}" class="player-code-btn" title="Für Falscheingaben löschen">${escapeHtml(player.code)}</button>`;
-        const actionControls = VIEW_ONLY_MODE ? '' : `
+        return `
+          <article class="player-card ${player.status === 'active' ? 'active' : 'exited'}">
+            <div class="player-head">
+              <div>
+                <div class="player-name">${escapeHtml(player.name)}</div>
+                <div class="tiny muted">${player.status === 'active' ? (isGuest ? 'Gastspieler aktiv' : 'aktiv') : `ausgestiegen ${formatDateTime(player.exitedAtTs)}`}</div>
+              </div>
+              <div class="player-code-stack">
+                <button data-action="delete-player" data-player-id="${escapeHtml(player.id)}" class="player-code-btn" title="Für Falscheingaben löschen">${escapeHtml(player.code)}</button>
+              </div>
+            </div>
+
+            <div class="summary-box">
+              <div class="tiny muted">Bekommt Freibier</div>
+              <div class="summary-value">${receivesChips}</div>
+            </div>
+
+            <div class="summary-box">
+              <div class="tiny muted">Schuldet Freibier</div>
+              <div class="summary-value">${owesBeerChips}</div>
+            </div>
+
+            <div class="info-rows">
+              ${isGuest ? '' : `
+              <div class="info-row">
+                <div class="muted">Summe Strafkasse</div>
+                <div>${renderCashPenaltyCompact(cashPenaltySummary)}</div>
+              </div>`}
+            </div>
+
             <div class="player-actions full-width-row">
               <button data-action="loss" data-player-id="${escapeHtml(player.id)}" class="danger full-width" ${lossDisabled ? 'disabled' : ''}>Verloren</button>
             </div>
             ${player.status === 'active' ? `
               ${isGuest ? `
               <div class="player-actions full-width-row">
-                <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="violet full-width" ${(actionDisabled || session.currentRound.turnsCompleted >= session.currentRound.target) ? 'disabled' : ''}>Lust-Knobeln</button>
+                <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="violet full-width" ${lustDisabled ? 'disabled' : ''}>Lust-Knobeln</button>
               </div>` : `
               <div class="player-actions cash-grid">
-                <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${actionDisabled ? 'disabled' : ''}>Lust-Knobeln</button>
+                <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="violet" ${lustDisabled ? 'disabled' : ''}>Lust-Knobeln</button>
                 <button data-action="cashfault" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${(actionDisabled || cashPenaltyLocked) ? 'disabled' : ''}>Strafkasse</button>
               </div>`}
               <div class="player-actions full-width-row">
@@ -2919,56 +3068,15 @@
               <div class="player-actions full-width-row">
                 <button data-action="rejoin" data-player-id="${escapeHtml(player.id)}" class="info rejoin full-width" ${session.currentRound.status !== 'open' ? 'disabled' : ''}>Wiedereinsteigen</button>
               </div>
-            `}`;
-        return `
-          <article class="player-card ${player.status === 'active' ? 'active' : 'exited'}">
-            <div class="player-head">
-              <div>
-                <div class="player-name">${escapeHtml(player.name)}</div>
-                <div class="tiny muted">${player.status === 'active' ? (isGuest ? 'Gastspieler aktiv' : 'aktiv') : `ausgestiegen ${formatDateTime(player.exitedAtTs)}`}</div>
-              </div>
-              <div class="player-code-stack">
-                ${codeControl}
-              </div>
-            </div>
-
-            <div class="summary-box">
-              <div class="tiny muted">Bekommt Freibier</div>
-              <div class="summary-value">${receivesChips}</div>
-            </div>
-
-            <div class="info-rows">
-              <div class="info-row">
-                <div class="muted">Schuldet Freibier</div>
-                <div>${owesBeerLabel}</div>
-              </div>
-              <div class="info-row">
-                <div class="muted">Offen von Mitspielern</div>
-                <div class="beer-mini-list">${openFromRows}</div>
-              </div>
-              ${isGuest ? '' : `
-              <div class="info-row">
-                <div class="muted">Summe Strafkasse</div>
-                <div>${renderCashPenaltyCompact(cashPenaltySummary)}</div>
-              </div>`}
-            </div>
-            ${actionControls}
+            `}
           </article>
         `;
       });
-      if (!VIEW_ONLY_MODE && session.players.length < MAX_PLAYERS && session.currentRound.status === 'open' && session.currentRound.turnsCompleted < session.currentRound.target) {
+      if (session.players.length < MAX_PLAYERS && session.currentRound.status === 'open' && session.currentRound.turnsCompleted < session.currentRound.target) {
         cards.push(`
           <article class="player-card add-card active">
             <button data-action="add-player" class="info">+ Spieler hinzufügen</button>
             <div class="section-subtitle">Name per Popup eingeben. Preset-Namen bleiben reserviert und gelten automatisch mit voller Logik.</div>
-          </article>
-        `);
-      }
-      if (VIEW_ONLY_MODE && !cards.length) {
-        cards.push(`
-          <article class="player-card add-card">
-            <div class="section-title">Noch keine Spieler im Live-Stand</div>
-            <div class="section-subtitle">Sobald die Admin-Seite eine Partie startet und Spieler anlegt, erscheinen sie hier automatisch.</div>
           </article>
         `);
       }
@@ -3435,6 +3543,29 @@ function groupBeerByFrom(details) {
       return grouped.map((item) => `<span class="chip ${item.kind === 'lust' ? 'lust' : 'loss'}" title="${escapeHtml(item.fromName)}">${escapeHtml(item.code)}×${item.count}</span>`).join('');
     }
 
+    function groupBeerByTo(details) {
+      const grouped = new Map();
+      for (const item of details || []) {
+        const key = item.toId || item.code || item.title;
+        const existing = grouped.get(key) || {
+          toId: item.toId || null,
+          toName: item.toName || item.title || item.code,
+          code: item.code,
+          kind: item.kind,
+          count: 0
+        };
+        existing.count += 1;
+        grouped.set(key, existing);
+      }
+      return Array.from(grouped.values()).sort((a, b) => String(a.toName).localeCompare(String(b.toName), 'de'));
+    }
+
+    function renderBeerDebtChips(details) {
+      const grouped = groupBeerByTo(details);
+      if (!grouped.length) return '<span class="empty">keins</span>';
+      return grouped.map((item) => `<span class="chip counter" title="${escapeHtml(item.toName)}">${escapeHtml(item.code)}×${item.count}</span>`).join('');
+    }
+
     function renderBeerOpenFromRows(details) {
       const grouped = groupBeerByFrom(details);
       if (!grouped.length) return '<span class="empty">keiner</span>';
@@ -3468,38 +3599,25 @@ function groupBeerByFrom(details) {
       return CASH_PENALTY_BUTTON_LIMIT > 0 && getCashPenaltyViolationCount(container, playerId) >= CASH_PENALTY_BUTTON_LIMIT;
     }
 
-    function getLustCashPenaltyCoins(totalPlayersCount) {
-      if (totalPlayersCount <= 3) return 1;
-      if (totalPlayersCount <= 5) return 2;
-      return 3;
+    function getCashPenaltyUpcomingViolationNumber(container, playerId) {
+      return getCashPenaltyViolationCount(container, playerId) + 1;
     }
 
-    function getLustCashPenaltyTotalCents(totalPlayersCount) {
-      if (totalPlayersCount <= 3) return 200;
-      if (totalPlayersCount <= 5) return 600;
-      return 800;
+    function getCashPenaltyCoinsForViolationNumber(violationNo) {
+      if (violationNo <= CASH_PENALTY_RULES.freeViolations) return 0;
+      return CASH_PENALTY_RULES.paidViolationCoins;
     }
 
     function previewCashPenaltyAmountCoins(session, type, playerId) {
-      if (type === 'lust') {
-        const activePlayersCount = Math.max(0, session.players.filter((player) => player.status === 'active').length);
-        return getLustCashPenaltyCoins(activePlayersCount);
-      }
       if (type === 'cashfault' || type === 'mattenflucht' || type === 'wuerfelflucht' || type === 'neuwuerfeln') {
-        return 1;
+        const violationNo = getCashPenaltyUpcomingViolationNumber(session, playerId);
+        return getCashPenaltyCoinsForViolationNumber(violationNo);
       }
       return 0;
     }
 
     function previewCashPenaltyAmountCents(session, type, playerId) {
-      if (type === 'lust') {
-        const activePlayersCount = Math.max(0, session.players.filter((player) => player.status === 'active').length);
-        return getLustCashPenaltyTotalCents(activePlayersCount);
-      }
-      if (type === 'cashfault' || type === 'mattenflucht' || type === 'wuerfelflucht' || type === 'neuwuerfeln') {
-        return 200;
-      }
-      return 0;
+      return previewCashPenaltyAmountCoins(session, type, playerId) * CASH_PENALTY_RULES.coinValueCents;
     }
 
     function getCashPenaltySummary(container, playerId) {
@@ -3931,6 +4049,139 @@ ${playerText}`;
       return true;
     }
 
+
+    function getFanPageUrl() {
+      const code = sanitizeOnlineGameId(onlineSettings.gameId || '');
+      const url = new URL(window.location.href);
+      const basePath = url.pathname.replace(/[^/]*$/, 'index.html');
+      url.pathname = basePath || '/index.html';
+      url.search = `?game=${encodeURIComponent(code)}`;
+      url.hash = '';
+      return url.toString();
+    }
+
+    function buildFanShareText() {
+      const code = sanitizeOnlineGameId(onlineSettings.gameId || '');
+      return [
+        'Live-Mitspieleransicht für die Knobelrunde',
+        `Runden-Code: ${code}`,
+        getFanPageUrl()
+      ].join('\n');
+    }
+
+    async function openFanLinkDialog(options = {}) {
+      if (!onlineSettings.enabled || !sanitizeOnlineGameId(onlineSettings.gameId)) {
+        showToast('Bitte zuerst eine Online-Runde verbinden.');
+        return;
+      }
+      const shareText = buildFanShareText();
+      const code = sanitizeOnlineGameId(onlineSettings.gameId);
+      const action = await showCustomDialog({
+        title: options.afterNewSession ? 'Fan-Link für diese Knobelrunde' : 'Fan-Link kopieren',
+        message: `Runden-Code: ${code}. Diesen Text kannst du in WhatsApp, Signal, Mail oder andere Wege posten.`,
+        bodyHtml: `<textarea class="share-link-box" readonly>${escapeHtml(shareText)}</textarea>`,
+        actions: [
+          { label: 'Text kopieren', value: 'copyText', className: 'primary' },
+          { label: 'Nur Link kopieren', value: 'copyLink', className: 'info' },
+          { label: 'Schließen', value: 'close' }
+        ]
+      });
+      if (action === 'copyText') {
+        const copied = await copyTextToClipboard(shareText);
+        if (!copied) await showManualCopyDialog(shareText, 'Fan-Link');
+        else showToast('Fan-Link-Text kopiert.');
+      } else if (action === 'copyLink') {
+        const copied = await copyTextToClipboard(getFanPageUrl());
+        if (!copied) await showManualCopyDialog(getFanPageUrl(), 'Fan-Link');
+        else showToast('Fan-Link kopiert.');
+      }
+    }
+
+    async function saveOnlineGameArchive(gameArchive) {
+      if (!onlineSettings.enabled || !isFirebaseConfigured() || !gameArchive) return;
+      try {
+        const db = await initFirebaseOnline();
+        const sdk = await loadFirebaseSdk();
+        const code = sanitizeOnlineGameId(onlineSettings.gameId);
+        const archiveId = gameArchive.sessionId || gameArchive.id || uid('archive');
+        const payload = {
+          schema: 'knobelklub-game-archive-v1',
+          archivedAt: Date.now(),
+          archivedBy: getOnlineDeviceName(),
+          gameId: code,
+          archive: deepClone(gameArchive)
+        };
+        await sdk.set(sdk.ref(db, `games/${code}/archive/${archiveId}`), payload);
+      } catch (error) {
+        console.error(error);
+        showToast('Online-Archiv konnte nicht gespeichert werden.');
+      }
+    }
+
+    async function readOnlineArchiveList() {
+      const db = await initFirebaseOnline();
+      const sdk = await loadFirebaseSdk();
+      const code = sanitizeOnlineGameId(onlineSettings.gameId);
+      const snapshot = await sdk.get(sdk.ref(db, `games/${code}/archive`));
+      return snapshot.val() || {};
+    }
+
+    async function openOnlineArchiveDialog() {
+      if (!onlineSettings.enabled) {
+        showToast('Bitte zuerst eine Online-Runde verbinden.');
+        return;
+      }
+      let archiveMap = {};
+      try {
+        archiveMap = await readOnlineArchiveList();
+      } catch (error) {
+        console.error(error);
+        showToast('Online-Archiv konnte nicht geladen werden.');
+        return;
+      }
+      const entries = Object.values(archiveMap)
+        .filter((item) => item && item.archive)
+        .sort((a, b) => Number(b.archivedAt || 0) - Number(a.archivedAt || 0));
+      if (!entries.length) {
+        showToast('Für diese Knobelrunde ist noch kein Online-Archiv vorhanden.');
+        return;
+      }
+      const selected = await showDialog({
+        title: 'Online-Archiv öffnen',
+        message: `Gespeicherte Partien für Runde ${sanitizeOnlineGameId(onlineSettings.gameId)}.`,
+        actions: [
+          ...entries.slice(0, 5).map((item, index) => ({
+            label: `${formatDateTime(item.archive.finishedAt || item.archive.createdAt)} · ${item.archive.title || 'Knobelpartie'}`,
+            value: item,
+            className: index === 0 ? 'primary' : 'info'
+          })),
+          { label: 'Abbrechen', value: null }
+        ]
+      });
+      if (!selected) return;
+      const archive = selected.archive;
+      const next = await showDialog({
+        title: 'Archiv-Aktion',
+        message: `${archive.title || 'Knobelpartie'} öffnen oder als JSON herunterladen?`,
+        actions: [
+          { label: 'In Historie öffnen', value: 'open', className: 'primary' },
+          { label: 'JSON herunterladen', value: 'download', className: 'info' },
+          { label: 'Abbrechen', value: 'cancel' }
+        ]
+      });
+      if (next === 'download') {
+        downloadTextFile(`knobel-archiv-${sanitizeOnlineGameId(onlineSettings.gameId)}.json`, JSON.stringify(archive, null, 2), 'application/json');
+      } else if (next === 'open') {
+        state.currentSession = null;
+        state.gamesHistory = [deepClone(archive), ...(state.gamesHistory || []).filter((item) => item.sessionId !== archive.sessionId)].slice(0, MAX_HISTORY);
+        state.actionAudit = [];
+        state.ui.openTab = 'history';
+        saveState(true);
+        render();
+        showToast('Archiv in der Historie geöffnet.');
+      }
+    }
+
     function exportBackup(prefix = 'knobeln-backup') {
       const data = JSON.stringify(state, null, 2);
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
@@ -4037,7 +4288,7 @@ ${playerText}`;
       });
     }
 
-    function showInputDialog({ title, message, placeholder, confirmLabel }) {
+    function showInputDialog({ title, message, placeholder, defaultValue, confirmLabel }) {
       return new Promise((resolve) => {
         el.modalTitle.textContent = title;
         el.modalMessage.textContent = message;
@@ -4046,6 +4297,7 @@ ${playerText}`;
         input.type = 'text';
         input.maxLength = 40;
         input.placeholder = placeholder || '';
+        input.value = defaultValue || '';
         el.modalBody.innerHTML = '';
         el.modalBody.appendChild(input);
 
