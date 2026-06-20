@@ -1160,6 +1160,7 @@
       listening: false,
       applyingRemote: false,
       localDirty: false,
+      syncToken: 0,
       lastSyncAt: null,
       lastRemoteBy: '',
       error: ''
@@ -1682,7 +1683,13 @@
       if (!isFirebaseConfigured()) {
         throw new Error('Firebase-Konfiguration fehlt. Bitte FIREBASE_CONFIG und databaseURL im Code eintragen.');
       }
-      if (onlineRuntime.db) return onlineRuntime.db;
+      if (onlineRuntime.db) {
+        onlineRuntime.connecting = false;
+        onlineRuntime.connected = Boolean(onlineSettings.enabled);
+        onlineRuntime.error = '';
+        renderOnlineStatus();
+        return onlineRuntime.db;
+      }
       onlineRuntime.connecting = true;
       onlineRuntime.error = '';
       renderOnlineStatus();
@@ -1735,9 +1742,15 @@
 
     async function startOnlineSync(options = {}) {
       if (!onlineSettings.enabled) return;
+      const syncToken = ++onlineRuntime.syncToken;
+      const syncGameId = sanitizeOnlineGameId(onlineSettings.gameId);
       try {
         const db = await initFirebaseOnline();
         const sdk = await loadFirebaseSdk();
+
+        if (syncToken !== onlineRuntime.syncToken || !onlineSettings.enabled || sanitizeOnlineGameId(onlineSettings.gameId) !== syncGameId) {
+          return;
+        }
 
         if (onlineRuntime.unsubscribe) {
           onlineRuntime.unsubscribe();
@@ -1751,6 +1764,10 @@
 
         let firstSnapshot = true;
         onlineRuntime.unsubscribe = sdk.onValue(gameRef, async (snapshot) => {
+          if (syncToken !== onlineRuntime.syncToken || !onlineSettings.enabled || sanitizeOnlineGameId(onlineSettings.gameId) !== syncGameId) {
+            return;
+          }
+
           const payload = snapshot.val();
           if (!payload || !payload.state) {
             if (firstSnapshot && options.uploadLocalIfEmpty) {
@@ -1766,7 +1783,8 @@
           const isKnownOrOlder = Boolean(remoteUpdatedAt && localKnown && remoteUpdatedAt <= localKnown);
 
           // Wichtig: Alte Firebase-Snapshots dürfen lokale Spielaktionen nicht zurückdrehen.
-          // Das war der Hauptgrund, warum Spieler/Einträge nach dem Verbinden wieder verschwinden konnten.
+          // Zusätzlich schützt syncToken davor, dass ein alter Listener nach Online-Trennen
+          // oder Rundenwechsel noch einen alten Stand in die Adminseite zurückschreibt.
           if (!forceFirstLoad && (isKnownOrOlder || onlineRuntime.localDirty)) {
             firstSnapshot = false;
             onlineRuntime.connected = true;
@@ -1780,16 +1798,21 @@
 
           applyRemoteState(payload.state, {
             updatedAt: remoteUpdatedAt,
-            updatedBy: payload.updatedBy || ''
+            updatedBy: payload.updatedBy || '',
+            gameId: syncGameId
           });
           firstSnapshot = false;
         }, (error) => {
+          if (syncToken !== onlineRuntime.syncToken || !onlineSettings.enabled || sanitizeOnlineGameId(onlineSettings.gameId) !== syncGameId) {
+            return;
+          }
           onlineRuntime.error = error && error.message ? error.message : 'Online-Lesen fehlgeschlagen.';
           onlineRuntime.connected = false;
           renderOnlineStatus();
           console.error(error);
         });
       } catch (error) {
+        if (syncToken !== onlineRuntime.syncToken) return;
         onlineRuntime.error = error && error.message ? error.message : 'Online-Verbindung fehlgeschlagen.';
         onlineRuntime.connected = false;
         onlineRuntime.connecting = false;
@@ -1799,7 +1822,10 @@
       }
     }
 
-    function applyRemoteState(remoteState, meta = {}) {
+        function applyRemoteState(remoteState, meta = {}) {
+      if (meta.gameId && sanitizeOnlineGameId(onlineSettings.gameId) !== sanitizeOnlineGameId(meta.gameId)) {
+        return;
+      }
       const migrated = migrateState(remoteState);
       onlineRuntime.applyingRemote = true;
       state.currentSession = migrated.currentSession;
@@ -1811,7 +1837,12 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       onlineRuntime.applyingRemote = false;
 
-      onlineRuntime.connected = true;
+      onlineRuntime.connected = Boolean(onlineSettings.enabled);
+      onlineRuntime.localDirty = false;
+      if (meta.updatedAt) {
+        onlineSettings.lastKnownUpdatedAt = Math.max(Number(onlineSettings.lastKnownUpdatedAt || 0), Number(meta.updatedAt || 0));
+        saveOnlineSettings();
+      }
       onlineRuntime.error = '';
       onlineRuntime.lastSyncAt = meta.updatedAt ? new Date(meta.updatedAt).toISOString() : new Date().toISOString();
       onlineRuntime.lastRemoteBy = meta.updatedBy || '';
@@ -1819,6 +1850,7 @@
     }
 
     function stopOnlineSync() {
+      onlineRuntime.syncToken += 1;
       if (onlineRuntime.unsubscribe) {
         onlineRuntime.unsubscribe();
         onlineRuntime.unsubscribe = null;
@@ -1829,12 +1861,13 @@
       onlineRuntime.connected = false;
       onlineRuntime.localDirty = false;
       onlineRuntime.connecting = false;
+      onlineRuntime.applyingRemote = false;
       onlineRuntime.error = '';
-      renderOnlineStatus();
+      render();
       showToast('Online-Spielstand getrennt.');
     }
 
-    async function readOnlinePayloadOnce() {
+        async function readOnlinePayloadOnce() {
       const db = await initFirebaseOnline();
       const sdk = await loadFirebaseSdk();
       const snapshot = await sdk.get(sdk.ref(db, getOnlineGamePath()));
@@ -1881,7 +1914,8 @@
         if (answer === 'load') {
           applyRemoteState(existingPayload.state, {
             updatedAt: Number(existingPayload.updatedAt || 0),
-            updatedBy: existingPayload.updatedBy || ''
+            updatedBy: existingPayload.updatedBy || '',
+            gameId: sanitized
           });
           await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: false });
           showToast(`Online-Runde ${sanitized} geladen.`);
@@ -1889,15 +1923,27 @@
         }
 
         if (answer === 'again') {
+          onlineRuntime.syncToken += 1;
           onlineSettings.enabled = false;
           saveOnlineSettings();
+          onlineRuntime.listening = false;
+          onlineRuntime.connected = false;
+          onlineRuntime.connecting = false;
+          onlineRuntime.localDirty = false;
+          onlineRuntime.error = '';
           renderOnlineStatus();
           await openDifferentOnlineRound();
           return;
         }
 
+        onlineRuntime.syncToken += 1;
         onlineSettings.enabled = false;
         saveOnlineSettings();
+        onlineRuntime.listening = false;
+        onlineRuntime.connected = false;
+        onlineRuntime.connecting = false;
+        onlineRuntime.localDirty = false;
+        onlineRuntime.error = '';
         renderOnlineStatus();
         return;
       }
@@ -1982,13 +2028,17 @@
         confirmLabel: 'Runden-Code öffnen'
       });
       if (!gameIdInput) return;
+      onlineRuntime.syncToken += 1;
       if (onlineRuntime.unsubscribe) {
         onlineRuntime.unsubscribe();
         onlineRuntime.unsubscribe = null;
       }
       onlineRuntime.listening = false;
       onlineRuntime.connected = false;
+      onlineRuntime.connecting = false;
       onlineRuntime.localDirty = false;
+      onlineRuntime.applyingRemote = false;
+      onlineRuntime.error = '';
       await connectAdminRoundFromCode(gameIdInput, { initialPrompt: false });
     }
 
