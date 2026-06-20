@@ -1279,19 +1279,155 @@
       saveOnlineSettings();
     }
 
-    async function maybeShowAdminWelcomeDialog() {
-      if (onlineSettings.enabled) return;
-      if (!isFirebaseConfigured()) return;
-      const suggestedCode = generateSuggestedRoundCode();
-      const gameIdInput = await showInputDialog({
-        title: 'Knobelrunde vorbereiten',
-        message: 'Gib zuerst einen Runden-Code ein. Du kannst den vorgeschlagenen Code direkt verwenden oder ändern.',
-        placeholder: suggestedCode,
-        defaultValue: suggestedCode,
-        confirmLabel: 'Runden-Code verwenden'
+    function shouldShowAdminWelcomePicker() {
+      if (!isFirebaseConfigured()) return false;
+      if (getUrlGameId()) return false;
+      // Bei einer laufenden oder zwischen Runden stehenden lokalen Partie nicht stören.
+      // Wenn keine offene Partie mehr vorhanden ist, soll der Admin beim Start/Reload bewusst eine Runde wählen.
+      if (state.currentSession) return false;
+      return true;
+    }
+
+    function getTodayRoundCodePrefix(date = new Date()) {
+      const pad = (value) => String(value).padStart(2, '0');
+      return `knobeln-${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
+    }
+
+    async function readTodaysOnlineGames() {
+      if (!isFirebaseConfigured()) return { games: [], error: '' };
+      try {
+        const db = await initFirebaseOnline();
+        const sdk = await loadFirebaseSdk();
+        const todayPrefix = getTodayRoundCodePrefix();
+        const snapshot = await sdk.get(sdk.ref(db, 'games'));
+        const map = snapshot.val() || {};
+        const games = Object.entries(map)
+          .map(([rawCode, value]) => {
+            const code = sanitizeOnlineGameId(rawCode);
+            if (!code.startsWith(todayPrefix)) return null;
+            const live = value && value.live ? value.live : {};
+            const liveState = live && live.state ? live.state : null;
+            const archiveMap = value && value.archive && typeof value.archive === 'object' ? value.archive : {};
+            const archiveItems = Object.values(archiveMap).filter((item) => item && item.archive);
+            const newestArchive = archiveItems
+              .slice()
+              .sort((a, b) => Number(b.archivedAt || 0) - Number(a.archivedAt || 0))[0] || null;
+            const currentSession = liveState && liveState.currentSession ? liveState.currentSession : null;
+            const archive = newestArchive && newestArchive.archive ? newestArchive.archive : null;
+            const updatedAt = Number((live && live.updatedAt) || (newestArchive && newestArchive.archivedAt) || 0);
+            const title = (currentSession && currentSession.title) || (archive && archive.title) || 'Knobelrunde';
+            const status = currentSession ? 'laufend' : (archiveItems.length ? 'archiviert' : 'vorbereitet');
+            return { code, title, status, updatedAt, archiveCount: archiveItems.length };
+          })
+          .filter(Boolean)
+          .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0) || b.code.localeCompare(a.code))
+          .slice(0, 20);
+        return { games, error: '' };
+      } catch (error) {
+        console.error(error);
+        return { games: [], error: error && error.message ? error.message : 'Tagesliste konnte nicht geladen werden.' };
+      }
+    }
+
+    function showAdminWelcomePicker({ suggestedCode, todayGames, listError }) {
+      return new Promise((resolve) => {
+        el.modalTitle.textContent = 'Knobelrunde vorbereiten';
+        el.modalMessage.textContent = 'Wähle eine tagesaktuelle Online-Runde aus Firebase oder starte mit einem neuen vorgeschlagenen Runden-Code.';
+        el.modalBody.innerHTML = '';
+        el.modalActions.innerHTML = '';
+
+        const wrap = document.createElement('div');
+        wrap.className = 'grid';
+
+        const listBox = document.createElement('details');
+        listBox.open = Boolean(todayGames && todayGames.length);
+        listBox.innerHTML = `
+          <summary style="cursor:pointer;font-weight:900;margin-bottom:8px;">Tagesaktuelle Spiele aus Firebase</summary>
+          <div class="grid" id="todayGamesButtonList"></div>
+        `;
+        const list = listBox.querySelector('#todayGamesButtonList');
+        if (todayGames && todayGames.length) {
+          todayGames.forEach((game) => {
+            const button = document.createElement('button');
+            button.className = game.status === 'laufend' ? 'primary' : 'info';
+            button.type = 'button';
+            const timeText = game.updatedAt ? ` · zuletzt ${formatTime(new Date(game.updatedAt).toISOString())}` : '';
+            const archiveText = game.archiveCount ? ` · Archiv ${game.archiveCount}` : '';
+            button.innerHTML = `<strong>${escapeHtml(game.code)}</strong><br><span class="tiny">${escapeHtml(game.status)}${escapeHtml(timeText)}${escapeHtml(archiveText)}</span>`;
+            button.addEventListener('click', () => {
+              hideDialog();
+              resolve({ type: 'existing', code: game.code });
+            });
+            list.appendChild(button);
+          });
+        } else {
+          const note = document.createElement('div');
+          note.className = 'empty';
+          note.textContent = listError ? `Tagesliste konnte nicht geladen werden: ${listError}` : 'Für heute wurden noch keine Online-Runden gefunden.';
+          list.appendChild(note);
+        }
+        wrap.appendChild(listBox);
+
+        const inputWrap = document.createElement('div');
+        inputWrap.className = 'grid';
+        inputWrap.innerHTML = `
+          <div class="line"></div>
+          <label class="small" for="welcomeRoundCodeInput"><strong>Neuer oder anderer Runden-Code</strong></label>
+        `;
+        const input = document.createElement('input');
+        input.id = 'welcomeRoundCodeInput';
+        input.type = 'text';
+        input.maxLength = 60;
+        input.placeholder = suggestedCode;
+        input.value = suggestedCode;
+        inputWrap.appendChild(input);
+        wrap.appendChild(inputWrap);
+        el.modalBody.appendChild(wrap);
+
+        const useInputButton = document.createElement('button');
+        useInputButton.textContent = 'Runden-Code verwenden';
+        useInputButton.className = 'primary';
+        useInputButton.addEventListener('click', () => {
+          const value = String(input.value || '').trim();
+          if (!value) {
+            input.focus();
+            return;
+          }
+          hideDialog();
+          resolve({ type: 'code', code: value });
+        });
+        el.modalActions.appendChild(useInputButton);
+
+        const offlineButton = document.createElement('button');
+        offlineButton.textContent = 'Offline abbrechen';
+        offlineButton.addEventListener('click', () => {
+          hideDialog();
+          resolve(null);
+        });
+        el.modalActions.appendChild(offlineButton);
+
+        el.modalBackdrop.classList.remove('hidden');
+        el.modalWrap.classList.remove('hidden');
+        setTimeout(() => input.focus(), 30);
       });
-      if (!gameIdInput) return;
-      await connectAdminRoundFromCode(gameIdInput, { initialPrompt: true });
+    }
+
+    async function maybeShowAdminWelcomeDialog() {
+      if (!shouldShowAdminWelcomePicker()) return;
+      const suggestedCode = generateSuggestedRoundCode();
+      const { games: todayGames, error: listError } = await readTodaysOnlineGames();
+      const choice = await showAdminWelcomePicker({ suggestedCode, todayGames, listError });
+      if (!choice || !choice.code) {
+        onlineSettings.enabled = false;
+        saveOnlineSettings();
+        renderOnlineStatus();
+        return;
+      }
+      if (choice.type === 'existing') {
+        await connectAdminRoundFromCode(choice.code, { initialPrompt: true, autoLoadExisting: true });
+        return;
+      }
+      await connectAdminRoundFromCode(choice.code, { initialPrompt: true });
     }
 
     function createDefaultState() {
@@ -2001,6 +2137,20 @@
       }
 
       if (existingPayload && existingPayload.state) {
+        if (options.autoLoadExisting) {
+          const loadedState = migrateState(existingPayload.state);
+          onlineSettings.nextSessionRequiresNewCode = Boolean(!loadedState.currentSession && ((loadedState.gamesHistory || []).length || (loadedState.history || []).length));
+          saveOnlineSettings();
+          applyRemoteState(existingPayload.state, {
+            updatedAt: Number(existingPayload.updatedAt || 0),
+            updatedBy: existingPayload.updatedBy || '',
+            gameId: sanitized
+          });
+          await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: false });
+          showToast(`Online-Runde ${sanitized} geladen.`);
+          return;
+        }
+
         const answer = await showDialog({
           title: 'Runden-Code ist bereits vorhanden',
           message: `Unter dem Code ${sanitized} liegt bereits ein Online-Spielstand. Bestehende Codes können nicht überschrieben werden.`,
@@ -2061,6 +2211,12 @@
     }
 
     async function autoStartOnlineSync() {
+      if (shouldShowAdminWelcomePicker()) {
+        onlineSettings.enabled = false;
+        saveOnlineSettings();
+        renderOnlineStatus();
+        return;
+      }
       if (!onlineSettings.enabled) {
         renderOnlineStatus();
         return;
