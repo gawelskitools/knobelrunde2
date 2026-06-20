@@ -1214,8 +1214,23 @@
 
     bindEvents();
     render();
-    autoStartOnlineSync();
-    maybeShowAdminWelcomeDialog();
+    bootAdminPage();
+
+    async function bootAdminPage() {
+      // Admin ohne festen ?game=... startet immer im bewussten Runden-Auswahlmodus.
+      // So wird kein alter localStorage-Stand und kein alter Online-Code still weiterverwendet.
+      if (shouldOpenPickerOnAdminBoot()) {
+        await maybeShowAdminWelcomeDialog({ force: true, clearAnyLocalSession: true });
+        return;
+      }
+      await autoStartOnlineSync();
+    }
+
+    function shouldOpenPickerOnAdminBoot() {
+      if (!isFirebaseConfigured()) return false;
+      if (getUrlGameId()) return false;
+      return true;
+    }
 
     function getUrlGameId() {
       try {
@@ -1288,14 +1303,18 @@
       return false;
     }
 
-    function clearFinishedLocalSessionForPicker() {
+    function clearLocalSessionForPicker({ force = false } = {}) {
       if (!state.currentSession) return false;
-      if (isLocalSessionStillPlayable(state.currentSession)) return false;
+      if (!force && isLocalSessionStillPlayable(state.currentSession)) return false;
       state.currentSession = null;
       state.actionAudit = [];
       state.ui = { ...(state.ui || {}), openTab: null };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       return true;
+    }
+
+    function clearFinishedLocalSessionForPicker() {
+      return clearLocalSessionForPicker({ force: false });
     }
 
     function shouldShowAdminWelcomePicker() {
@@ -1349,7 +1368,7 @@
       }
     }
 
-    function showAdminWelcomePicker({ suggestedCode, todayGames, listError }) {
+    function showAdminWelcomePicker({ suggestedCode, todayGamesPromise = null, todayGames = null, listError = '' }) {
       return new Promise((resolve) => {
         el.modalTitle.textContent = 'Knobelrunde vorbereiten';
         el.modalMessage.textContent = 'Wähle eine tagesaktuelle Online-Runde aus Firebase oder starte mit einem neuen vorgeschlagenen Runden-Code.';
@@ -1360,32 +1379,49 @@
         wrap.className = 'grid';
 
         const listBox = document.createElement('details');
-        listBox.open = Boolean(todayGames && todayGames.length);
+        listBox.open = true;
         listBox.innerHTML = `
           <summary style="cursor:pointer;font-weight:900;margin-bottom:8px;">Tagesaktuelle Spiele aus Firebase</summary>
           <div class="grid" id="todayGamesButtonList"></div>
         `;
         const list = listBox.querySelector('#todayGamesButtonList');
-        if (todayGames && todayGames.length) {
-          todayGames.forEach((game) => {
-            const button = document.createElement('button');
-            button.className = game.status === 'laufend' ? 'primary' : 'info';
-            button.type = 'button';
-            const timeText = game.updatedAt ? ` · zuletzt ${formatTime(new Date(game.updatedAt).toISOString())}` : '';
-            const archiveText = game.archiveCount ? ` · Archiv ${game.archiveCount}` : '';
-            button.innerHTML = `<strong>${escapeHtml(game.code)}</strong><br><span class="tiny">${escapeHtml(game.status)}${escapeHtml(timeText)}${escapeHtml(archiveText)}</span>`;
-            button.addEventListener('click', () => {
-              hideDialog();
-              resolve({ type: 'existing', code: game.code });
+
+        function paintTodayGames(games, errorText = '') {
+          list.innerHTML = '';
+          if (games && games.length) {
+            games.forEach((game) => {
+              const button = document.createElement('button');
+              button.className = game.status === 'laufend' ? 'primary' : 'info';
+              button.type = 'button';
+              const timeText = game.updatedAt ? ` · zuletzt ${formatTime(new Date(game.updatedAt).toISOString())}` : '';
+              const archiveText = game.archiveCount ? ` · Archiv ${game.archiveCount}` : '';
+              button.innerHTML = `<strong>${escapeHtml(game.code)}</strong><br><span class="tiny">${escapeHtml(game.status)}${escapeHtml(timeText)}${escapeHtml(archiveText)}</span>`;
+              button.addEventListener('click', () => {
+                hideDialog();
+                resolve({ type: 'existing', code: game.code });
+              });
+              list.appendChild(button);
             });
-            list.appendChild(button);
-          });
-        } else {
+            return;
+          }
           const note = document.createElement('div');
           note.className = 'empty';
-          note.textContent = listError ? `Tagesliste konnte nicht geladen werden: ${listError}` : 'Für heute wurden noch keine Online-Runden gefunden.';
+          note.textContent = errorText || 'Für heute wurden noch keine Online-Runden gefunden.';
           list.appendChild(note);
         }
+
+        if (todayGamesPromise) {
+          const loading = document.createElement('div');
+          loading.className = 'empty';
+          loading.textContent = 'Tagesaktuelle Spiele werden aus Firebase geladen …';
+          list.appendChild(loading);
+          todayGamesPromise
+            .then(({ games, error }) => paintTodayGames(games, error ? `Tagesliste konnte nicht geladen werden: ${error}` : ''))
+            .catch((error) => paintTodayGames([], `Tagesliste konnte nicht geladen werden: ${error && error.message ? error.message : 'Unbekannter Fehler'}`));
+        } else {
+          paintTodayGames(todayGames || [], listError ? `Tagesliste konnte nicht geladen werden: ${listError}` : '');
+        }
+
         wrap.appendChild(listBox);
 
         const inputWrap = document.createElement('div');
@@ -1458,15 +1494,20 @@
         onlineRuntime.localDirty = false;
         onlineRuntime.applyingRemote = false;
         onlineRuntime.error = '';
-        clearFinishedLocalSessionForPicker();
+        if (options.clearAnyLocalSession || force) {
+          clearLocalSessionForPicker({ force: true });
+        } else {
+          clearFinishedLocalSessionForPicker();
+        }
         render();
         renderOnlineStatus();
 
         const suggestedCode = generateSuggestedRoundCode();
-        const { games: todayGames, error: listError } = await readTodaysOnlineGames();
+        const todayGamesPromise = readTodaysOnlineGames();
+        // Popup sofort öffnen; die Tagesliste wird danach asynchron in die ausklappbare Liste geladen.
+        const choice = await showAdminWelcomePicker({ suggestedCode, todayGamesPromise });
         onlineRuntime.connected = false;
         renderOnlineStatus();
-        const choice = await showAdminWelcomePicker({ suggestedCode, todayGames, listError });
         if (!choice || !choice.code) {
           onlineSettings.enabled = false;
           onlineSettings.nextSessionRequiresNewCode = false;
@@ -2497,7 +2538,7 @@
     async function handleNewGameButton() {
       const session = state.currentSession;
       if (!session) {
-        if (!onlineSettings.enabled && shouldShowAdminWelcomePicker()) {
+        if (shouldShowAdminWelcomePicker()) {
           await maybeShowAdminWelcomeDialog({ force: true });
           return;
         }
