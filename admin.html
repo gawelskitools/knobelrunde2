@@ -1606,10 +1606,21 @@
     }
 
     function saveState(showMessage = false) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (error) {
+        console.error(error);
+        showToast('Lokales Speichern fehlgeschlagen.');
+      }
       if (!onlineRuntime.applyingRemote) {
         onlineRuntime.localDirty = true;
-        scheduleOnlineSave();
+        try {
+          scheduleOnlineSave();
+        } catch (error) {
+          console.error(error);
+          onlineRuntime.error = error && error.message ? error.message : 'Online-Abgleich fehlgeschlagen.';
+          renderOnlineStatus();
+        }
       }
       if (showMessage) showToast(onlineSettings.enabled ? 'Lokal gespeichert, Online-Abgleich läuft.' : 'Gespeichert.');
     }
@@ -1741,6 +1752,9 @@
     }
 
     async function startOnlineSync(options = {}) {
+      // Admin-Sicherheitsmodus:
+      // Die Adminseite lädt einen Online-Stand nur einmal bewusst ein und schreibt danach lokale Änderungen aktiv zu Firebase.
+      // Kein dauerhafter onValue-Listener, damit alte/verspätete Firebase-Snapshots keine lokalen Spielaktionen blockieren oder zurückdrehen.
       if (!onlineSettings.enabled) return;
       const syncToken = ++onlineRuntime.syncToken;
       const syncGameId = sanitizeOnlineGameId(onlineSettings.gameId);
@@ -1757,72 +1771,50 @@
           onlineRuntime.unsubscribe = null;
         }
 
-        const gameRef = sdk.ref(db, getOnlineGamePath());
-        onlineRuntime.listening = true;
+        onlineRuntime.listening = false;
         onlineRuntime.error = '';
+        onlineRuntime.connected = true;
         renderOnlineStatus();
 
-        let firstSnapshot = true;
-        onlineRuntime.unsubscribe = sdk.onValue(gameRef, async (snapshot) => {
-          if (syncToken !== onlineRuntime.syncToken || !onlineSettings.enabled || sanitizeOnlineGameId(onlineSettings.gameId) !== syncGameId) {
-            return;
-          }
+        const snapshot = await sdk.get(sdk.ref(db, getOnlineGamePath()));
+        if (syncToken !== onlineRuntime.syncToken || !onlineSettings.enabled || sanitizeOnlineGameId(onlineSettings.gameId) !== syncGameId) {
+          return;
+        }
 
-          const payload = snapshot.val();
-          if (!payload || !payload.state) {
-            if (firstSnapshot && options.uploadLocalIfEmpty) {
-              await writeOnlineState();
-            }
-            firstSnapshot = false;
-            return;
-          }
-
+        const payload = snapshot.val();
+        if (payload && payload.state) {
           const remoteUpdatedAt = Number(payload.updatedAt || 0);
           const localKnown = Number(onlineSettings.lastKnownUpdatedAt || 0);
-          const forceFirstLoad = Boolean(options.forceApplyFirst && firstSnapshot);
-          const isKnownOrOlder = Boolean(remoteUpdatedAt && localKnown && remoteUpdatedAt <= localKnown);
+          const forceFirstLoad = Boolean(options.forceApplyFirst);
+          const shouldApplyRemote = forceFirstLoad || !localKnown || (remoteUpdatedAt && remoteUpdatedAt > localKnown && !onlineRuntime.localDirty);
 
-          // Wichtig: Alte Firebase-Snapshots dürfen lokale Spielaktionen nicht zurückdrehen.
-          // Zusätzlich schützt syncToken davor, dass ein alter Listener nach Online-Trennen
-          // oder Rundenwechsel noch einen alten Stand in die Adminseite zurückschreibt.
-          if (!forceFirstLoad && (isKnownOrOlder || onlineRuntime.localDirty)) {
-            firstSnapshot = false;
+          if (shouldApplyRemote) {
+            applyRemoteState(payload.state, {
+              updatedAt: remoteUpdatedAt,
+              updatedBy: payload.updatedBy || '',
+              gameId: syncGameId
+            });
+          } else {
             onlineRuntime.connected = true;
             onlineRuntime.error = '';
             renderOnlineStatus();
-            return;
           }
-
-          onlineSettings.lastKnownUpdatedAt = Math.max(localKnown, remoteUpdatedAt);
-          saveOnlineSettings();
-
-          applyRemoteState(payload.state, {
-            updatedAt: remoteUpdatedAt,
-            updatedBy: payload.updatedBy || '',
-            gameId: syncGameId
-          });
-          firstSnapshot = false;
-        }, (error) => {
-          if (syncToken !== onlineRuntime.syncToken || !onlineSettings.enabled || sanitizeOnlineGameId(onlineSettings.gameId) !== syncGameId) {
-            return;
-          }
-          onlineRuntime.error = error && error.message ? error.message : 'Online-Lesen fehlgeschlagen.';
-          onlineRuntime.connected = false;
-          renderOnlineStatus();
-          console.error(error);
-        });
+        } else if (options.uploadLocalIfEmpty) {
+          await writeOnlineState();
+        }
       } catch (error) {
         if (syncToken !== onlineRuntime.syncToken) return;
         onlineRuntime.error = error && error.message ? error.message : 'Online-Verbindung fehlgeschlagen.';
         onlineRuntime.connected = false;
         onlineRuntime.connecting = false;
+        onlineRuntime.listening = false;
         renderOnlineStatus();
         showToast(onlineRuntime.error);
         console.error(error);
       }
     }
 
-        function applyRemoteState(remoteState, meta = {}) {
+    function applyRemoteState(remoteState, meta = {}) {
       if (meta.gameId && sanitizeOnlineGameId(onlineSettings.gameId) !== sanitizeOnlineGameId(meta.gameId)) {
         return;
       }
@@ -2263,6 +2255,8 @@
     async function handlePlayerCardClick(event) {
       const button = event.target.closest('button[data-action]');
       if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
       const action = button.dataset.action;
       if (action === 'add-player') {
         openAddPlayerDialog();
