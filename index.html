@@ -901,6 +901,12 @@
         display: none;
       }
     }
+
+    /* Fanansicht: Historie soll initial eingeklappt sein, aber per Button öffnbar bleiben. */
+    body.viewer-mode #tabButtons { display: grid !important; }
+    body.viewer-mode #tabButtons button[data-tab="audit"] { display: none !important; }
+    body.viewer-mode #tabPanel-history.hidden { display: none !important; }
+
   </style>
 </head>
 <body>
@@ -1275,7 +1281,7 @@
         if (el.drawerExportBtn) el.drawerExportBtn.classList.add('hidden');
         if (el.drawerCleanStartBtn) el.drawerCleanStartBtn.classList.add('hidden');
         if (el.onlineSetupBtn) el.onlineSetupBtn.textContent = 'Knobelrunde verbinden';
-        state.ui = { ...(state.ui || {}), openTab: 'history' };
+        state.ui = { ...(state.ui || {}), openTab: null };
         const tabsTitle = document.querySelector('#tabsSection .tabs-header .section-title');
         if (tabsTitle) tabsTitle.textContent = 'Historie';
         const tabsSubtitle = document.querySelector('#tabsSection .tabs-header .section-subtitle');
@@ -1987,7 +1993,6 @@
       state.actionAudit = migrated.actionAudit || [];
       state.favoritePlayers = migrated.favoritePlayers || [];
       state.ui = migrated.ui || { openTab: null };
-      if (VIEW_ONLY_MODE) state.ui = { ...(state.ui || {}), openTab: 'history' };
       // Die Fan-Seite ist reine Live-Ansicht: Remote-Spielstände nicht als lokalen Spielstand cachen.
       // Dadurch erscheint beim nächsten Aufruf kein alter Stand vorab.
       if (!VIEW_ONLY_MODE) {
@@ -3192,7 +3197,7 @@
       const beerSettlement = getBeerSettlement(game);
       el.playersGrid.innerHTML = `
         <div style="grid-column:1 / -1; display:grid; gap:10px;">
-          ${renderBeerSettlementSheet(game, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: true })}
+          ${renderBeerSettlementSheet(game, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: false, showPlayerDetails: false })}
         </div>
       `;
     }
@@ -3204,7 +3209,6 @@
         if (el.finishRoundBtn) el.finishRoundBtn.classList.add('hidden');
         if (el.newGameBtn) el.newGameBtn.classList.add('hidden');
       }
-      if (VIEW_ONLY_MODE) state.ui = { ...(state.ui || {}), openTab: 'history' };
       const session = state.currentSession;
       const hasSession = Boolean(session);
       const viewerFinalGame = getViewerFinalGameForDisplay();
@@ -3621,14 +3625,14 @@
 
     function renderTabs() {
       if (VIEW_ONLY_MODE) {
-        state.ui = { ...(state.ui || {}), openTab: 'history' };
+        const openTab = state.ui && state.ui.openTab;
         document.querySelectorAll('#tabButtons button[data-tab]').forEach((button) => {
-          button.classList.toggle('active', button.dataset.tab === 'history');
+          button.classList.toggle('active', button.dataset.tab === 'history' && openTab === 'history');
         });
         const auditPanel = document.getElementById('tabPanel-audit');
         const historyPanel = document.getElementById('tabPanel-history');
         if (auditPanel) auditPanel.classList.add('hidden');
-        if (historyPanel) historyPanel.classList.remove('hidden');
+        if (historyPanel) historyPanel.classList.toggle('hidden', openTab !== 'history');
         return;
       }
       let openTab = state.ui.openTab;
@@ -3704,7 +3708,7 @@
     }
 
     function renderBeerSettlementSheet(container, beerSettlement, options = {}) {
-      const { showWirtshausabrechnung = true, showPlayerHeaders = true } = options;
+      const { showWirtshausabrechnung = true, showPlayerHeaders = true, showPlayerDetails = true } = options;
       const title = beerSettlement.sessionTitle || container.sessionTitle || container.title || 'Knobelpartie';
       const timestamp = formatDateTime(beerSettlement.finishedAt || container.finishedAt || (container.currentRound ? container.currentRound.finishedAt : null));
       const cashPenaltySettlement = getCashPenaltySettlement(container);
@@ -3788,7 +3792,7 @@
               <div class="beer-ledger" style="margin-top:10px;">${cashLedgerRows}</div>
             </div>
           ` : ''}
-          <div class="beer-player-list">${playerCards}</div>
+          ${showPlayerDetails ? `<div class="beer-player-list">${playerCards}</div>` : ''}
         </div>
       `;
     }
