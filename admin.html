@@ -1563,15 +1563,44 @@
       };
     }
 
+    function ensureSessionShape(session) {
+      if (!session || typeof session !== 'object') return session;
+      if (!Array.isArray(session.players)) session.players = [];
+      if (!Array.isArray(session.points)) session.points = [];
+      if (!Array.isArray(session.settlements)) session.settlements = [];
+      if (!Array.isArray(session.finishedRounds)) session.finishedRounds = [];
+      if (!Array.isArray(session.roundEntries)) session.roundEntries = [];
+      if (!Array.isArray(session.cashPenalties)) session.cashPenalties = [];
+      if (!session.currentRound || typeof session.currentRound !== 'object') {
+        session.currentRound = createRoundObject(session.roundIndex || 1, session.roundTarget || 10, session.createdAt || new Date().toISOString());
+      }
+      if (!Array.isArray(session.currentRound.events)) session.currentRound.events = [];
+      if (!session.currentRound.status) session.currentRound.status = 'open';
+      if (!Number.isFinite(Number(session.currentRound.index))) session.currentRound.index = session.roundIndex || 1;
+      if (!Number.isFinite(Number(session.currentRound.target))) session.currentRound.target = session.roundTarget || 10;
+      if (!Number.isFinite(Number(session.currentRound.turnsCompleted))) {
+        session.currentRound.turnsCompleted = session.currentRound.events.filter((entry) => entry.type === 'loss' || entry.type === 'lust').length;
+      }
+      session.currentRound.index = Number(session.currentRound.index || session.roundIndex || 1);
+      session.currentRound.target = Number(session.currentRound.target || session.roundTarget || 10);
+      session.currentRound.turnsCompleted = Number(session.currentRound.turnsCompleted || 0);
+      if (!session.currentRound.startedAt) session.currentRound.startedAt = session.createdAt || new Date().toISOString();
+      if (typeof session.currentRound.finishedAt === 'undefined') session.currentRound.finishedAt = null;
+      return session;
+    }
+
     function migrateExistingSession(session) {
       if (!session || typeof session !== 'object') return null;
-      return {
+      return ensureSessionShape({
         ...session,
+        players: Array.isArray(session.players) ? session.players : [],
+        points: Array.isArray(session.points) ? session.points : [],
+        settlements: Array.isArray(session.settlements) ? session.settlements : [],
         finishedRounds: Array.isArray(session.finishedRounds) ? session.finishedRounds : [],
         cashPenalties: Array.isArray(session.cashPenalties) ? session.cashPenalties : [],
         roundEntries: Array.isArray(session.roundEntries) ? session.roundEntries : [],
         currentRound: session.currentRound || createRoundObject(session.roundIndex || 1, session.roundTarget || 10, session.createdAt || new Date().toISOString())
-      };
+      });
     }
 
     function migrateLegacyHistoryEntry(entry) {
@@ -1820,7 +1849,7 @@
       }
       const migrated = migrateState(remoteState);
       onlineRuntime.applyingRemote = true;
-      state.currentSession = migrated.currentSession;
+      state.currentSession = ensureSessionShape(migrated.currentSession);
       state.history = migrated.history;
       state.gamesHistory = migrated.gamesHistory || [];
       state.actionAudit = migrated.actionAudit || [];
@@ -2173,6 +2202,7 @@
         finalRoundExtraTurns: 0,
         currentRound: createRoundObject(1, roundTarget, iso)
       };
+      ensureSessionShape(state.currentSession);
       state.actionAudit = [];
       state.ui.openTab = null;
       saveState(true);
@@ -2262,7 +2292,7 @@
         openAddPlayerDialog();
         return;
       }
-      const session = state.currentSession;
+      const session = ensureSessionShape(state.currentSession);
       if (!session) return;
       const playerId = button.dataset.playerId;
       const player = session.players.find((item) => item.id === playerId);
@@ -2326,7 +2356,14 @@
             { label: 'Abbrechen', value: 'no' }
           ]
         });
-        if (ok === 'yes') applyUndoablePlayerAction('loss', player.id);
+        if (ok === 'yes') {
+          try {
+            applyUndoablePlayerAction('loss', player.id);
+          } catch (error) {
+            console.error(error);
+            showToast('Verlorene Runde konnte nicht eingetragen werden.');
+          }
+        }
         return;
       }
 
@@ -2339,7 +2376,14 @@
             { label: 'Abbrechen', value: 'no' }
           ]
         });
-        if (ok === 'yes') applyUndoablePlayerAction('lust', player.id);
+        if (ok === 'yes') {
+          try {
+            applyUndoablePlayerAction('lust', player.id);
+          } catch (error) {
+            console.error(error);
+            showToast('Lustknobeln konnte nicht eingetragen werden.');
+          }
+        }
         return;
       }
 
@@ -2375,7 +2419,7 @@
     }
 
     function rejoinPlayer(playerId) {
-      const session = state.currentSession;
+      const session = ensureSessionShape(state.currentSession);
       if (!session) return;
       const player = session.players.find((item) => item.id === playerId);
       if (!player) return;
@@ -2395,7 +2439,7 @@
     }
 
     function applyUndoablePlayerAction(type, playerId) {
-      const session = state.currentSession;
+      const session = ensureSessionShape(state.currentSession);
       if (!session) return;
       const actor = session.players.find((player) => player.id === playerId);
       if (!actor) return;
@@ -2467,7 +2511,7 @@
     }
 
     function applyPresetLustKnobeln(playerId) {
-      const session = state.currentSession;
+      const session = ensureSessionShape(state.currentSession);
       if (!session) return;
       const actor = session.players.find((player) => player.id === playerId);
       if (!actor) return;
@@ -2555,7 +2599,7 @@
     }
 
     function applyUndoableCashPenalty(type, playerId) {
-      const session = state.currentSession;
+      const session = ensureSessionShape(state.currentSession);
       if (!session) return;
       const actor = session.players.find((player) => player.id === playerId);
       if (!actor) return;
@@ -2617,7 +2661,7 @@
     }
 
     function applyExit(playerId) {
-      const session = state.currentSession;
+      const session = ensureSessionShape(state.currentSession);
       if (!session) return;
       const actor = session.players.find((player) => player.id === playerId);
       if (!actor) return;
@@ -2728,7 +2772,7 @@
     }
 
     async function finishCurrentRound() {
-      const session = state.currentSession;
+      const session = ensureSessionShape(state.currentSession);
       if (!session) return;
       const activeCount = session.players.filter((player) => player.status === 'active').length;
       if (session.currentRound.status !== 'open') {
@@ -3010,7 +3054,7 @@
 
     function render() {
       renderOnlineStatus();
-      const session = state.currentSession;
+      const session = ensureSessionShape(state.currentSession);
       const hasSession = Boolean(session);
       el.scoreboardSection.classList.toggle('hidden', !hasSession);
       el.playersSection.classList.toggle('hidden', !hasSession);
