@@ -1894,7 +1894,7 @@
         state.gamesHistory = [archive];
         state.actionAudit = [];
         state.favoritePlayers = state.favoritePlayers || [];
-        state.ui = { ...(state.ui || {}), openTab: 'history' };
+        state.ui = { ...(state.ui || {}), openTab: null };
         onlineRuntime.connected = true;
         onlineRuntime.error = '';
         onlineRuntime.lastSyncAt = latest.archivedAt ? new Date(Number(latest.archivedAt)).toISOString() : new Date().toISOString();
@@ -1992,7 +1992,7 @@
       state.gamesHistory = migrated.gamesHistory || [];
       state.actionAudit = migrated.actionAudit || [];
       state.favoritePlayers = migrated.favoritePlayers || [];
-      state.ui = migrated.ui || { openTab: null };
+      state.ui = VIEW_ONLY_MODE ? { ...(migrated.ui || {}), openTab: null } : (migrated.ui || { openTab: null });
       // Die Fan-Seite ist reine Live-Ansicht: Remote-Spielstände nicht als lokalen Spielstand cachen.
       // Dadurch erscheint beim nächsten Aufruf kein alter Stand vorab.
       if (!VIEW_ONLY_MODE) {
@@ -3440,10 +3440,10 @@
         const currentStatusLabel = activeRound ? '· läuft' : '· wartet auf nächste Spielrunde';
 
         return `
-          <details class="history-item" open>
+          <details class="history-item" ${VIEW_ONLY_MODE ? '' : 'open'}>
             <summary><strong>${escapeHtml(gameLabel)}</strong> <span class="tiny muted">${currentStatusLabel}</span></summary>
             ${activeTimelineHtml}
-            <details class="history-detail-toggle" style="margin-top:10px;" open>
+            <details class="history-detail-toggle" style="margin-top:10px;" ${VIEW_ONLY_MODE ? '' : 'open'}>
               <summary>Abgeschlossene Spielrunden</summary>
               <div class="history-detail-list" style="margin-top:10px;">${finishedRoundsHtml}</div>
             </details>
@@ -3452,7 +3452,7 @@
       }
 
       return `
-        <details class="history-item" ${VIEW_ONLY_MODE ? 'open' : ''}>
+        <details class="history-item">
           <summary><strong>${escapeHtml(gameLabel)}</strong></summary>
           <div class="history-detail-list" style="margin-top:10px;">${finishedRoundsHtml}</div>
         </details>
@@ -3511,7 +3511,7 @@
       `;
 
       const detailSection = entry.isLiveRound ? '' : `
-          <details class="history-detail-toggle" style="margin-top:10px;" ${VIEW_ONLY_MODE ? 'open' : ''}>
+          <details class="history-detail-toggle" style="margin-top:10px;">
             <summary>Details anzeigen</summary>
             <div class="history-zone" style="margin-top:10px;">
               <div class="history-zone-title">Einzelereignisse dieser Spielrunde</div>
@@ -3525,7 +3525,7 @@
       `;
 
       return `
-        <details class="history-item" ${(VIEW_ONLY_MODE || entry.isLiveRound) ? 'open' : ''}>
+        <details class="history-item" ${(!VIEW_ONLY_MODE && entry.isLiveRound) ? 'open' : ''}>
           <summary><strong>${entry.isLiveRound ? 'Aktuelle Spielrunde' : `Spielrunde ${entry.roundIndex} von ${entry.maxRounds}`}</strong> <span class="tiny muted">· ${entry.currentRound.turnsCompleted}/${entry.currentRound.target} Durchgänge${entry.isLiveRound ? ' · läuft' : ` · ${formatDateTime(entry.finishedAt)}`}</span></summary>
           <div class="history-summary-grid" style="margin-top:10px;">
             <div class="history-zone">
@@ -3770,6 +3770,13 @@
         </div>
       `).join('');
 
+      const freibierFreudenRows = beerSettlement.perPlayer.map((item) => `
+        <div class="beer-ledger-row ${item.totalReceives === 0 ? 'zero' : ''}">
+          <div><strong>${escapeHtml(item.player.name)} (${escapeHtml(item.player.code)})</strong></div>
+          <div>${item.totalReceives} ${item.totalReceives === 1 ? 'Freibierfreude' : 'Freibierfreuden'}</div>
+        </div>
+      `).join('');
+
       return `
         <div class="beer-sheet">
           <div class="beer-sheet-header">
@@ -3790,6 +3797,11 @@
               <div class="history-zone-title">Strafkasse</div>
               <div class="tiny muted">Hier steht nur die Gesamtsumme der Strafkassenschulden pro Spieler.</div>
               <div class="beer-ledger" style="margin-top:10px;">${cashLedgerRows}</div>
+            </div>
+            <div class="history-zone" style="margin-top:10px;">
+              <div class="history-zone-title">Freibierfreuden</div>
+              <div class="tiny muted">Hier stehen nur die Anzahl der Freibierfreuden der Mitspieler.</div>
+              <div class="beer-ledger" style="margin-top:10px;">${freibierFreudenRows}</div>
             </div>
           ` : ''}
           ${showPlayerDetails ? `<div class="beer-player-list">${playerCards}</div>` : ''}
@@ -3985,6 +3997,10 @@ ${receives}`;
         .map((item) => `- ${item.player.name} (${item.player.code}): ${formatCoins(item.totalCoins)}`)
         .join('\n');
 
+      const freibierFreudenText = beerSettlement.perPlayer
+        .map((item) => `- ${item.player.name} (${item.player.code}): ${item.totalReceives} ${item.totalReceives === 1 ? 'Freibierfreude' : 'Freibierfreuden'}`)
+        .join('\n');
+
       return `Die Wirtshausabrechnung
 
 ${title}
@@ -4000,6 +4016,10 @@ ${ledgerText}
 Strafkasse
 Hier steht nur die Gesamtsumme der Strafkassenschulden pro Spieler.
 ${cashLedgerText}
+
+Freibierfreuden:
+Hier stehen nur die Anzahl der Freibierfreuden der Mitspieler.
+${freibierFreudenText}
 
 ${playerText}`;
     }
