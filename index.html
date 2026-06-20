@@ -1795,6 +1795,13 @@
         onlineRuntime.unsubscribe = sdk.onValue(gameRef, async (snapshot) => {
           const payload = snapshot.val();
           if (!payload || !payload.state) {
+            if (VIEW_ONLY_MODE) {
+              const archiveLoaded = await applyLatestOnlineArchiveFallback({ silent: true });
+              if (archiveLoaded) {
+                firstSnapshot = false;
+                return;
+              }
+            }
             if (firstSnapshot && options.uploadLocalIfEmpty) {
               await writeOnlineState();
             }
@@ -1824,6 +1831,9 @@
             updatedAt: remoteUpdatedAt,
             updatedBy: payload.updatedBy || ''
           });
+          if (VIEW_ONLY_MODE && !state.currentSession && !(state.gamesHistory || []).length) {
+            await applyLatestOnlineArchiveFallback({ silent: true });
+          }
           firstSnapshot = false;
         }, (error) => {
           onlineRuntime.error = error && error.message ? error.message : 'Online-Lesen fehlgeschlagen.';
@@ -1838,6 +1848,62 @@
         renderOnlineStatus();
         showToast(onlineRuntime.error);
         console.error(error);
+      }
+    }
+
+
+    async function readLatestOnlineArchiveForCurrentGame() {
+      if (!VIEW_ONLY_MODE || !onlineSettings.enabled || !sanitizeOnlineGameId(onlineSettings.gameId)) return null;
+      const db = await initFirebaseOnline();
+      const sdk = await loadFirebaseSdk();
+      const code = sanitizeOnlineGameId(onlineSettings.gameId);
+      const snapshot = await sdk.get(sdk.ref(db, `games/${code}/archive`));
+      const archiveMap = snapshot.val() || {};
+      const entries = Object.values(archiveMap)
+        .filter((item) => item && item.archive)
+        .sort((a, b) => Number(b.archivedAt || 0) - Number(a.archivedAt || 0));
+      return entries[0] || null;
+    }
+
+    function normalizeSingleGameArchive(archive) {
+      return normalizeGamesHistory([archive])[0] || null;
+    }
+
+    function getViewerFallbackArchiveFromCurrentState() {
+      if (!VIEW_ONLY_MODE) return null;
+      if (state.currentSession) return createGameArchive(state.currentSession);
+      const games = normalizeGamesHistory(state.gamesHistory || []);
+      return games[0] || null;
+    }
+
+    async function applyLatestOnlineArchiveFallback(options = {}) {
+      if (!VIEW_ONLY_MODE || !onlineSettings.enabled) return false;
+      try {
+        const latest = await readLatestOnlineArchiveForCurrentGame();
+        if (!latest || !latest.archive) return false;
+        const archive = normalizeSingleGameArchive(latest.archive);
+        if (!archive) return false;
+        state.currentSession = null;
+        state.history = [];
+        state.gamesHistory = [archive];
+        state.actionAudit = [];
+        state.favoritePlayers = state.favoritePlayers || [];
+        state.ui = { ...(state.ui || {}), openTab: 'history' };
+        onlineRuntime.connected = true;
+        onlineRuntime.error = '';
+        onlineRuntime.lastSyncAt = latest.archivedAt ? new Date(Number(latest.archivedAt)).toISOString() : new Date().toISOString();
+        onlineRuntime.lastRemoteBy = latest.archivedBy || '';
+        onlineSettings.lastKnownUpdatedAt = Math.max(Number(onlineSettings.lastKnownUpdatedAt || 0), Number(latest.archivedAt || 0));
+        saveOnlineSettings();
+        render();
+        return true;
+      } catch (error) {
+        if (!options.silent) {
+          onlineRuntime.error = error && error.message ? error.message : 'Online-Archiv konnte nicht geladen werden.';
+          renderOnlineStatus();
+        }
+        console.error(error);
+        return false;
       }
     }
 
@@ -1868,6 +1934,10 @@
 
         onlineRuntime.connecting = false;
         if (!payload || !payload.state) {
+          if (VIEW_ONLY_MODE) {
+            const archiveLoaded = await applyLatestOnlineArchiveFallback({ silent: true });
+            if (archiveLoaded) return;
+          }
           onlineRuntime.connected = Boolean(onlineSettings.enabled);
           onlineRuntime.error = '';
           onlineRuntime.lastSyncAt = new Date().toISOString();
@@ -1885,6 +1955,9 @@
           updatedAt: remoteUpdatedAt,
           updatedBy: payload.updatedBy || ''
         });
+        if (VIEW_ONLY_MODE && !state.currentSession && !(state.gamesHistory || []).length) {
+          await applyLatestOnlineArchiveFallback({ silent: true });
+        }
         renderOnlineStatus();
         if (!silent) {
           const last = formatTimeOnly(new Date(remoteUpdatedAt).toISOString());
@@ -1902,7 +1975,11 @@
     }
 
     function applyRemoteState(remoteState, meta = {}) {
+      const previousViewerArchive = getViewerFallbackArchiveFromCurrentState();
       const migrated = migrateState(remoteState);
+      if (VIEW_ONLY_MODE && !migrated.currentSession && !(migrated.gamesHistory || []).length && previousViewerArchive) {
+        migrated.gamesHistory = [previousViewerArchive];
+      }
       onlineRuntime.applyingRemote = true;
       state.currentSession = migrated.currentSession;
       state.history = migrated.history;
@@ -3094,6 +3171,33 @@
       showToast('Eintrag wiederhergestellt.');
     }
 
+    function setPlayersSectionHeader(title, subtitle) {
+      const titleEl = document.querySelector('#playersSection .section-title');
+      const subtitleEl = document.querySelector('#playersSection .section-subtitle');
+      if (titleEl) titleEl.textContent = title;
+      if (subtitleEl) subtitleEl.textContent = subtitle;
+    }
+
+    function getViewerFinalGameForDisplay() {
+      if (!VIEW_ONLY_MODE || state.currentSession) return null;
+      const games = normalizeGamesHistory(state.gamesHistory || []);
+      return games[0] || null;
+    }
+
+    function renderViewerFinalSettlement(game) {
+      setPlayersSectionHeader(
+        'Wirtshausabrechnung',
+        'Die Partie ist beendet. Die finale Wirtshausabrechnung bleibt für diesen Fan-Link dauerhaft sichtbar.'
+      );
+      const beerSettlement = getBeerSettlement(game);
+      el.playersGrid.innerHTML = `
+        <div style="grid-column:1 / -1; display:grid; gap:10px;">
+          ${renderBeerSettlementSheet(game, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: true })}
+        </div>
+      `;
+    }
+
+
     function render() {
       renderOnlineStatus();
       if (VIEW_ONLY_MODE) {
@@ -3103,14 +3207,24 @@
       if (VIEW_ONLY_MODE) state.ui = { ...(state.ui || {}), openTab: 'history' };
       const session = state.currentSession;
       const hasSession = Boolean(session);
+      const viewerFinalGame = getViewerFinalGameForDisplay();
+      const showViewerFinalSettlement = Boolean(viewerFinalGame);
       el.scoreboardSection.classList.toggle('hidden', !hasSession);
-      el.playersSection.classList.toggle('hidden', !hasSession);
+      el.playersSection.classList.toggle('hidden', !(hasSession || showViewerFinalSettlement));
       const shouldShowHistorySection = VIEW_ONLY_MODE || hasSession || (state.gamesHistory || []).length;
       el.tabsSection.classList.toggle('hidden', !shouldShowHistorySection);
 
       if (!hasSession) {
-        el.topGameName.textContent = 'Keine offene Partie';
-        el.topGameMeta.textContent = 'Knobelpartie mit Datum und Uhrzeit erscheint hier automatisch.';
+        if (showViewerFinalSettlement) {
+          el.topGameName.textContent = viewerFinalGame.title || 'Knobelpartie beendet';
+          el.topGameMeta.textContent = `Partie beendet · ${formatDateTime(viewerFinalGame.finishedAt || viewerFinalGame.createdAt)} · ${getGameModeLabel(viewerFinalGame.roundTarget, viewerFinalGame.maxRounds)}`;
+          renderViewerFinalSettlement(viewerFinalGame);
+        } else {
+          el.topGameName.textContent = 'Keine offene Partie';
+          el.topGameMeta.textContent = 'Knobelpartie mit Datum und Uhrzeit erscheint hier automatisch.';
+          if (el.playersGrid) el.playersGrid.innerHTML = '';
+          setPlayersSectionHeader('Spielerkarten', VIEW_ONLY_MODE ? 'Reine Zuschaueransicht: Sobald ein Spielstand geladen ist, erscheinen hier Spielerkarten oder die finale Wirtshausabrechnung.' : 'Grün = aktiv, grau = ausgestiegen. Neue Spieler kommen über die Plus-Karte hinzu.');
+        }
         el.finishRoundBtn.disabled = true;
         el.newGameBtn.disabled = false;
         el.newGameBtn.textContent = 'Neue Partie anlegen';
@@ -3129,6 +3243,7 @@
           el.newGameBtn.disabled = true;
           el.newGameBtn.textContent = session.currentRound.status === 'finished' ? 'Partie beendet nach 3 Spielrunden' : 'Neue Partie anlegen';
         }
+        setPlayersSectionHeader('Spielerkarten', VIEW_ONLY_MODE ? 'Reine Zuschaueransicht: Der Stand wird live von der Admin-Seite geladen. Die Gegenrechnung findet immer erst nach Abschluss der Spielrunde oder bei Spielende statt.' : 'Grün = aktiv, grau = ausgestiegen. Neue Spieler kommen über die Plus-Karte hinzu.');
         renderPlayers(session);
       }
 
