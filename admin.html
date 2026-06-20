@@ -1393,9 +1393,13 @@
               const button = document.createElement('button');
               button.className = game.status === 'laufend' ? 'primary' : 'info';
               button.type = 'button';
-              const timeText = game.updatedAt ? ` · zuletzt ${formatTime(new Date(game.updatedAt).toISOString())}` : '';
+              const titleText = String(game.title || '').trim();
+              const primaryLabel = titleText && titleText !== 'Knobelrunde'
+                ? `${titleText} - ${game.code}`
+                : game.code;
+              const timeText = game.updatedAt ? ` · zuletzt ${formatTimeOnly(new Date(game.updatedAt).toISOString())}` : '';
               const archiveText = game.archiveCount ? ` · Archiv ${game.archiveCount}` : '';
-              button.innerHTML = `<strong>${escapeHtml(game.code)}</strong><br><span class="tiny">${escapeHtml(game.status)}${escapeHtml(timeText)}${escapeHtml(archiveText)}</span>`;
+              button.innerHTML = `<strong>${escapeHtml(primaryLabel)}</strong><br><span class="tiny">${escapeHtml(game.status)}${escapeHtml(timeText)}${escapeHtml(archiveText)}</span>`;
               button.addEventListener('click', () => {
                 hideDialog();
                 resolve({ type: 'existing', code: game.code });
