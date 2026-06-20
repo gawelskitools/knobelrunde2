@@ -1371,7 +1371,7 @@
     function showAdminWelcomePicker({ suggestedCode, todayGamesPromise = null, todayGames = null, listError = '' }) {
       return new Promise((resolve) => {
         el.modalTitle.textContent = 'Knobelrunde vorbereiten';
-        el.modalMessage.textContent = 'Wähle eine tagesaktuelle Online-Runde aus Firebase oder starte mit einem neuen vorgeschlagenen Runden-Code.';
+        el.modalMessage.textContent = 'Wähle eine tagesaktuelle Online-Runde, gib einen alten Code zum Laden ein oder starte mit einem neuen Code direkt eine neue Partie.';
         el.modalBody.innerHTML = '';
         el.modalActions.innerHTML = '';
 
@@ -1441,7 +1441,7 @@
         el.modalBody.appendChild(wrap);
 
         const useInputButton = document.createElement('button');
-        useInputButton.textContent = 'Runden-Code verwenden';
+        useInputButton.textContent = 'Code öffnen / neuen Code starten';
         useInputButton.className = 'primary';
         useInputButton.addEventListener('click', () => {
           const value = String(input.value || '').trim();
@@ -1522,7 +1522,10 @@
           await connectAdminRoundFromCode(choice.code, { initialPrompt: true, autoLoadExisting: true });
           return;
         }
-        await connectAdminRoundFromCode(choice.code, { initialPrompt: true });
+        // Manuell eingegebener Code:
+        // - alter/vorhandener Code lädt das alte Spiel ohne Zusatzfrage
+        // - neuer Code startet direkt die 5/10-Durchgänge-Auswahl und danach den Fan-Link
+        await connectAdminRoundFromCode(choice.code, { initialPrompt: true, autoLoadExisting: true, startNewSessionIfEmpty: true });
       } finally {
         adminWelcomePickerOpen = false;
       }
@@ -2340,6 +2343,15 @@
       await writeOnlineState();
       await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: false });
       showToast(`Online-Runde ${sanitized} vorbereitet.`);
+
+      if (options.startNewSessionIfEmpty) {
+        const roundTarget = await chooseRoundTarget();
+        if (!roundTarget) {
+          renderOnlineStatus();
+          return;
+        }
+        createSession(roundTarget);
+      }
     }
 
     async function autoStartOnlineSync() {
@@ -2538,10 +2550,19 @@
     async function handleNewGameButton() {
       const session = state.currentSession;
       if (!session) {
-        if (shouldShowAdminWelcomePicker()) {
+        // Geladene Alt-Codes ohne offene Partie dürfen nicht für neue Spiele überschrieben werden.
+        if (onlineSettings.nextSessionRequiresNewCode) {
           await maybeShowAdminWelcomeDialog({ force: true });
           return;
         }
+
+        // Wenn bereits ein neuer Code vorbereitet ist, direkt 5/10 Durchgänge wählen.
+        // Nur ohne vorbereitete Online-Runde erneut den Initial-Picker öffnen.
+        if (!onlineSettings.enabled && shouldShowAdminWelcomePicker()) {
+          await maybeShowAdminWelcomeDialog({ force: true });
+          return;
+        }
+
         const needsFreshOnlineCode = currentOnlineRoundNeedsFreshCodeForNewSession();
         const choice = await chooseRoundTarget();
         if (!choice) return;
