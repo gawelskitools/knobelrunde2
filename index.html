@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Knobelclubrunde 1.0 – Admin</title>
+  <title>Knobelclubrunde 1.0 – Live-Zuschauer</title>
   <style>
     :root {
       --bg: #0b1220;
@@ -829,11 +829,11 @@
           <button id="menuBtn" class="menu-btn" aria-label="Menü öffnen">☰</button>
           <div class="header-copy">
             <div class="header-title-row">
-              <h1>Knobelclubrunde 1.0 – Admin</h1>
+              <h1>Knobelclubrunde 1.0 – Live</h1>
               <button id="helpBtn" class="help-btn" aria-label="Hilfe öffnen">?</button>
               <button id="agbBtn" class="help-btn" aria-label="AGB öffnen">§</button>
             </div>
-            <p class="section-subtitle">Eine Partie mit bis zu 3 Spielrunden à 5 oder 10 Durchgänge und maximal 12 Spielern.</p>
+            <p class="section-subtitle">Live-Zuschaueransicht für die Knobelrunde. Diese Seite zeigt den gemeinsamen Firebase-Spielstand ohne Bedienrechte.</p>
           </div>
         </div>
       </div>
@@ -976,7 +976,7 @@
   <script>
     const STORAGE_KEY = 'knobeln-strafpunkte-v5';
     const ONLINE_SETTINGS_KEY = 'knobelklub-online-settings-v1';
-    const APP_MODE = 'admin';
+    const APP_MODE = 'viewer';
     const VIEW_ONLY_MODE = APP_MODE === 'viewer';
 
 
