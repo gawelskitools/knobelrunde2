@@ -1379,7 +1379,7 @@
         wrap.className = 'grid';
 
         const listBox = document.createElement('details');
-        listBox.open = true;
+        listBox.open = false;
         listBox.innerHTML = `
           <summary style="cursor:pointer;font-weight:900;margin-bottom:8px;">Tagesaktuelle Spiele aus Firebase</summary>
           <div class="grid" id="todayGamesButtonList"></div>
@@ -1426,7 +1426,7 @@
           paintTodayGames(todayGames || [], listError ? `Tagesliste konnte nicht geladen werden: ${listError}` : '');
         }
 
-        wrap.appendChild(listBox);
+  
 
         const inputWrap = document.createElement('div');
         inputWrap.className = 'grid';
@@ -1442,6 +1442,7 @@
         input.value = suggestedCode;
         inputWrap.appendChild(input);
         wrap.appendChild(inputWrap);
+        wrap.appendChild(listBox);
         el.modalBody.appendChild(wrap);
 
         const useInputButton = document.createElement('button');
