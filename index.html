@@ -912,6 +912,42 @@
       box-shadow: 0 0 0 3px rgba(245,158,11,.16);
     }
 
+    .player-metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .player-metric-box {
+      min-height: 64px;
+      padding: 9px 10px;
+      border-radius: 14px;
+      background: rgba(8,13,23,.50);
+      border: 1px solid rgba(255,255,255,.08);
+      display: grid;
+      align-content: start;
+      gap: 6px;
+      overflow: hidden;
+    }
+    .player-metric-value {
+      min-height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .lust-compact {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 900;
+    }
+    .lust-dice-icon {
+      font-size: 1.45rem;
+      line-height: 1;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,.45));
+    }
+
     @media (min-width: 760px) {
       .grid-2 { grid-template-columns: 1fr 1fr; }
       .control-buttons { grid-template-columns: repeat(2, 1fr); }
@@ -1477,7 +1513,8 @@
 
     function getGameHistoryItems() {
       const items = [];
-      if (state.currentSession) {
+      const suppressCurrentForViewerFinal = Boolean(VIEW_ONLY_MODE && getViewerFinalGameForDisplay());
+      if (state.currentSession && !suppressCurrentForViewerFinal) {
         items.push({
           kind: 'current',
           id: `current-${state.currentSession.id}`,
@@ -2071,6 +2108,9 @@
       onlineRuntime.lastSyncAt = meta.updatedAt ? new Date(meta.updatedAt).toISOString() : new Date().toISOString();
       onlineRuntime.lastRemoteBy = meta.updatedBy || '';
       render();
+      if (VIEW_ONLY_MODE && state.currentSession && isViewerSessionFinishedForArchiveFallback(state.currentSession)) {
+        applyLatestOnlineArchiveFallback({ silent: true });
+      }
     }
 
     function stopOnlineSync() {
@@ -3249,21 +3289,30 @@
       if (subtitleEl) subtitleEl.textContent = subtitle;
     }
 
+    function isViewerSessionFinishedForArchiveFallback(session) {
+      if (!VIEW_ONLY_MODE || !session || !session.currentRound) return false;
+      const isFinalRound = Number(session.roundIndex || 0) >= Number(session.maxRounds || MAX_ROUNDS_PER_SESSION);
+      return Boolean(isFinalRound && session.currentRound.status === 'finished');
+    }
+
     function getViewerFinalGameForDisplay() {
-      if (!VIEW_ONLY_MODE || state.currentSession) return null;
+      if (!VIEW_ONLY_MODE) return null;
       const games = normalizeGamesHistory(state.gamesHistory || []);
-      return games[0] || null;
+      if (games.length && (!state.currentSession || isViewerSessionFinishedForArchiveFallback(state.currentSession))) return games[0];
+      return null;
     }
 
     function renderViewerFinalSettlement(game) {
       setPlayersSectionHeader(
-        'Wirtshausabrechnung',
-        'Die Partie ist beendet. Die finale Wirtshausabrechnung bleibt für diesen Fan-Link dauerhaft sichtbar.'
+        'Finale Wirtshausabrechnung',
+        'Abschlussstand der beendeten Partie. Die Spielerkarten werden nach Partieende durch diese Rechnung ersetzt.'
       );
       const beerSettlement = getBeerSettlement(game);
       el.playersGrid.innerHTML = `
-        <div style="grid-column:1 / -1; display:grid; gap:10px;">
-          ${renderBeerSettlementSheet(game, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: false, showPlayerDetails: false })}
+        <div class="history-zone" style="grid-column:1 / -1; display:grid; gap:10px; width:100%; min-width:0;">
+          <div class="history-zone-title">Finale Wirtshausabrechnung</div>
+          <div class="tiny muted">Abschlussstand der geladenen Partie.</div>
+          <div style="margin-top:10px; width:100%; min-width:0;">${renderBeerSettlementSheet(game, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: false, showPlayerDetails: false })}</div>
         </div>
       `;
     }
@@ -3275,10 +3324,11 @@
         if (el.finishRoundBtn) el.finishRoundBtn.classList.add('hidden');
         if (el.newGameBtn) el.newGameBtn.classList.add('hidden');
       }
-      const session = state.currentSession;
-      const hasSession = Boolean(session);
+      const rawSession = state.currentSession;
       const viewerFinalGame = getViewerFinalGameForDisplay();
       const showViewerFinalSettlement = Boolean(viewerFinalGame);
+      const session = showViewerFinalSettlement ? null : rawSession;
+      const hasSession = Boolean(session);
       el.scoreboardSection.classList.toggle('hidden', !hasSession);
       el.playersSection.classList.toggle('hidden', !(hasSession || showViewerFinalSettlement));
       const shouldShowHistorySection = VIEW_ONLY_MODE || hasSession || (state.gamesHistory || []).length;
@@ -3323,7 +3373,30 @@
       renderTabs();
     }
 
-    function renderPlayers(session) {
+    
+    function getLustKnobelnCount(container, playerId) {
+      const rounds = [];
+      if (container && container.currentRound) rounds.push(container.currentRound);
+      if (container && Array.isArray(container.finishedRounds)) rounds.push(...container.finishedRounds);
+      const seen = new Set();
+      let count = 0;
+      rounds.forEach((round) => {
+        (round.events || []).forEach((event) => {
+          if (!event || event.type !== 'lust' || event.actorId !== playerId) return;
+          const key = event.id || `${event.ts || ''}-${event.actorId || ''}-${event.label || ''}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          count += 1;
+        });
+      });
+      return count;
+    }
+
+    function renderLustKnobelnCompact(count) {
+      return `<span class="lust-compact"><span class="lust-dice-icon" aria-hidden="true">🎲</span><strong>× ${Number(count || 0)}</strong></span>`;
+    }
+
+function renderPlayers(session) {
       const players = [...session.players].sort((a, b) => {
         if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
         return a.name.localeCompare(b.name, 'de');
@@ -3333,8 +3406,11 @@
         const receivesChips = renderBeerReceiveChips(view.incomingOpenDetails);
         const owesBeerChips = renderBeerDebtChips(view.outgoingOpenDetails);
         const cashPenaltySummary = getCashPenaltySummary(session, player.id);
+        const lustKnobelnCount = getLustKnobelnCount(session, player.id);
         const actionDisabled = player.status !== 'active' || session.currentRound.status !== 'open';
-        const lossDisabled = actionDisabled || session.currentRound.turnsCompleted >= session.currentRound.target;
+        const turnTargetReached = session.currentRound.turnsCompleted >= session.currentRound.target;
+        const lossDisabled = actionDisabled || turnTargetReached;
+        const lustDisabled = actionDisabled || turnTargetReached;
         const cashPenaltyLocked = isCashPenaltyLimitReached(session, player.id);
         const cashPenaltyWarning = isCashPenaltyWarningActive(session, player.id);
         const cashPenaltyButtonClass = `cashpenalty${cashPenaltyWarning ? ' cashpenalty-warning' : ''}`;
@@ -3350,10 +3426,10 @@
             ${player.status === 'active' ? `
               ${isGuest ? `
               <div class="player-actions full-width-row">
-                <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="violet full-width" ${(actionDisabled || session.currentRound.turnsCompleted >= session.currentRound.target) ? 'disabled' : ''}>Lust-Knobeln</button>
+                <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="violet full-width" ${lustDisabled ? 'disabled' : ''}>Lust-Knobeln</button>
               </div>` : `
               <div class="player-actions cash-grid">
-                <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${actionDisabled ? 'disabled' : ''}>Lust-Knobeln</button>
+                <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${lustDisabled ? 'disabled' : ''}>Lust-Knobeln</button>
                 <button data-action="cashfault" data-player-id="${escapeHtml(player.id)}" class="${cashPenaltyButtonClass}" ${(actionDisabled || cashPenaltyLocked) ? 'disabled' : ''}>Strafkasse</button>
               </div>`}
               <div class="player-actions full-width-row">
@@ -3386,12 +3462,15 @@
               <div class="summary-value">${owesBeerChips}</div>
             </div>
 
-            <div class="info-rows">
-              ${isGuest ? '' : `
-              <div class="info-row">
-                <div class="muted">Summe Strafkasse</div>
-                <div>${renderCashPenaltyCompact(cashPenaltySummary, cashPenaltyWarning)}</div>
-              </div>`}
+            <div class="player-metrics-grid">
+              <div class="player-metric-box">
+                <div class="tiny muted">Lustknobeln</div>
+                <div class="player-metric-value">${renderLustKnobelnCompact(lustKnobelnCount)}</div>
+              </div>
+              <div class="player-metric-box">
+                <div class="tiny muted">Summe Strafkasse</div>
+                <div class="player-metric-value">${renderCashPenaltyCompact(cashPenaltySummary, cashPenaltyWarning)}</div>
+              </div>
             </div>
             ${actionControls}
           </article>
@@ -4028,12 +4107,9 @@ function groupBeerByFrom(details) {
     }
 
     function renderCashPenaltyCompact(summary, warningActive = false) {
-      const totalCoins = Number(summary.totalCoins || 0);
+      const totalCoins = Number(summary && summary.totalCoins ? summary.totalCoins : 0);
       const warning = warningActive ? '<span class="cash-warning-mark" title="Achtung: Beim nächsten Strafkassen-Vergehen kostet es.">!</span>' : '';
-      if (!summary.totalCount && totalCoins === 0) {
-        return `<span class="cash-penalty-compact"><span class="empty">0 Coins</span>${warning}</span>`;
-      }
-      return `<span class="cash-penalty-compact"><span class="cash-fly-icon" aria-hidden="true">💸</span><strong>× ${totalCoins}</strong>${warning}</span>`;
+      return `<span class="cash-penalty-compact"><span class="cash-fly-icon" aria-hidden="true">💸</span><strong>${totalCoins > 0 ? `× ${totalCoins}` : '0 Coins'}</strong>${warning}</span>`;
     }
 
     function getCashPenaltySettlement(container) {
