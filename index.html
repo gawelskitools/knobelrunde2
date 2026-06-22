@@ -1867,6 +1867,24 @@
           }
 
           const remoteUpdatedAt = Number(payload.updatedAt || 0);
+
+          if (VIEW_ONLY_MODE) {
+            // Zuschaueransicht: jeden Firebase-Snapshot anwenden.
+            // Hier gibt es keine lokalen Spielaktionen, die geschützt werden müssten.
+            // Sonst kann der Fanlink zwar "Online" anzeigen, aber spätere Admin-Änderungen werden übersprungen.
+            onlineSettings.lastKnownUpdatedAt = remoteUpdatedAt || Date.now();
+            saveOnlineSettings();
+            applyRemoteState(payload.state, {
+              updatedAt: remoteUpdatedAt,
+              updatedBy: payload.updatedBy || ''
+            });
+            if (!state.currentSession && !(state.gamesHistory || []).length) {
+              await applyLatestOnlineArchiveFallback({ silent: true });
+            }
+            firstSnapshot = false;
+            return;
+          }
+
           const localKnown = Number(onlineSettings.lastKnownUpdatedAt || 0);
           const forceFirstLoad = Boolean(options.forceApplyFirst && firstSnapshot);
           const isKnownOrOlder = Boolean(remoteUpdatedAt && localKnown && remoteUpdatedAt <= localKnown);
@@ -1888,9 +1906,6 @@
             updatedAt: remoteUpdatedAt,
             updatedBy: payload.updatedBy || ''
           });
-          if (VIEW_ONLY_MODE && !state.currentSession && !(state.gamesHistory || []).length) {
-            await applyLatestOnlineArchiveFallback({ silent: true });
-          }
           firstSnapshot = false;
         }, (error) => {
           onlineRuntime.error = error && error.message ? error.message : 'Online-Lesen fehlgeschlagen.';
