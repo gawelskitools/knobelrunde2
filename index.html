@@ -1153,6 +1153,7 @@
   <script>
     const STORAGE_KEY = 'knobeln-strafpunkte-v5';
     const ONLINE_SETTINGS_KEY = 'knobelklub-online-settings-v1';
+    const VIEWER_FINAL_ARCHIVE_CACHE_KEY = 'knobelklub-viewer-final-archive-v1';
     const APP_MODE = 'viewer';
     const VIEW_ONLY_MODE = APP_MODE === 'viewer';
 
@@ -1300,6 +1301,7 @@
 
     applyAppModeUi();
     bindEvents();
+    restoreViewerFinalArchiveCacheIfAvailable();
     render();
     autoStartOnlineSync();
     maybeShowViewerWelcomeDialog();
@@ -1562,6 +1564,140 @@
         }));
       }
       return normalized;
+    }
+
+
+    function getCurrentViewerGameId() {
+      return sanitizeOnlineGameId(onlineSettings && onlineSettings.gameId ? onlineSettings.gameId : getUrlGameId());
+    }
+
+    function completeViewerArchiveForHistory(archive) {
+      const normalized = normalizeViewerArchiveForDisplay(archive);
+      if (!normalized) return null;
+
+      const roundsByIndex = new Map();
+      (Array.isArray(normalized.finishedRounds) ? normalized.finishedRounds : []).forEach((round) => {
+        const index = Number(round && round.index || 0);
+        if (index) roundsByIndex.set(index, deepClone(round));
+      });
+
+      const entries = Array.isArray(normalized.roundEntries) ? deepClone(normalized.roundEntries) : [];
+      const byIndex = new Map();
+      entries.forEach((entry) => {
+        const index = Number(entry && entry.roundIndex || (entry.currentRound && entry.currentRound.index) || 0);
+        if (!index) return;
+        const merged = {
+          id: entry.id || `${normalized.id || normalized.sessionId || 'game'}-round-${index}`,
+          sessionId: entry.sessionId || normalized.sessionId || normalized.id,
+          sessionTitle: entry.sessionTitle || normalized.title,
+          roundIndex: index,
+          maxRounds: entry.maxRounds || normalized.maxRounds,
+          roundTarget: entry.roundTarget || normalized.roundTarget,
+          finishedAt: entry.finishedAt || (roundsByIndex.get(index) && roundsByIndex.get(index).finishedAt) || normalized.finishedAt,
+          players: deepClone(entry.players && entry.players.length ? entry.players : (normalized.players || [])),
+          points: deepClone(entry.points && entry.points.length ? entry.points : (normalized.points || [])),
+          settlements: deepClone(Array.isArray(entry.settlements) ? entry.settlements : (normalized.settlements || []).filter((item) => Number(item.roundIndex || 0) === index)),
+          cashPenalties: deepClone(Array.isArray(entry.cashPenalties) ? entry.cashPenalties : (normalized.cashPenalties || [])),
+          currentRound: deepClone(entry.currentRound || roundsByIndex.get(index) || null)
+        };
+        if (!merged.currentRound) {
+          merged.currentRound = {
+            index,
+            target: merged.roundTarget,
+            turnsCompleted: 0,
+            status: 'finished',
+            startedAt: normalized.createdAt,
+            finishedAt: merged.finishedAt,
+            events: []
+          };
+        }
+        byIndex.set(index, merged);
+      });
+
+      roundsByIndex.forEach((round, index) => {
+        if (byIndex.has(index)) return;
+        byIndex.set(index, {
+          id: `${normalized.id || normalized.sessionId || 'game'}-round-${index}`,
+          sessionId: normalized.sessionId || normalized.id,
+          sessionTitle: normalized.title,
+          roundIndex: index,
+          maxRounds: normalized.maxRounds,
+          roundTarget: normalized.roundTarget,
+          finishedAt: round.finishedAt || normalized.finishedAt,
+          players: deepClone(normalized.players || []),
+          points: deepClone(normalized.points || []),
+          settlements: deepClone((normalized.settlements || []).filter((item) => Number(item.roundIndex || 0) === index)),
+          cashPenalties: deepClone(normalized.cashPenalties || []),
+          currentRound: deepClone(round)
+        });
+      });
+
+      normalized.roundEntries = Array.from(byIndex.values()).sort((a, b) => Number(a.roundIndex || 0) - Number(b.roundIndex || 0));
+      return normalized;
+    }
+
+    function saveViewerFinalArchiveCache(archive) {
+      if (!VIEW_ONLY_MODE || !archive) return;
+      const gameId = getCurrentViewerGameId();
+      if (!gameId) return;
+      try {
+        localStorage.setItem(VIEWER_FINAL_ARCHIVE_CACHE_KEY, JSON.stringify({
+          gameId,
+          savedAt: Date.now(),
+          archive: deepClone(archive)
+        }));
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    function loadViewerFinalArchiveCache() {
+      if (!VIEW_ONLY_MODE) return null;
+      try {
+        const raw = localStorage.getItem(VIEWER_FINAL_ARCHIVE_CACHE_KEY);
+        if (!raw) return null;
+        const cached = JSON.parse(raw);
+        const currentGameId = getCurrentViewerGameId();
+        if (!cached || !cached.archive) return null;
+        if (currentGameId && cached.gameId && sanitizeOnlineGameId(cached.gameId) !== currentGameId) return null;
+        return completeViewerArchiveForHistory(cached.archive);
+      } catch (error) {
+        console.error(error);
+        return null;
+      }
+    }
+
+    function clearViewerFinalArchiveCache() {
+      if (!VIEW_ONLY_MODE) return;
+      try {
+        localStorage.removeItem(VIEWER_FINAL_ARCHIVE_CACHE_KEY);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    function restoreViewerFinalArchiveCacheIfAvailable() {
+      const archive = loadViewerFinalArchiveCache();
+      if (!archive) return false;
+      state.currentSession = null;
+      state.history = [];
+      state.gamesHistory = [archive];
+      state.actionAudit = [];
+      state.ui = { ...(state.ui || {}), openTab: 'history' };
+      return true;
+    }
+
+    function applyViewerFinalArchiveToState(archive, options = {}) {
+      const normalized = completeViewerArchiveForHistory(archive);
+      if (!normalized) return false;
+      state.currentSession = null;
+      state.history = [];
+      state.gamesHistory = [normalized];
+      state.actionAudit = [];
+      state.favoritePlayers = state.favoritePlayers || [];
+      state.ui = { ...(state.ui || {}), openTab: options.openHistory === false ? null : 'history' };
+      saveViewerFinalArchiveCache(normalized);
+      return true;
     }
 
     function getGameModeLabel(target, maxRounds) {
@@ -2048,14 +2184,7 @@
       try {
         const latest = await readLatestOnlineArchiveForCurrentGame();
         if (!latest || !latest.archive) return false;
-        const archive = normalizeViewerArchiveForDisplay(latest.archive);
-        if (!archive) return false;
-        state.currentSession = null;
-        state.history = [];
-        state.gamesHistory = [archive];
-        state.actionAudit = [];
-        state.favoritePlayers = state.favoritePlayers || [];
-        state.ui = { ...(state.ui || {}), openTab: null };
+        if (!applyViewerFinalArchiveToState(latest.archive, { openHistory: true })) return false;
         onlineRuntime.error = '';
         onlineRuntime.lastSyncAt = latest.archivedAt ? new Date(Number(latest.archivedAt)).toISOString() : new Date().toISOString();
         onlineRuntime.lastRemoteBy = latest.archivedBy || '';
@@ -2150,6 +2279,12 @@
       if (VIEW_ONLY_MODE && !migrated.currentSession && !(migrated.gamesHistory || []).length && previousViewerArchive) {
         migrated.gamesHistory = [previousViewerArchive];
       }
+      if (VIEW_ONLY_MODE && migrated.currentSession && !isViewerSessionFinishedForArchiveFallback(migrated.currentSession)) {
+        clearViewerFinalArchiveCache();
+      }
+      if (VIEW_ONLY_MODE && !migrated.currentSession && Array.isArray(migrated.gamesHistory) && migrated.gamesHistory.length) {
+        migrated.gamesHistory = [completeViewerArchiveForHistory(migrated.gamesHistory[0]) || migrated.gamesHistory[0]];
+      }
       onlineRuntime.applyingRemote = true;
       state.currentSession = migrated.currentSession;
       state.history = migrated.history;
@@ -2215,11 +2350,7 @@
       }
 
       if (hasArchivedGame) {
-        const archive = normalizeViewerArchiveForDisplay((state.gamesHistory || [])[0]);
-        if (archive) {
-          state.currentSession = null;
-          state.gamesHistory = [archive];
-          state.ui = { ...(state.ui || {}), openTab: null };
+        if (applyViewerFinalArchiveToState((state.gamesHistory || [])[0], { openHistory: true })) {
           disconnectViewerAfterFinalDisplay({ silent: true });
           render();
           return true;
@@ -2228,12 +2359,7 @@
 
       if (hasFinishedFinalSession) {
         const archive = createViewerCompleteArchiveFromSession(state.currentSession);
-        if (archive) {
-          state.currentSession = null;
-          state.history = [];
-          state.gamesHistory = [archive];
-          state.actionAudit = [];
-          state.ui = { ...(state.ui || {}), openTab: null };
+        if (applyViewerFinalArchiveToState(archive, { openHistory: true })) {
           disconnectViewerAfterFinalDisplay({ silent: true });
           render();
           return true;
@@ -3411,7 +3537,9 @@
     function getViewerFinalGameForDisplay() {
       if (!VIEW_ONLY_MODE) return null;
       const games = normalizeGamesHistory(state.gamesHistory || []);
-      if (games.length && (!state.currentSession || isViewerSessionFinishedForArchiveFallback(state.currentSession))) return games[0];
+      if (games.length && (!state.currentSession || isViewerSessionFinishedForArchiveFallback(state.currentSession))) {
+        return completeViewerArchiveForHistory(games[0]) || games[0];
+      }
       return null;
     }
 
@@ -3711,8 +3839,9 @@ function renderPlayers(session) {
         `;
       }
 
+      const openArchived = VIEW_ONLY_MODE && !state.currentSession ? 'open' : '';
       return `
-        <details class="history-item">
+        <details class="history-item" ${openArchived}>
           <summary><strong>${escapeHtml(gameLabel)}</strong></summary>
           <div class="history-detail-list" style="margin-top:10px;">${finishedRoundsHtml}</div>
           ${renderArchivedGameFinalSettlement(game)}
