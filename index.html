@@ -4557,9 +4557,20 @@ function groupBeerByFrom(details) {
       return (container.cashPenalties || []).filter((item) => item.playerId === playerId);
     }
 
+    function getCashPenaltyActionTypes() {
+      // Fanansicht: für die Historie müssen auch ältere gespeicherte Strafkassen-Typen erkannt werden.
+      // Lustknobeln zählt hier bewusst nicht als Strafkassen-Vergehen, analog zur aktuellen Admin-Logik.
+      const configuredTypes = Object.keys(CASH_PENALTY_TYPES || {}).filter((type) => type !== 'lust');
+      return Array.from(new Set([...configuredTypes, 'cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln']));
+    }
+
+    function isCashPenaltyActionType(type) {
+      return getCashPenaltyActionTypes().includes(type);
+    }
+
     function getCashPenaltyViolationCount(container, playerId) {
       return getCashPenaltyEntries(container, playerId)
-        .filter((item) => ['cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'].includes(item.type))
+        .filter((item) => isCashPenaltyActionType(item.type))
         .length;
     }
 
