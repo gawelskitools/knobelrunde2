@@ -1507,6 +1507,63 @@
       };
     }
 
+    function createViewerCompleteArchiveFromSession(session) {
+      if (!session) return null;
+      const archive = createGameArchive(session);
+      const rounds = Array.isArray(session.finishedRounds) ? deepClone(session.finishedRounds) : [];
+      if (session.currentRound && session.currentRound.status === 'finished') {
+        const alreadyIncluded = rounds.some((round) => Number(round.index || 0) === Number(session.currentRound.index || 0));
+        if (!alreadyIncluded) rounds.push(deepClone(session.currentRound));
+      }
+      archive.finishedRounds = rounds.sort((a, b) => Number(a.index || 0) - Number(b.index || 0));
+      archive.finishedAt = (session.currentRound && session.currentRound.finishedAt) || archive.finishedAt || new Date().toISOString();
+
+      const roundEntries = Array.isArray(archive.roundEntries) ? deepClone(archive.roundEntries) : [];
+      const existingIndexes = new Set(roundEntries.map((entry) => Number(entry.roundIndex || 0)));
+      archive.finishedRounds.forEach((round) => {
+        const roundIndex = Number(round.index || 0);
+        if (!roundIndex || existingIndexes.has(roundIndex)) return;
+        roundEntries.push({
+          id: uid('history'),
+          sessionId: archive.sessionId,
+          sessionTitle: archive.title,
+          roundIndex,
+          maxRounds: archive.maxRounds,
+          roundTarget: archive.roundTarget,
+          finishedAt: round.finishedAt || archive.finishedAt,
+          players: deepClone(archive.players || []),
+          points: deepClone(archive.points || []),
+          settlements: deepClone((archive.settlements || []).filter((item) => Number(item.roundIndex || 0) === roundIndex)),
+          cashPenalties: deepClone(archive.cashPenalties || []),
+          currentRound: deepClone(round)
+        });
+      });
+      archive.roundEntries = roundEntries.sort((a, b) => Number(a.roundIndex || 0) - Number(b.roundIndex || 0));
+      return archive;
+    }
+
+    function normalizeViewerArchiveForDisplay(archive) {
+      const normalized = normalizeSingleGameArchive(archive);
+      if (!normalized) return null;
+      if ((!normalized.roundEntries || !normalized.roundEntries.length) && Array.isArray(normalized.finishedRounds) && normalized.finishedRounds.length) {
+        normalized.roundEntries = normalized.finishedRounds.map((round) => ({
+          id: uid('history'),
+          sessionId: normalized.sessionId,
+          sessionTitle: normalized.title,
+          roundIndex: round.index || 1,
+          maxRounds: normalized.maxRounds,
+          roundTarget: normalized.roundTarget,
+          finishedAt: round.finishedAt || normalized.finishedAt,
+          players: deepClone(normalized.players || []),
+          points: deepClone(normalized.points || []),
+          settlements: deepClone((normalized.settlements || []).filter((item) => Number(item.roundIndex || 0) === Number(round.index || 0))),
+          cashPenalties: deepClone(normalized.cashPenalties || []),
+          currentRound: deepClone(round)
+        }));
+      }
+      return normalized;
+    }
+
     function getGameModeLabel(target, maxRounds) {
       return `${maxRounds}x ${target}/${target} Durchgänge`;
     }
@@ -1915,7 +1972,8 @@
               updatedAt: remoteUpdatedAt,
               updatedBy: payload.updatedBy || ''
             });
-            if (!state.currentSession && !(state.gamesHistory || []).length) {
+            const finalApplied = await applyViewerFinalArchiveAfterRemote({ silent: true });
+            if (!finalApplied && !state.currentSession && !(state.gamesHistory || []).length) {
               await applyLatestOnlineArchiveFallback({ silent: true });
             }
             firstSnapshot = false;
@@ -1990,7 +2048,7 @@
       try {
         const latest = await readLatestOnlineArchiveForCurrentGame();
         if (!latest || !latest.archive) return false;
-        const archive = normalizeSingleGameArchive(latest.archive);
+        const archive = normalizeViewerArchiveForDisplay(latest.archive);
         if (!archive) return false;
         state.currentSession = null;
         state.history = [];
@@ -1998,12 +2056,12 @@
         state.actionAudit = [];
         state.favoritePlayers = state.favoritePlayers || [];
         state.ui = { ...(state.ui || {}), openTab: null };
-        onlineRuntime.connected = true;
         onlineRuntime.error = '';
         onlineRuntime.lastSyncAt = latest.archivedAt ? new Date(Number(latest.archivedAt)).toISOString() : new Date().toISOString();
         onlineRuntime.lastRemoteBy = latest.archivedBy || '';
         onlineSettings.lastKnownUpdatedAt = Math.max(Number(onlineSettings.lastKnownUpdatedAt || 0), Number(latest.archivedAt || 0));
         saveOnlineSettings();
+        disconnectViewerAfterFinalDisplay({ silent: true });
         render();
         return true;
       } catch (error) {
@@ -2064,8 +2122,11 @@
           updatedAt: remoteUpdatedAt,
           updatedBy: payload.updatedBy || ''
         });
-        if (VIEW_ONLY_MODE && !state.currentSession && !(state.gamesHistory || []).length) {
-          await applyLatestOnlineArchiveFallback({ silent: true });
+        if (VIEW_ONLY_MODE) {
+          const finalApplied = await applyViewerFinalArchiveAfterRemote({ silent: true });
+          if (!finalApplied && !state.currentSession && !(state.gamesHistory || []).length) {
+            await applyLatestOnlineArchiveFallback({ silent: true });
+          }
         }
         renderOnlineStatus();
         if (!silent) {
@@ -2108,9 +2169,6 @@
       onlineRuntime.lastSyncAt = meta.updatedAt ? new Date(meta.updatedAt).toISOString() : new Date().toISOString();
       onlineRuntime.lastRemoteBy = meta.updatedBy || '';
       render();
-      if (VIEW_ONLY_MODE && state.currentSession && isViewerSessionFinishedForArchiveFallback(state.currentSession)) {
-        applyLatestOnlineArchiveFallback({ silent: true });
-      }
     }
 
     function stopOnlineSync() {
@@ -2127,6 +2185,61 @@
       onlineRuntime.error = '';
       renderOnlineStatus();
       showToast('Online-Spielstand getrennt.');
+    }
+
+    function disconnectViewerAfterFinalDisplay(options = {}) {
+      if (!VIEW_ONLY_MODE) return;
+      if (onlineRuntime.unsubscribe) {
+        onlineRuntime.unsubscribe();
+        onlineRuntime.unsubscribe = null;
+      }
+      onlineSettings.enabled = false;
+      saveOnlineSettings();
+      onlineRuntime.listening = false;
+      onlineRuntime.connected = false;
+      onlineRuntime.localDirty = false;
+      onlineRuntime.connecting = false;
+      onlineRuntime.error = '';
+      if (!options.silent) showToast('Partie beendet. Live-Verbindung getrennt.');
+    }
+
+    async function applyViewerFinalArchiveAfterRemote(options = {}) {
+      if (!VIEW_ONLY_MODE) return false;
+      const hasArchivedGame = Boolean(!state.currentSession && Array.isArray(state.gamesHistory) && state.gamesHistory.length);
+      const hasFinishedFinalSession = isViewerSessionFinishedForArchiveFallback(state.currentSession);
+      if (!hasArchivedGame && !hasFinishedFinalSession) return false;
+
+      if (onlineSettings.enabled) {
+        const archiveLoaded = await applyLatestOnlineArchiveFallback({ silent: true });
+        if (archiveLoaded) return true;
+      }
+
+      if (hasArchivedGame) {
+        const archive = normalizeViewerArchiveForDisplay((state.gamesHistory || [])[0]);
+        if (archive) {
+          state.currentSession = null;
+          state.gamesHistory = [archive];
+          state.ui = { ...(state.ui || {}), openTab: null };
+          disconnectViewerAfterFinalDisplay({ silent: true });
+          render();
+          return true;
+        }
+      }
+
+      if (hasFinishedFinalSession) {
+        const archive = createViewerCompleteArchiveFromSession(state.currentSession);
+        if (archive) {
+          state.currentSession = null;
+          state.history = [];
+          state.gamesHistory = [archive];
+          state.actionAudit = [];
+          state.ui = { ...(state.ui || {}), openTab: null };
+          disconnectViewerAfterFinalDisplay({ silent: true });
+          render();
+          return true;
+        }
+      }
+      return false;
     }
 
     async function autoStartOnlineSync() {
