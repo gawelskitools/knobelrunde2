@@ -1471,6 +1471,48 @@
       return snapshot.val();
     }
 
+    async function readBestOnlineArchivePartyForCode(code) {
+      if (!isFirebaseConfigured()) return null;
+      const safeCode = sanitizeOnlineGameId(code);
+      if (!safeCode) return null;
+      try {
+        const db = await initFirebaseOnline();
+        const sdk = await loadFirebaseSdk();
+        const snapshot = await sdk.get(sdk.ref(db, `games/${safeCode}/archive`));
+        const archiveMap = snapshot.val() || {};
+        const archiveItems = Object.values(archiveMap)
+          .filter((item) => item && item.archive)
+          .map((item) => {
+            const archive = item.archive;
+            const finishedAtTime = archive.finishedAt ? new Date(archive.finishedAt).getTime() : 0;
+            const createdAtTime = archive.createdAt ? new Date(archive.createdAt).getTime() : 0;
+            const updatedAt = Number(item.archivedAt || finishedAtTime || createdAtTime || parseRoundCodeTime(safeCode) || 0);
+            const roundCount = Array.isArray(archive.roundEntries) && archive.roundEntries.length
+              ? archive.roundEntries.length
+              : (Array.isArray(archive.finishedRounds) ? archive.finishedRounds.length : 0);
+            const eventCount = Array.isArray(archive.finishedRounds)
+              ? archive.finishedRounds.reduce((sum, round) => sum + ((round && Array.isArray(round.events)) ? round.events.length : 0), 0)
+              : 0;
+            return {
+              code: safeCode,
+              title: archive.title || 'Knobelpartie',
+              status: 'archiviert',
+              updatedAt,
+              archiveCount: Object.keys(archiveMap || {}).length,
+              currentSession: null,
+              archive,
+              _score: roundCount * 100000 + eventCount
+            };
+          });
+        if (!archiveItems.length) return null;
+        archiveItems.sort((a, b) => Number(b._score || 0) - Number(a._score || 0) || Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+        return archiveItems[0];
+      } catch (error) {
+        console.error(error);
+        return null;
+      }
+    }
+
     async function generateUnusedRoundCode() {
       const base = generateSuggestedRoundCode();
       for (let index = 0; index < 20; index += 1) {
@@ -1664,7 +1706,11 @@
               button.innerHTML = `<strong>${escapeHtml(primaryLabel)}</strong><br><span class="tiny">${escapeHtml(game.status)}${escapeHtml(timeText)}${escapeHtml(archiveText)}</span>`;
               button.addEventListener('click', () => {
                 hideDialog();
-                resolve({ type: 'existing', code: game.code });
+                if (game.archive || game.status === 'archiviert') {
+                  resolve({ type: 'party', party: game, code: game.code });
+                } else {
+                  resolve({ type: 'existing', code: game.code });
+                }
               });
               list.appendChild(button);
             });
@@ -1782,6 +1828,10 @@
           onlineRuntime.connecting = false;
           onlineRuntime.localDirty = false;
           renderOnlineStatus();
+          return;
+        }
+        if (choice.type === 'party' && choice.party) {
+          await loadOnlinePartyInAdmin(choice.party);
           return;
         }
         if (choice.type === 'existing') {
@@ -2459,7 +2509,7 @@
       leaveFinishedOnlineRoundForPicker();
       state.currentSession = null;
       state.actionAudit = [];
-      state.ui = { ...(state.ui || {}), openTab: 'null' };
+      state.ui = { ...(state.ui || {}), openTab: null };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       render();
       await maybeShowAdminWelcomeDialog({ force: true });
@@ -2541,6 +2591,18 @@
       if (existingPayload && existingPayload.state) {
         if (options.autoLoadExisting) {
           const loadedState = migrateState(existingPayload.state);
+          const hasVisibleState = Boolean(
+            loadedState.currentSession ||
+            (loadedState.gamesHistory || []).length ||
+            (loadedState.history || []).length
+          );
+          if (!hasVisibleState) {
+            const archivedParty = await readBestOnlineArchivePartyForCode(sanitized);
+            if (archivedParty && archivedParty.archive) {
+              await loadOnlinePartyInAdmin(archivedParty);
+              return;
+            }
+          }
           onlineSettings.nextSessionRequiresNewCode = Boolean(!loadedState.currentSession && ((loadedState.gamesHistory || []).length || (loadedState.history || []).length));
           saveOnlineSettings();
           applyRemoteState(existingPayload.state, {
@@ -2548,7 +2610,7 @@
             updatedBy: existingPayload.updatedBy || '',
             gameId: sanitized
           });
-          await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: false });
+          await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: true });
           showToast(`Online-Runde ${sanitized} geladen.`);
           return;
         }
@@ -2565,6 +2627,18 @@
 
         if (answer === 'load') {
           const loadedState = migrateState(existingPayload.state);
+          const hasVisibleState = Boolean(
+            loadedState.currentSession ||
+            (loadedState.gamesHistory || []).length ||
+            (loadedState.history || []).length
+          );
+          if (!hasVisibleState) {
+            const archivedParty = await readBestOnlineArchivePartyForCode(sanitized);
+            if (archivedParty && archivedParty.archive) {
+              await loadOnlinePartyInAdmin(archivedParty);
+              return;
+            }
+          }
           onlineSettings.nextSessionRequiresNewCode = Boolean(!loadedState.currentSession && ((loadedState.gamesHistory || []).length || (loadedState.history || []).length));
           saveOnlineSettings();
           applyRemoteState(existingPayload.state, {
@@ -2572,7 +2646,7 @@
             updatedBy: existingPayload.updatedBy || '',
             gameId: sanitized
           });
-          await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: false });
+          await startOnlineSync({ uploadLocalIfEmpty: false, forceApplyFirst: true });
           showToast(`Online-Runde ${sanitized} geladen.`);
           return;
         }
@@ -2600,6 +2674,12 @@
         onlineRuntime.localDirty = false;
         onlineRuntime.error = '';
         renderOnlineStatus();
+        return;
+      }
+
+      const archivedParty = await readBestOnlineArchivePartyForCode(sanitized);
+      if (archivedParty && archivedParty.archive && options.autoLoadExisting) {
+        await loadOnlinePartyInAdmin(archivedParty);
         return;
       }
 
@@ -3765,7 +3845,7 @@
         const action = await showCustomDialog({
           title: `Endabrechnung Spielrunde ${entry.roundIndex}`,
           message: `${escapeHtml(entry.sessionTitle)} · ${formatDateTime(entry.finishedAt)} · ${entry.currentRound.turnsCompleted}/${entry.currentRound.target} Durchgänge`,
-          bodyHtml: renderBeerSettlementSheet(entry, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: true }),
+          bodyHtml: renderBeerSettlementSheet(entry, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: false, showPlayerCards: false }),
           actions: [
             { label: 'Text kopieren', value: 'copy', className: 'info' },
             { label: 'Spiel beenden', value: 'finish', className: 'danger' }
