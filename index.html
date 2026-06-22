@@ -1758,30 +1758,85 @@
       return items;
     }
 
-    function getGameRoundsForDisplay(game) {
-      const finishedRounds = [...(game.roundEntries || [])].sort((a, b) => {
-        if (a.roundIndex !== b.roundIndex) return a.roundIndex - b.roundIndex;
-        return new Date(a.finishedAt || 0) - new Date(b.finishedAt || 0);
+
+    function makeViewerRoundEntryForDisplay(game, round, options = {}) {
+      const roundIndex = Number(options.roundIndex || (round && round.index) || 0);
+      if (!roundIndex) return null;
+      return {
+        id: options.id || `${game.id || game.sessionId || 'game'}-round-${roundIndex}`,
+        sessionId: game.sessionId || game.id,
+        sessionTitle: game.title,
+        roundIndex,
+        maxRounds: game.maxRounds,
+        roundTarget: game.roundTarget,
+        finishedAt: options.finishedAt || (round && round.finishedAt) || game.finishedAt || new Date().toISOString(),
+        players: deepClone(options.players || game.players || []),
+        points: deepClone(options.points || game.points || []),
+        settlements: deepClone(Array.isArray(options.settlements) ? options.settlements : (game.settlements || []).filter((item) => Number(item.roundIndex || 0) === roundIndex)),
+        cashPenalties: deepClone(options.cashPenalties || game.cashPenalties || []),
+        currentRound: deepClone(round || {
+          index: roundIndex,
+          target: game.roundTarget,
+          turnsCompleted: 0,
+          status: 'finished',
+          startedAt: game.createdAt,
+          finishedAt: options.finishedAt || game.finishedAt || new Date().toISOString(),
+          events: []
+        }),
+        isLiveRound: Boolean(options.isLiveRound)
+      };
+    }
+
+    function getCompletedRoundEntriesForDisplay(game) {
+      const byIndex = new Map();
+      (Array.isArray(game.roundEntries) ? game.roundEntries : []).forEach((entry) => {
+        const roundIndex = Number(entry && (entry.roundIndex || (entry.currentRound && entry.currentRound.index)) || 0);
+        if (!roundIndex) return;
+        byIndex.set(roundIndex, makeViewerRoundEntryForDisplay(game, entry.currentRound, {
+          id: entry.id,
+          roundIndex,
+          finishedAt: entry.finishedAt,
+          players: entry.players,
+          points: entry.points,
+          settlements: entry.settlements,
+          cashPenalties: entry.cashPenalties,
+          isLiveRound: false
+        }));
       });
+      (Array.isArray(game.finishedRounds) ? game.finishedRounds : []).forEach((round) => {
+        const roundIndex = Number(round && round.index || 0);
+        if (!roundIndex || byIndex.has(roundIndex)) return;
+        byIndex.set(roundIndex, makeViewerRoundEntryForDisplay(game, round, { roundIndex, isLiveRound: false }));
+      });
+      if (game.currentRound && game.currentRound.status === 'finished') {
+        const roundIndex = Number(game.currentRound.index || 0);
+        if (roundIndex && !byIndex.has(roundIndex)) {
+          byIndex.set(roundIndex, makeViewerRoundEntryForDisplay(game, game.currentRound, { roundIndex, isLiveRound: false }));
+        }
+      }
+      return Array.from(byIndex.values())
+        .filter(Boolean)
+        .sort((a, b) => {
+          if (Number(a.roundIndex || 0) !== Number(b.roundIndex || 0)) return Number(a.roundIndex || 0) - Number(b.roundIndex || 0);
+          return new Date(a.finishedAt || 0) - new Date(b.finishedAt || 0);
+        });
+    }
+
+    function getGameRoundsForDisplay(game) {
+      const finishedRounds = getCompletedRoundEntriesForDisplay(game);
       if (game.kind === 'current' && game.currentRound) {
-        const currentRoundAlreadyArchived = finishedRounds.some((entry) => entry.roundIndex === game.currentRound.index);
         const currentRoundIsOpen = game.currentRound.status === 'open';
-        if (currentRoundIsOpen || !currentRoundAlreadyArchived) {
-          return [{
-            id: currentRoundIsOpen ? `live-round-${game.currentRound.index}` : `finished-current-round-${game.currentRound.index}`,
-            sessionId: game.id,
-            sessionTitle: game.title,
+        if (currentRoundIsOpen) {
+          return [makeViewerRoundEntryForDisplay(game, game.currentRound, {
+            id: `live-round-${game.currentRound.index}`,
             roundIndex: game.currentRound.index,
-            maxRounds: game.maxRounds,
-            roundTarget: game.roundTarget,
             finishedAt: game.currentRound.finishedAt || new Date().toISOString(),
-            players: deepClone(game.players || []),
-            points: deepClone(game.points || []),
-            settlements: deepClone((game.settlements || []).filter((item) => item.roundIndex === game.currentRound.index)),
-            cashPenalties: deepClone(game.cashPenalties || []),
-            currentRound: deepClone(game.currentRound),
-            isLiveRound: currentRoundIsOpen
-          }, ...finishedRounds];
+            players: game.players,
+            points: game.points,
+            settlements: (game.settlements || []).filter((item) => Number(item.roundIndex || 0) === Number(game.currentRound.index || 0)),
+            cashPenalties: game.cashPenalties,
+            isLiveRound: true
+          }), ...finishedRounds].filter(Boolean);
         }
       }
       return finishedRounds;
@@ -2192,7 +2247,14 @@
       const archiveMap = snapshot.val() || {};
       const entries = Object.values(archiveMap)
         .filter((item) => item && item.archive)
-        .sort((a, b) => Number(b.archivedAt || 0) - Number(a.archivedAt || 0));
+        .map((item) => ({
+          ...item,
+          _viewerScore: getViewerArchiveCompletenessScore(item.archive)
+        }))
+        .sort((a, b) => {
+          if (b._viewerScore !== a._viewerScore) return b._viewerScore - a._viewerScore;
+          return Number(b.archivedAt || 0) - Number(a.archivedAt || 0);
+        });
       return entries[0] || null;
     }
 
@@ -2210,11 +2272,45 @@
       return normalizeGamesHistory([archive])[0] || null;
     }
 
+
+    function getViewerArchiveCompletenessScore(archive) {
+      if (!archive || typeof archive !== 'object') return 0;
+      const indexes = new Set();
+      let events = 0;
+      let settlements = Array.isArray(archive.settlements) ? archive.settlements.length : 0;
+      const addRound = (round) => {
+        if (!round || typeof round !== 'object') return;
+        const index = Number(round.index || 0);
+        if (index) indexes.add(index);
+        if (Array.isArray(round.events)) events += round.events.length;
+      };
+      (Array.isArray(archive.finishedRounds) ? archive.finishedRounds : []).forEach(addRound);
+      if (archive.currentRound) addRound(archive.currentRound);
+      (Array.isArray(archive.roundEntries) ? archive.roundEntries : []).forEach((entry) => {
+        const index = Number(entry && (entry.roundIndex || (entry.currentRound && entry.currentRound.index)) || 0);
+        if (index) indexes.add(index);
+        if (entry && entry.currentRound && Array.isArray(entry.currentRound.events)) events += entry.currentRound.events.length;
+        if (entry && Array.isArray(entry.settlements)) settlements += entry.settlements.length;
+      });
+      return (indexes.size * 100000) + (events * 100) + settlements;
+    }
+
+    function pickBestViewerArchiveFromList(items) {
+      const candidates = (Array.isArray(items) ? items : [])
+        .filter(Boolean)
+        .map((archive) => ({ archive, score: getViewerArchiveCompletenessScore(archive) }))
+        .sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          return new Date(b.archive.finishedAt || b.archive.createdAt || 0) - new Date(a.archive.finishedAt || a.archive.createdAt || 0);
+        });
+      return candidates.length ? candidates[0].archive : null;
+    }
+
     function getViewerFallbackArchiveFromCurrentState() {
       if (!VIEW_ONLY_MODE) return null;
-      if (state.currentSession) return createGameArchive(state.currentSession);
+      if (state.currentSession) return createViewerCompleteArchiveFromSession(state.currentSession) || createGameArchive(state.currentSession);
       const games = normalizeGamesHistory(state.gamesHistory || []);
-      return games[0] || null;
+      return pickBestViewerArchiveFromList(games) || games[0] || null;
     }
 
     async function applyLatestOnlineArchiveFallback(options = {}) {
@@ -2262,6 +2358,56 @@
         onlineRuntime.error = '';
         renderOnlineStatus();
 
+        // Wichtig: Beim Fanlink zuerst den aktuellen Live-Knoten lesen.
+        // Dort liegt während der Partie der vollständige laufende Verlauf.
+        // Nach Partieende liegt dort normalerweise state.gamesHistory[0] mit der finalen Admin-Historie.
+        // Erst danach greifen wir auf das Archiv zurück, damit kein alter Archivstand desselben Codes geladen wird.
+        const livePayload = await readOnlineLivePayloadForViewerGame(code);
+        if (livePayload && livePayload.state) {
+          const migrated = migrateState(livePayload.state);
+          const liveHasRunningSession = Boolean(migrated.currentSession && !isViewerSessionFinishedForArchiveFallback(migrated.currentSession));
+          const liveHasFinishedSession = Boolean(migrated.currentSession && isViewerSessionFinishedForArchiveFallback(migrated.currentSession));
+          const liveBestArchive = pickBestViewerArchiveFromList(migrated.gamesHistory || []);
+
+          onlineSettings.enabled = true;
+          onlineSettings.gameId = code;
+          onlineSettings.lastKnownUpdatedAt = Number(livePayload.updatedAt || Date.now());
+          saveOnlineSettings();
+
+          if (liveHasRunningSession) {
+            applyRemoteState(livePayload.state, {
+              updatedAt: Number(livePayload.updatedAt || Date.now()),
+              updatedBy: livePayload.updatedBy || ''
+            });
+            if (openHistory) {
+              state.ui = { ...(state.ui || {}), openTab: 'history' };
+              render();
+            }
+            if (!silent) showToast('Laufender Spielverlauf geladen.');
+            onlineRuntime.connecting = false;
+            return true;
+          }
+
+          if (liveHasFinishedSession) {
+            const archiveFromSession = createViewerCompleteArchiveFromSession(migrated.currentSession);
+            if (archiveFromSession && applyViewerFinalArchiveToState(archiveFromSession, { openHistory })) {
+              onlineRuntime.connecting = false;
+              disconnectViewerAfterFinalDisplay({ silent: true });
+              render();
+              if (!silent) showToast('Finale Historie aus dem beendeten Live-Stand geladen.');
+              return true;
+            }
+          }
+
+          if (liveBestArchive && applyViewerFinalArchiveToState(liveBestArchive, { openHistory })) {
+            onlineRuntime.connecting = false;
+            disconnectViewerAfterFinalDisplay({ silent: true });
+            render();
+            if (!silent) showToast('Komplette Historie aus dem finalen Live-Stand geladen.');
+            return true;
+          }
+        }
+
         const latestArchive = await readLatestOnlineArchiveForCurrentGame(code);
         if (latestArchive && latestArchive.archive) {
           const applied = applyViewerFinalArchiveToState(latestArchive.archive, { openHistory });
@@ -2276,26 +2422,6 @@
           }
         }
 
-        const livePayload = await readOnlineLivePayloadForViewerGame(code);
-        onlineRuntime.connecting = false;
-        if (livePayload && livePayload.state) {
-          onlineSettings.enabled = true;
-          onlineSettings.gameId = code;
-          onlineSettings.lastKnownUpdatedAt = Number(livePayload.updatedAt || Date.now());
-          saveOnlineSettings();
-          applyRemoteState(livePayload.state, {
-            updatedAt: Number(livePayload.updatedAt || Date.now()),
-            updatedBy: livePayload.updatedBy || ''
-          });
-          if (openHistory) {
-            state.ui = { ...(state.ui || {}), openTab: 'history' };
-            render();
-          }
-          const finalApplied = await applyViewerFinalArchiveAfterRemote({ silent: true });
-          if (!finalApplied && !silent) showToast('Laufender Live-Verlauf geladen.');
-          return true;
-        }
-
         const cached = loadViewerFinalArchiveCache();
         if (cached) {
           applyViewerFinalArchiveToState(cached, { openHistory });
@@ -2306,6 +2432,7 @@
           return true;
         }
 
+        onlineRuntime.connecting = false;
         if (!silent) showToast('Keine Live-Daten und kein Online-Archiv für diesen Runden-Code gefunden.');
         render();
         return false;
@@ -2407,7 +2534,7 @@
       state.gamesHistory = migrated.gamesHistory || [];
       state.actionAudit = migrated.actionAudit || [];
       state.favoritePlayers = migrated.favoritePlayers || [];
-      state.ui = VIEW_ONLY_MODE ? { ...(migrated.ui || {}), openTab: null } : (migrated.ui || { openTab: null });
+      state.ui = VIEW_ONLY_MODE ? { ...(migrated.ui || {}), openTab: (state.ui && state.ui.openTab === 'history') ? 'history' : null } : (migrated.ui || { openTab: null });
       // Die Fan-Seite ist reine Live-Ansicht: Remote-Spielstände nicht als lokalen Spielstand cachen.
       // Dadurch erscheint beim nächsten Aufruf kein alter Stand vorab.
       if (!VIEW_ONLY_MODE) {
@@ -3590,8 +3717,21 @@
       if (action === 'copy-settlement') {
         await handleHistoryCopyById(entryId, gameId);
       }
+      if (action === 'copy-final-settlement') {
+        await handleFinalSettlementCopyByGameId(gameId);
+      }
     }
 
+
+
+    async function handleFinalSettlementCopyByGameId(gameId = null) {
+      let game = null;
+      if (gameId) game = (state.gamesHistory || []).find((item) => item.id === gameId);
+      if (!game && Array.isArray(state.gamesHistory) && state.gamesHistory.length) game = state.gamesHistory[0];
+      if (!game) return;
+      const beerSettlement = getBeerSettlement(game);
+      await handleSettlementCopyFeedback(game, beerSettlement, 'Endabrechnung');
+    }
     function undoAuditEntry(auditId) {
       const index = state.actionAudit.findIndex((item) => item.id === auditId);
       if (index < 0) return;
@@ -3961,10 +4101,10 @@ function renderPlayers(session) {
         const currentStatusLabel = activeRound ? '· läuft' : '· wartet auf nächste Spielrunde';
 
         return `
-          <details class="history-item" ${VIEW_ONLY_MODE ? '' : 'open'}>
+          <details class="history-item" ${VIEW_ONLY_MODE && state.ui && state.ui.openTab === 'history' ? 'open' : (!VIEW_ONLY_MODE ? 'open' : '')}>
             <summary><strong>${escapeHtml(gameLabel)}</strong> <span class="tiny muted">${currentStatusLabel}</span></summary>
             ${activeTimelineHtml}
-            <details class="history-detail-toggle" style="margin-top:10px;" ${VIEW_ONLY_MODE ? '' : 'open'}>
+            <details class="history-detail-toggle" style="margin-top:10px;" ${VIEW_ONLY_MODE && state.ui && state.ui.openTab === 'history' ? 'open' : (!VIEW_ONLY_MODE ? 'open' : '')}>
               <summary>Abgeschlossene Spielrunden</summary>
               <div class="history-detail-list" style="margin-top:10px;">${finishedRoundsHtml}</div>
             </details>
@@ -3985,10 +4125,15 @@ function renderPlayers(session) {
     function renderArchivedGameFinalSettlement(game) {
       const beerSettlement = getBeerSettlement(game);
       return `
-        <div class="history-zone" style="margin-top:12px;">
-          <div class="history-zone-title">Finale Wirtshausabrechnung</div>
-          <div class="tiny muted">Abschlussstand der geladenen Partie.</div>
-          <div style="margin-top:10px;">${renderBeerSettlementSheet(game, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: false, showPlayerCards: false })}</div>
+        <div class="history-zone" style="margin-top:12px; grid-column:1 / -1; width:100%; min-width:0;">
+          <div class="label-row" style="justify-content:space-between; align-items:center;">
+            <div>
+              <div class="history-zone-title">Finale Wirtshausabrechnung</div>
+              <div class="tiny muted">Abschlussstand der geladenen Partie.</div>
+            </div>
+            <button type="button" class="info" data-history-action="copy-final-settlement" data-game-id="${escapeHtml(game.id || '')}" style="width:auto; min-width:170px; box-shadow:none;">Endabrechnung kopieren</button>
+          </div>
+          <div style="margin-top:10px; width:100%; min-width:0;">${renderBeerSettlementSheet(game, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: false, showPlayerCards: false })}</div>
         </div>
       `;
     }
