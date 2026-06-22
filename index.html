@@ -861,6 +861,57 @@
       border: none;
     }
 
+
+
+    /* Knobel-UI: kompakte Bierchips und Strafkassenwarnung */
+    .chip.beer-receive {
+      background: linear-gradient(180deg, rgba(245,158,11,.96), rgba(217,119,6,.96));
+      border-color: rgba(251,191,36,.55);
+      color: #1f1300;
+      font-weight: 900;
+    }
+    .chip.beer-debt {
+      background: rgba(3,7,18,.96);
+      border-color: rgba(255,255,255,.18);
+      color: #fff;
+      font-weight: 900;
+    }
+    .chip.lust {
+      background: rgba(8,13,23,.9);
+      border-color: rgba(255,255,255,.10);
+      color: var(--text);
+    }
+    button.cashpenalty.cashpenalty-warning {
+      background: linear-gradient(180deg, rgba(245,158,11,.98), rgba(202,138,4,.96));
+      color: #241500;
+      border-color: rgba(253,224,71,.70);
+    }
+    .cash-penalty-compact {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-weight: 900;
+    }
+    .cash-fly-icon {
+      font-size: 1.6rem;
+      line-height: 1;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,.45));
+    }
+    .cash-warning-mark {
+      display: inline-grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      background: var(--amber);
+      color: #241500;
+      font-weight: 1000;
+      font-size: 1.15rem;
+      border: 2px solid rgba(253,224,71,.92);
+      box-shadow: 0 0 0 3px rgba(245,158,11,.16);
+    }
+
     @media (min-width: 760px) {
       .grid-2 { grid-template-columns: 1fr 1fr; }
       .control-buttons { grid-template-columns: repeat(2, 1fr); }
@@ -3270,6 +3321,8 @@
         const actionDisabled = player.status !== 'active' || session.currentRound.status !== 'open';
         const lossDisabled = actionDisabled || session.currentRound.turnsCompleted >= session.currentRound.target;
         const cashPenaltyLocked = isCashPenaltyLimitReached(session, player.id);
+        const cashPenaltyWarning = isCashPenaltyWarningActive(session, player.id);
+        const cashPenaltyButtonClass = `cashpenalty${cashPenaltyWarning ? ' cashpenalty-warning' : ''}`;
         const playerType = getPlayerType(player);
         const isGuest = playerType === 'guest';
         const codeControl = VIEW_ONLY_MODE
@@ -3286,7 +3339,7 @@
               </div>` : `
               <div class="player-actions cash-grid">
                 <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${actionDisabled ? 'disabled' : ''}>Lust-Knobeln</button>
-                <button data-action="cashfault" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${(actionDisabled || cashPenaltyLocked) ? 'disabled' : ''}>Strafkasse</button>
+                <button data-action="cashfault" data-player-id="${escapeHtml(player.id)}" class="${cashPenaltyButtonClass}" ${(actionDisabled || cashPenaltyLocked) ? 'disabled' : ''}>Strafkasse</button>
               </div>`}
               <div class="player-actions full-width-row">
                 <button data-action="exit" data-player-id="${escapeHtml(player.id)}" class="warn full-width" ${lossDisabled ? 'disabled' : ''}>Ausstieg</button>
@@ -3322,7 +3375,7 @@
               ${isGuest ? '' : `
               <div class="info-row">
                 <div class="muted">Summe Strafkasse</div>
-                <div>${renderCashPenaltyCompact(cashPenaltySummary)}</div>
+                <div>${renderCashPenaltyCompact(cashPenaltySummary, cashPenaltyWarning)}</div>
               </div>`}
             </div>
             ${actionControls}
@@ -3455,7 +3508,19 @@
         <details class="history-item">
           <summary><strong>${escapeHtml(gameLabel)}</strong></summary>
           <div class="history-detail-list" style="margin-top:10px;">${finishedRoundsHtml}</div>
+          ${renderArchivedGameFinalSettlement(game)}
         </details>
+      `;
+    }
+
+    function renderArchivedGameFinalSettlement(game) {
+      const beerSettlement = getBeerSettlement(game);
+      return `
+        <div class="history-zone" style="margin-top:12px;">
+          <div class="history-zone-title">Finale Wirtshausabrechnung</div>
+          <div class="tiny muted">Abschlussstand der geladenen Partie.</div>
+          <div style="margin-top:10px;">${renderBeerSettlementSheet(game, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: false, showPlayerCards: false })}</div>
+        </div>
       `;
     }
 
@@ -3565,7 +3630,7 @@
       const lustEvents = events.filter((ev) => ev.type === 'lust');
       const exitEvents = events.filter((ev) => ev.type === 'exit');
       const rejoinEvents = events.filter((ev) => ev.type === 'rejoin');
-      const cashFaultEvents = events.filter((ev) => ['cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'].includes(ev.type));
+      const cashFaultEvents = events.filter((ev) => isCashPenaltyActionType(ev.type));
       const actorCounts = new Map();
       let newPoints = 0;
       for (const ev of [...lossEvents, ...lustEvents]) {
@@ -3583,7 +3648,7 @@
       const roundCashPenalties = (entry.cashPenalties || []).filter((item) => item.roundIndex === entry.roundIndex);
       const roundCashPenaltyCounts = {
         lust: roundCashPenalties.filter((item) => item.type === 'lust').length,
-        cashfault: roundCashPenalties.filter((item) => ['cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'].includes(item.type)).length
+        cashfault: roundCashPenalties.filter((item) => isCashPenaltyActionType(item.type)).length
       };
       const roundCashPenaltyTotalCoins = roundCashPenalties.reduce((sum, item) => sum + Number(item.amountCoins || 0), 0);
       const cashParts = Object.entries(CASH_PENALTY_TYPES)
@@ -3829,7 +3894,7 @@ function groupBeerByFrom(details) {
     function renderBeerReceiveChips(details) {
       const grouped = groupBeerByFrom(details);
       if (!grouped.length) return '<span class="empty">keins</span>';
-      return grouped.map((item) => `<span class="chip ${item.kind === 'lust' ? 'lust' : 'loss'}" title="${escapeHtml(item.fromName)}">${escapeHtml(item.code)}×${item.count}</span>`).join('');
+      return grouped.map((item) => `<span class="chip beer-receive" title="${escapeHtml(item.fromName)}">${escapeHtml(item.code)}×${item.count}</span>`).join('');
     }
 
     function groupBeerByTo(details) {
@@ -3852,7 +3917,7 @@ function groupBeerByFrom(details) {
     function renderBeerDebtChips(details) {
       const grouped = groupBeerByTo(details);
       if (!grouped.length) return '<span class="empty">keins</span>';
-      return grouped.map((item) => `<span class="chip counter" title="${escapeHtml(item.toName)}">${escapeHtml(item.code)}×${item.count}</span>`).join('');
+      return grouped.map((item) => `<span class="chip beer-debt" title="${escapeHtml(item.toName)}">${escapeHtml(item.code)}×${item.count}</span>`).join('');
     }
 
     function renderBeerOpenFromRows(details) {
@@ -3924,13 +3989,9 @@ function groupBeerByFrom(details) {
 
     function getCashPenaltySummary(container, playerId) {
       const entries = getCashPenaltyEntries(container, playerId);
-      const counts = {
-        lust: 0,
-        cashfault: 0
-      };
+      const counts = Object.fromEntries(Object.keys(CASH_PENALTY_TYPES || {}).map((type) => [type, 0]));
       entries.forEach((entry) => {
-        const normalizedType = ['cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'].includes(entry.type) ? 'cashfault' : entry.type;
-        if (counts[normalizedType] !== undefined) counts[normalizedType] += 1;
+        if (counts[entry.type] !== undefined) counts[entry.type] += 1;
       });
       const totalCoins = entries.reduce((sum, item) => sum + Number(item.amountCoins || 0), 0);
       const totalCents = entries.reduce((sum, item) => sum + Number(item.amountCents || 0), 0);
@@ -3943,9 +4004,13 @@ function groupBeerByFrom(details) {
       };
     }
 
-    function renderCashPenaltyCompact(summary) {
-      if (!summary.totalCount) return '<span class="empty">0 Coin</span>';
-      return `<strong>${formatCoins(summary.totalCoins)}</strong>`;
+    function renderCashPenaltyCompact(summary, warningActive = false) {
+      const totalCoins = Number(summary.totalCoins || 0);
+      const warning = warningActive ? '<span class="cash-warning-mark" title="Achtung: Beim nächsten Strafkassen-Vergehen kostet es.">!</span>' : '';
+      if (!summary.totalCount && totalCoins === 0) {
+        return `<span class="cash-penalty-compact"><span class="empty">0 Coins</span>${warning}</span>`;
+      }
+      return `<span class="cash-penalty-compact"><span class="cash-fly-icon" aria-hidden="true">💸</span><strong>× ${totalCoins}</strong>${warning}</span>`;
     }
 
     function getCashPenaltySettlement(container) {
