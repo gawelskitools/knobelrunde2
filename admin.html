@@ -851,6 +851,91 @@
       resize: vertical;
     }
 
+
+    /* Initial-Popup: Spiele der letzten 24 Stunden kompakt darstellen */
+    #todayGamesButtonList {
+      display: grid;
+      grid-template-columns: 1fr !important;
+      gap: 6px;
+    }
+    .round-picker-btn {
+      min-height: 34px;
+      padding: 7px 9px;
+      border-radius: 11px;
+      font-size: .82rem;
+      line-height: 1.2;
+      text-align: left;
+      box-shadow: none;
+    }
+    .round-picker-btn strong {
+      font-size: .82rem;
+      line-height: 1.2;
+    }
+    .round-picker-btn .tiny {
+      font-size: .72rem;
+      line-height: 1.2;
+    }
+
+    /* Initial-Popup: Hilfe-Icon und Kurzanleitung */
+    #modalTitle.modal-title-with-help {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-start;
+    }
+    .modal-inline-help-btn {
+      width: 30px;
+      min-width: 30px;
+      height: 30px;
+      min-height: 30px;
+      padding: 0;
+      border-radius: 999px;
+      display: inline-grid;
+      place-items: center;
+      box-shadow: none;
+      background: rgba(56,189,248,.18);
+      border: 1px solid rgba(56,189,248,.34);
+      color: #d6f4ff;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .admin-start-help-content {
+      display: grid;
+      gap: 12px;
+      line-height: 1.45;
+    }
+    .admin-start-help-content ol {
+      margin: 0;
+      padding-left: 1.2rem;
+      display: grid;
+      gap: 12px;
+    }
+    .admin-start-help-content li {
+      padding-left: 2px;
+    }
+    .admin-start-help-content li strong {
+      display: block;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+    .admin-help-code {
+      display: inline-block;
+      margin: 5px 0 2px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(8,13,23,.85);
+      border: 1px solid rgba(255,255,255,.10);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      color: #d6f4ff;
+      overflow-wrap: anywhere;
+    }
+    .admin-help-note {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(245,158,11,.12);
+      border: 1px solid rgba(245,158,11,.24);
+    }
+
     @media (min-width: 760px) {
       .grid-2 { grid-template-columns: 1fr 1fr; }
       .control-buttons { grid-template-columns: repeat(2, 1fr); }
@@ -1014,17 +1099,17 @@
           <span class="menu-title">Aktuellen Stand Online aktualisieren</span>
           <span class="menu-subtitle">Den aktuellen lokalen Spielstand in die verbundene Online-Runde hochladen.</span>
         </button>
-        <button id="drawerSwitchOnlineBtn">
+        <!--<button id="drawerSwitchOnlineBtn">
           <span class="menu-title">Andere Onlinepartie öffnen</span>
           <span class="menu-subtitle">Eine andere Knobelrunde per Runden-Code laden oder neu vorbereiten.</span>
-        </button>
+        </button> 
         <button id="drawerDisconnectOnlineBtn">
           <span class="menu-title">Online trennen</span>
           <span class="menu-subtitle">Diese Admin-Seite von der aktuellen Online-Runde trennen.</span>
-        </button>
+        </button> -->
         <button id="drawerArchiveBtn">
           <span class="menu-title">Online-Archiv öffnen</span>
-          <span class="menu-subtitle">Beendete Partien dieser Knobelrunde aus Firebase laden oder herunterladen.</span>
+          <span class="menu-subtitle">Beendete Partien dieser Knobelrunde aus der Datenbank laden oder herunterladen.</span>
         </button>
         <button id="drawerImportBtn">
           <span class="menu-title">Spielstand laden</span>
@@ -1036,11 +1121,11 @@
         </button>
         <button id="drawerCleanStartBtn">
           <span class="menu-title">Neues Spiel starten</span>
-          <span class="menu-subtitle">Mit neuem Spiel beginnen und alte Auto-Save-Daten verwerfen.</span>
+          <span class="menu-subtitle">Mit neuem Spiel sauber beginnen und alte Auto-Save-Daten verwerfen.</span>
         </button>
       </nav>
     </div>
-    <div class="drawer-footnote">Tipp: Für normale Spielaktionen immer direkt die Spielerkarten verwenden. Das Menü ist nur für Hilfe, Sicherung und Neustart gedacht.</div>
+    <div class="drawer-footnote">Tipp: Dieses Menü ist nur für Hilfe, Sicherung und Neustart gedacht.</div>
     <input id="importInput" type="file" accept="application/json" class="hidden" />
   </aside>
 
@@ -1334,16 +1419,35 @@
 
     async function readTodaysOnlineGames() {
       if (!isFirebaseConfigured()) return { games: [], error: '' };
+
+      function parseRoundCodeTime(code) {
+        const match = String(code || '').match(/^knobeln-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/);
+        if (!match) return 0;
+
+        const [, year, month, day, hour, minute] = match;
+        const date = new Date(
+          Number(year),
+          Number(month) - 1,
+          Number(day),
+          Number(hour),
+          Number(minute),
+          0,
+          0
+        );
+
+        const time = date.getTime();
+        return Number.isFinite(time) ? time : 0;
+      }
+
       try {
         const db = await initFirebaseOnline();
         const sdk = await loadFirebaseSdk();
-        const todayPrefix = getTodayRoundCodePrefix();
+        const cutoff = Date.now() - (24 * 60 * 60 * 1000);
         const snapshot = await sdk.get(sdk.ref(db, 'games'));
         const map = snapshot.val() || {};
         const games = Object.entries(map)
           .map(([rawCode, value]) => {
             const code = sanitizeOnlineGameId(rawCode);
-            if (!code.startsWith(todayPrefix)) return null;
             const live = value && value.live ? value.live : {};
             const liveState = live && live.state ? live.state : null;
             const archiveMap = value && value.archive && typeof value.archive === 'object' ? value.archive : {};
@@ -1353,7 +1457,13 @@
               .sort((a, b) => Number(b.archivedAt || 0) - Number(a.archivedAt || 0))[0] || null;
             const currentSession = liveState && liveState.currentSession ? liveState.currentSession : null;
             const archive = newestArchive && newestArchive.archive ? newestArchive.archive : null;
-            const updatedAt = Number((live && live.updatedAt) || (newestArchive && newestArchive.archivedAt) || 0);
+            const updatedAt = Number(
+              (live && live.updatedAt) ||
+              (newestArchive && newestArchive.archivedAt) ||
+              parseRoundCodeTime(code) ||
+              0
+            );
+            if (!updatedAt || updatedAt < cutoff) return null;
             const title = (currentSession && currentSession.title) || (archive && archive.title) || 'Knobelrunde';
             const status = currentSession ? 'laufend' : (archiveItems.length ? 'archiviert' : 'vorbereitet');
             return { code, title, status, updatedAt, archiveCount: archiveItems.length };
@@ -1364,14 +1474,96 @@
         return { games, error: '' };
       } catch (error) {
         console.error(error);
-        return { games: [], error: error && error.message ? error.message : 'Tagesliste konnte nicht geladen werden.' };
+        return { games: [], error: error && error.message ? error.message : 'Spiele der letzten 24 Stunden konnten nicht geladen werden.' };
       }
+    }
+
+    function showAdminWelcomeHelpDialog() {
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop';
+      backdrop.style.zIndex = '50';
+
+      const wrap = document.createElement('div');
+      wrap.className = 'modal-wrap';
+      wrap.style.zIndex = '51';
+      wrap.innerHTML = `
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adminStartHelpTitle">
+          <div>
+            <div id="adminStartHelpTitle" class="section-title">Kurzanleitung Admin-Tool: Neues Knobelspiel starten</div>
+            <div class="section-subtitle" style="margin-top:6px;">So startest du eine neue Online-Partie und öffnest laufende Spiele später wieder.</div>
+          </div>
+          <div class="admin-start-help-content">
+            <ol>
+              <li>
+                <strong>Admin-Seite öffnen</strong>
+                <div>Öffne die Admin-Seite im Browser. Beim Start erscheint ein Popup zur Auswahl der Knobelrunde.</div>
+              </li>
+              <li>
+                <strong>Neues Spiel starten</strong>
+                <div>Im Popup wird automatisch ein neuer Runden-Code vorgeschlagen, zum Beispiel:</div>
+                <div class="admin-help-code">knobeln-20260621-1930</div>
+                <div>Diesen Code verwenden und danach 5 oder 10 Durchgänge auswählen. Danach wird die neue Partie angelegt.</div>
+              </li>
+              <li>
+                <strong>Fanlink kopieren</strong>
+                <div>Nach dem Anlegen der Partie erscheint der Fanlink. Diesen Link kopieren und in die WhatsApp-Gruppe posten.</div>
+                <div>Die Mitspieler öffnen den Link und sehen dort den Live-Spielstand.</div>
+				<div>Aktualisierungen auf der Fanseite können ca. 10 Sekunden dauern, bis sie dort angezeigt werden!.</div>
+              </li>
+              <li>
+                <strong>Laufendes Spiel später wieder öffnen</strong>
+                <div>Wenn der Browser geschlossen wurde oder du von einem anderen Gerät weiterspielen möchtest, öffne wieder die Admin-Seite.</div>
+                <div>Im Start-Popup stehen die Spiele der letzten 24 Stunden aus der Datenbank. Dort den passenden Runden-Code anklicken.</div>
+                <div>Alternativ kannst du den Code manuell eingeben, zum Beispiel:</div>
+                <div class="admin-help-code">spiel1</div>
+                <div>Dann wird das laufende oder bereits gespeicherte Spiel wieder geöffnet.</div>
+              </li>
+            </ol>
+            <div class="admin-help-note">
+              <strong>Wichtig</strong><br>
+              Für jede neue Partie immer einen neuen Code verwenden.<br>
+              Alte Fanlinks bleiben dadurch beim alten Spielstand und werden nicht überschrieben.
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="primary" id="adminStartHelpCloseBtn">Verstanden</button>
+          </div>
+        </div>
+      `;
+
+      const closeHelp = () => {
+        document.removeEventListener('keydown', onKeydown);
+        backdrop.remove();
+        wrap.remove();
+      };
+      const onKeydown = (event) => {
+        if (event.key === 'Escape') closeHelp();
+      };
+
+      backdrop.addEventListener('click', closeHelp);
+      const closeButton = wrap.querySelector('#adminStartHelpCloseBtn');
+      if (closeButton) closeButton.addEventListener('click', closeHelp);
+      document.addEventListener('keydown', onKeydown);
+      document.body.appendChild(backdrop);
+      document.body.appendChild(wrap);
+      setTimeout(() => {
+        if (closeButton) closeButton.focus();
+      }, 30);
     }
 
     function showAdminWelcomePicker({ suggestedCode, todayGamesPromise = null, todayGames = null, listError = '' }) {
       return new Promise((resolve) => {
-        el.modalTitle.textContent = 'Knobelrunde vorbereiten';
-        el.modalMessage.textContent = 'Wähle eine tagesaktuelle Online-Runde, gib einen alten Code zum Laden ein oder starte mit einem neuen Code direkt eine neue Partie.';
+        el.modalTitle.classList.add('modal-title-with-help');
+        el.modalTitle.innerHTML = '<span>Knobelrunde vorbereiten</span><button type="button" id="adminWelcomeHelpBtn" class="modal-inline-help-btn" aria-label="Kurzanleitung öffnen" title="Kurzanleitung öffnen">?</button>';
+        const adminWelcomeHelpBtn = el.modalTitle.querySelector('#adminWelcomeHelpBtn');
+        if (adminWelcomeHelpBtn) {
+          adminWelcomeHelpBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            showAdminWelcomeHelpDialog();
+          });
+        }
+        el.modalMessage.textContent = 'Wähle eine Online-Runde der letzten 24 Stunden, gib einen alten Code zum Laden ein oder starte mit einem neuen Code direkt eine neue Partie.';
         el.modalBody.innerHTML = '';
         el.modalActions.innerHTML = '';
 
@@ -1381,7 +1573,7 @@
         const listBox = document.createElement('details');
         listBox.open = false;
         listBox.innerHTML = `
-          <summary style="cursor:pointer;font-weight:900;margin-bottom:8px;">Tagesaktuelle Spiele aus Firebase</summary>
+          <summary style="cursor:pointer;font-weight:900;margin-bottom:8px;">Spiele der letzten 24 Stunden aus Datenbank laden</summary>
           <div class="grid" id="todayGamesButtonList"></div>
         `;
         const list = listBox.querySelector('#todayGamesButtonList');
@@ -1391,7 +1583,7 @@
           if (games && games.length) {
             games.forEach((game) => {
               const button = document.createElement('button');
-              button.className = game.status === 'laufend' ? 'primary' : 'info';
+              button.className = `round-picker-btn ${game.status === 'laufend' ? 'primary' : 'info'}`;
               button.type = 'button';
               const titleText = String(game.title || '').trim();
               const primaryLabel = titleText && titleText !== 'Knobelrunde'
@@ -1410,23 +1602,22 @@
           }
           const note = document.createElement('div');
           note.className = 'empty';
-          note.textContent = errorText || 'Für heute wurden noch keine Online-Runden gefunden.';
+          note.textContent = errorText || 'In den letzten 24 Stunden wurden keine Online-Runden gefunden.';
           list.appendChild(note);
         }
 
         if (todayGamesPromise) {
           const loading = document.createElement('div');
           loading.className = 'empty';
-          loading.textContent = 'Tagesaktuelle Spiele werden aus Firebase geladen …';
+          loading.textContent = 'Spiele der letzten 24 Stunden werden aus Datenbank geladen …';
           list.appendChild(loading);
           todayGamesPromise
-            .then(({ games, error }) => paintTodayGames(games, error ? `Tagesliste konnte nicht geladen werden: ${error}` : ''))
-            .catch((error) => paintTodayGames([], `Tagesliste konnte nicht geladen werden: ${error && error.message ? error.message : 'Unbekannter Fehler'}`));
+            .then(({ games, error }) => paintTodayGames(games, error ? `Spiele der letzten 24 Stunden konnten nicht geladen werden: ${error}` : ''))
+            .catch((error) => paintTodayGames([], `Spiele der letzten 24 Stunden konnten nicht geladen werden: ${error && error.message ? error.message : 'Unbekannter Fehler'}`));
         } else {
-          paintTodayGames(todayGames || [], listError ? `Tagesliste konnte nicht geladen werden: ${listError}` : '');
+          paintTodayGames(todayGames || [], listError ? `Spiele der letzten 24 Stunden konnten nicht geladen werden: ${listError}` : '');
         }
-
-  
+        
 
         const inputWrap = document.createElement('div');
         inputWrap.className = 'grid';
@@ -1442,7 +1633,7 @@
         input.value = suggestedCode;
         inputWrap.appendChild(input);
         wrap.appendChild(inputWrap);
-        wrap.appendChild(listBox);
+	    wrap.appendChild(listBox);
         el.modalBody.appendChild(wrap);
 
         const useInputButton = document.createElement('button');
@@ -2061,8 +2252,8 @@
 
     async function startOnlineSync(options = {}) {
       // Admin-Sicherheitsmodus:
-      // Die Adminseite lädt einen Online-Stand nur einmal bewusst ein und schreibt danach lokale Änderungen aktiv zu Firebase.
-      // Kein dauerhafter onValue-Listener, damit alte/verspätete Firebase-Snapshots keine lokalen Spielaktionen blockieren oder zurückdrehen.
+      // Die Adminseite lädt einen Online-Stand nur einmal bewusst ein und schreibt danach lokale Änderungen aktiv in die Datenbank.
+      // Kein dauerhafter onValue-Listener, damit alte/verspätete Datenbank-Snapshots keine lokalen Spielaktionen blockieren oder zurückdrehen.
       if (!onlineSettings.enabled) return;
       const syncToken = ++onlineRuntime.syncToken;
       const syncGameId = sanitizeOnlineGameId(onlineSettings.gameId);
@@ -2172,7 +2363,7 @@
 
     function leaveFinishedOnlineRoundForPicker() {
       // Nach Partieende bewusst aus der alten Live-Runde herausgehen.
-      // Der alte Code bleibt in Firebase/Archiv erhalten, aber neue Spiele starten nicht mehr im alten Live-Pfad.
+      // Der alte Code bleibt in Datenbank/Archiv erhalten, aber neue Spiele starten nicht mehr im alten Live-Pfad.
       onlineRuntime.syncToken += 1;
       window.clearTimeout(onlineSaveTimer);
       onlineSaveTimer = null;
@@ -2244,7 +2435,7 @@
       onlineRuntime.error = '';
       renderOnlineStatus();
 
-      // Neuer Code = neuer Firebase-Pfad. Alte Fanseiten mit altem Code bleiben unberührt.
+      // Neuer Code = neuer Datenbank-Pfad. Alte Fanseiten mit altem Code bleiben unberührt.
       onlineSettings.enabled = true;
       onlineSettings.gameId = newCode;
       if (!onlineSettings.deviceName) onlineSettings.deviceName = 'Admin';
@@ -2379,7 +2570,7 @@
         return;
       }
       if (!isFirebaseConfigured()) {
-        onlineRuntime.error = 'Firebase-Konfiguration fehlt im Code.';
+        onlineRuntime.error = 'Datenbank-Konfiguration fehlt im Code.';
         renderOnlineStatus();
         return;
       }
@@ -2389,7 +2580,7 @@
     async function openOnlineMenu() {
       if (!isFirebaseConfigured()) {
         await showDialog({
-          title: 'Firebase noch nicht eingetragen',
+          title: 'Datenbank noch nicht eingetragen',
           message: 'Trage zuerst deinen firebaseConfig-Block und die databaseURL oben im Code bei FIREBASE_CONFIG ein. Danach diese Datei neu öffnen.',
           actions: [
             { label: 'OK', value: 'ok', className: 'primary' }
@@ -2421,7 +2612,7 @@
 
     async function updateCurrentOnlineState() {
       if (!isFirebaseConfigured()) {
-        showToast('Firebase-Konfiguration fehlt.');
+        showToast('Datenbank-Konfiguration fehlt.');
         return;
       }
       if (!onlineSettings.enabled) {
@@ -2434,7 +2625,7 @@
 
     async function openDifferentOnlineRound() {
       if (!isFirebaseConfigured()) {
-        showToast('Firebase-Konfiguration fehlt.');
+        showToast('Datenbank-Konfiguration fehlt.');
         return;
       }
       const suggestedCode = generateSuggestedRoundCode();
@@ -2475,9 +2666,9 @@
       el.onlineStatusBox.classList.toggle('error', Boolean(onlineRuntime.error));
 
       if (!configured) {
-        el.onlineStatusTitle.textContent = 'Status: Online-Spielstand: Firebase fehlt';
+        el.onlineStatusTitle.textContent = 'Status: Online-Spielstand: Datenbank fehlt';
         el.onlineStatusMeta.innerHTML = 'Trage FIREBASE_CONFIG und databaseURL im Code ein.';
-        el.onlineSetupBtn.textContent = 'Firebase eintragen';
+        el.onlineSetupBtn.textContent = 'Datenbank eintragen';
         el.onlineSetupBtn.className = 'danger online-main-toggle';
         updateDrawerOnlineLabels(false);
         return;
@@ -4868,6 +5059,7 @@ ${playerText}`;
     function hideDialog() {
       el.modalBackdrop.classList.add('hidden');
       el.modalWrap.classList.add('hidden');
+      el.modalTitle.classList.remove('modal-title-with-help');
       el.modalBody.innerHTML = '';
       el.modalActions.innerHTML = '';
     }
