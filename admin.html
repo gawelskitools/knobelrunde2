@@ -876,6 +876,134 @@
       line-height: 1.2;
     }
 
+
+    /* Knobel-UI: kompakte Bierchips und Strafkassenwarnung */
+    .chip.beer-receive {
+      background: linear-gradient(180deg, rgba(245,158,11,.96), rgba(217,119,6,.96));
+      border-color: rgba(251,191,36,.55);
+      color: #1f1300;
+      font-weight: 900;
+    }
+    .chip.beer-debt {
+      background: rgba(3,7,18,.96);
+      border-color: rgba(255,255,255,.18);
+      color: #fff;
+      font-weight: 900;
+    }
+    .chip.lust {
+      background: rgba(8,13,23,.9);
+      border-color: rgba(255,255,255,.10);
+      color: var(--text);
+    }
+    button.cashpenalty.cashpenalty-warning {
+      background: linear-gradient(180deg, rgba(245,158,11,.98), rgba(202,138,4,.96));
+      color: #241500;
+      border-color: rgba(253,224,71,.70);
+    }
+    .cash-penalty-compact {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-weight: 900;
+    }
+    .cash-fly-icon {
+      font-size: 1.6rem;
+      line-height: 1;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,.45));
+    }
+    .cash-warning-mark {
+      display: inline-grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      background: var(--amber);
+      color: #241500;
+      font-weight: 1000;
+      font-size: 1.15rem;
+      border: 2px solid rgba(253,224,71,.92);
+      box-shadow: 0 0 0 3px rgba(245,158,11,.16);
+    }
+    .player-metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .player-metric-box {
+      min-height: 64px;
+      padding: 9px 10px;
+      border-radius: 14px;
+      background: rgba(8,13,23,.50);
+      border: 1px solid rgba(255,255,255,.08);
+      display: grid;
+      align-content: start;
+      gap: 6px;
+      overflow: hidden;
+    }
+    .player-metric-value {
+      min-height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .lust-compact {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 900;
+    }
+    .lust-dice-icon {
+      font-size: 1.45rem;
+      line-height: 1;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,.45));
+    }
+    .archive-link-list {
+      display: grid;
+      gap: 7px;
+      margin-top: 10px;
+    }
+    .archive-text-link {
+      width: 100%;
+      min-height: 34px;
+      padding: 7px 9px;
+      border-radius: 11px;
+      background: rgba(255,255,255,.045);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: none;
+      text-align: left;
+      font-size: .86rem;
+      line-height: 1.25;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .archive-text-link.active {
+      color: #bbf7d0;
+      border-color: rgba(34,197,94,.36);
+      background: rgba(34,197,94,.12);
+    }
+
+
+    /* Finale Wirtshausabrechnung im Spielerkartenbereich: volle Rasterbreite ohne JS-Logikänderung. */
+    #playersGrid > .history-zone {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-width: 0;
+    }
+    #playersGrid > .history-zone .beer-sheet,
+    #playersGrid > .history-zone .history-zone {
+      width: 100%;
+      min-width: 0;
+    }
+    #playersGrid > .history-zone .beer-ledger-row,
+    #playersGrid > .history-zone .beer-from-row,
+    #playersGrid > .history-zone .beer-kpi {
+      min-width: 0;
+    }
+
     /* Initial-Popup: Hilfe-Icon und Kurzanleitung */
     #modalTitle.modal-title-with-help {
       display: flex;
@@ -1417,138 +1545,80 @@
       return `knobeln-${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
     }
 
+    function parseRoundCodeTime(code) {
+      const match = String(code || '').match(/^knobeln-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/);
+      if (!match) return 0;
+      const [, year, month, day, hour, minute] = match;
+      const date = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), 0, 0);
+      const time = date.getTime();
+      return Number.isFinite(time) ? time : 0;
+    }
+
     async function readTodaysOnlineGames() {
-      if (!isFirebaseConfigured()) return { games: [], error: '' };
+      const result = await readOnlineParties({ hours: 24, limit: 20, includeArchives: true, includePrepared: true });
+      return { games: result.parties, error: result.error };
+    }
 
-      function parseRoundCodeTime(code) {
-        const match = String(code || '').match(/^knobeln-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/);
-        if (!match) return 0;
-
-        const [, year, month, day, hour, minute] = match;
-        const date = new Date(
-          Number(year),
-          Number(month) - 1,
-          Number(day),
-          Number(hour),
-          Number(minute),
-          0,
-          0
-        );
-
-        const time = date.getTime();
-        return Number.isFinite(time) ? time : 0;
-      }
-
+    async function readOnlineParties({ hours = null, limit = 50, includeArchives = true, includePrepared = true } = {}) {
+      if (!isFirebaseConfigured()) return { parties: [], error: '' };
       try {
         const db = await initFirebaseOnline();
         const sdk = await loadFirebaseSdk();
-        const cutoff = Date.now() - (24 * 60 * 60 * 1000);
+        const cutoff = hours ? Date.now() - (Number(hours) * 60 * 60 * 1000) : 0;
         const snapshot = await sdk.get(sdk.ref(db, 'games'));
         const map = snapshot.val() || {};
-        const games = Object.entries(map)
-          .map(([rawCode, value]) => {
-            const code = sanitizeOnlineGameId(rawCode);
-            const live = value && value.live ? value.live : {};
-            const liveState = live && live.state ? live.state : null;
-            const archiveMap = value && value.archive && typeof value.archive === 'object' ? value.archive : {};
-            const archiveItems = Object.values(archiveMap).filter((item) => item && item.archive);
-            const newestArchive = archiveItems
-              .slice()
-              .sort((a, b) => Number(b.archivedAt || 0) - Number(a.archivedAt || 0))[0] || null;
-            const currentSession = liveState && liveState.currentSession ? liveState.currentSession : null;
-            const archive = newestArchive && newestArchive.archive ? newestArchive.archive : null;
-            const updatedAt = Number(
-              (live && live.updatedAt) ||
-              (newestArchive && newestArchive.archivedAt) ||
-              parseRoundCodeTime(code) ||
-              0
-            );
-            if (!updatedAt || updatedAt < cutoff) return null;
-            const title = (currentSession && currentSession.title) || (archive && archive.title) || 'Knobelrunde';
-            const status = currentSession ? 'laufend' : (archiveItems.length ? 'archiviert' : 'vorbereitet');
-            return { code, title, status, updatedAt, archiveCount: archiveItems.length };
-          })
-          .filter(Boolean)
-          .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0) || b.code.localeCompare(a.code))
-          .slice(0, 20);
-        return { games, error: '' };
+        const parties = [];
+        Object.entries(map).forEach(([rawCode, value]) => {
+          const code = sanitizeOnlineGameId(rawCode);
+          const live = value && value.live ? value.live : {};
+          const liveState = live && live.state ? live.state : null;
+          const currentSession = liveState && liveState.currentSession ? liveState.currentSession : null;
+          const liveUpdatedAt = Number((live && live.updatedAt) || parseRoundCodeTime(code) || 0);
+          if (currentSession && (!cutoff || liveUpdatedAt >= cutoff)) {
+            parties.push({
+              code,
+              title: currentSession.title || 'Knobelrunde',
+              status: 'laufend',
+              updatedAt: liveUpdatedAt,
+              archiveCount: value && value.archive ? Object.keys(value.archive).length : 0,
+              currentSession,
+              archive: null
+            });
+          } else if (includePrepared && live && !currentSession && liveUpdatedAt && (!cutoff || liveUpdatedAt >= cutoff)) {
+            parties.push({
+              code,
+              title: 'Knobelrunde',
+              status: 'vorbereitet',
+              updatedAt: liveUpdatedAt,
+              archiveCount: value && value.archive ? Object.keys(value.archive).length : 0,
+              currentSession: null,
+              archive: null
+            });
+          }
+          if (includeArchives && value && value.archive && typeof value.archive === 'object') {
+            Object.values(value.archive).forEach((item) => {
+              if (!item || !item.archive) return;
+              const archive = item.archive;
+              const updatedAt = Number(item.archivedAt || archive.finishedAt && new Date(archive.finishedAt).getTime() || archive.createdAt && new Date(archive.createdAt).getTime() || parseRoundCodeTime(code) || 0);
+              if (cutoff && updatedAt < cutoff) return;
+              parties.push({
+                code,
+                title: archive.title || 'Knobelpartie',
+                status: 'archiviert',
+                updatedAt,
+                archiveCount: Object.keys(value.archive || {}).length,
+                currentSession: null,
+                archive
+              });
+            });
+          }
+        });
+        parties.sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0) || String(b.code).localeCompare(String(a.code), 'de'));
+        return { parties: parties.slice(0, limit), error: '' };
       } catch (error) {
         console.error(error);
-        return { games: [], error: error && error.message ? error.message : 'Spiele der letzten 24 Stunden konnten nicht geladen werden.' };
+        return { parties: [], error: error && error.message ? error.message : 'Online-Partien konnten nicht geladen werden.' };
       }
-    }
-
-    function showAdminWelcomeHelpDialog() {
-      const backdrop = document.createElement('div');
-      backdrop.className = 'modal-backdrop';
-      backdrop.style.zIndex = '50';
-
-      const wrap = document.createElement('div');
-      wrap.className = 'modal-wrap';
-      wrap.style.zIndex = '51';
-      wrap.innerHTML = `
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adminStartHelpTitle">
-          <div>
-            <div id="adminStartHelpTitle" class="section-title">Kurzanleitung Admin-Tool: Neues Knobelspiel starten</div>
-            <div class="section-subtitle" style="margin-top:6px;">So startest du eine neue Online-Partie und öffnest laufende Spiele später wieder.</div>
-          </div>
-          <div class="admin-start-help-content">
-            <ol>
-              <li>
-                <strong>Admin-Seite öffnen</strong>
-                <div>Öffne die Admin-Seite im Browser. Beim Start erscheint ein Popup zur Auswahl der Knobelrunde.</div>
-              </li>
-              <li>
-                <strong>Neues Spiel starten</strong>
-                <div>Im Popup wird automatisch ein neuer Runden-Code vorgeschlagen, zum Beispiel:</div>
-                <div class="admin-help-code">knobeln-20260621-1930</div>
-                <div>Diesen Code verwenden und danach 5 oder 10 Durchgänge auswählen. Danach wird die neue Partie angelegt.</div>
-              </li>
-              <li>
-                <strong>Fanlink kopieren</strong>
-                <div>Nach dem Anlegen der Partie erscheint der Fanlink. Diesen Link kopieren und in die WhatsApp-Gruppe posten.</div>
-                <div>Die Mitspieler öffnen den Link und sehen dort den Live-Spielstand.</div>
-				<div>Aktualisierungen auf der Fanseite können ca. 10 Sekunden dauern, bis sie dort angezeigt werden!.</div>
-              </li>
-              <li>
-                <strong>Laufendes Spiel später wieder öffnen</strong>
-                <div>Wenn der Browser geschlossen wurde oder du von einem anderen Gerät weiterspielen möchtest, öffne wieder die Admin-Seite.</div>
-                <div>Im Start-Popup stehen die Spiele der letzten 24 Stunden aus der Datenbank. Dort den passenden Runden-Code anklicken.</div>
-                <div>Alternativ kannst du den Code manuell eingeben, zum Beispiel:</div>
-                <div class="admin-help-code">spiel1</div>
-                <div>Dann wird das laufende oder bereits gespeicherte Spiel wieder geöffnet.</div>
-              </li>
-            </ol>
-            <div class="admin-help-note">
-              <strong>Wichtig</strong><br>
-              Für jede neue Partie immer einen neuen Code verwenden.<br>
-              Alte Fanlinks bleiben dadurch beim alten Spielstand und werden nicht überschrieben.
-            </div>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="primary" id="adminStartHelpCloseBtn">Verstanden</button>
-          </div>
-        </div>
-      `;
-
-      const closeHelp = () => {
-        document.removeEventListener('keydown', onKeydown);
-        backdrop.remove();
-        wrap.remove();
-      };
-      const onKeydown = (event) => {
-        if (event.key === 'Escape') closeHelp();
-      };
-
-      backdrop.addEventListener('click', closeHelp);
-      const closeButton = wrap.querySelector('#adminStartHelpCloseBtn');
-      if (closeButton) closeButton.addEventListener('click', closeHelp);
-      document.addEventListener('keydown', onKeydown);
-      document.body.appendChild(backdrop);
-      document.body.appendChild(wrap);
-      setTimeout(() => {
-        if (closeButton) closeButton.focus();
-      }, 30);
     }
 
     function showAdminWelcomePicker({ suggestedCode, todayGamesPromise = null, todayGames = null, listError = '' }) {
@@ -2143,6 +2213,7 @@
       el.newGameBtn.addEventListener('click', handleNewGameButton);
       el.finishRoundBtn.addEventListener('click', finishCurrentRound);
       el.playersGrid.addEventListener('click', handlePlayerCardClick);
+      el.playersGrid.addEventListener('click', handleHistoryClick);
       el.auditList.addEventListener('click', handleAuditClick);
       el.historyList.addEventListener('click', handleHistoryClick);
       el.tabButtons.addEventListener('click', handleTabClick);
@@ -2388,7 +2459,7 @@
       leaveFinishedOnlineRoundForPicker();
       state.currentSession = null;
       state.actionAudit = [];
-      state.ui = { ...(state.ui || {}), openTab: null };
+      state.ui = { ...(state.ui || {}), openTab: 'null' };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       render();
       await maybeShowAdminWelcomeDialog({ force: true });
@@ -3124,7 +3195,7 @@
       if (state.actionAudit.length > MAX_UNDO) state.actionAudit = state.actionAudit.slice(-MAX_UNDO);
       saveState(true);
       render();
-      notifyIfRoundTargetReached(session);
+      void notifyIfRoundTargetReached(session);
     }
 
     function applyPresetLustKnobeln(playerId) {
@@ -3323,17 +3394,28 @@
       showToast('Spieler gelöscht.');
     }
 
-    function notifyIfRoundTargetReached(session) {
+    async function notifyIfRoundTargetReached(session) {
       if (!session || session.currentRound.status !== 'open') return;
       if (session.currentRound.turnsCompleted !== session.currentRound.target) return;
-      showCustomDialog({
-        title: 'Durchgang beendet',
-        message: `Die Spielrunde ${session.currentRound.index} hat ${session.currentRound.target} von ${session.currentRound.target} Durchgängen erreicht. Zum Weiterspielen muss jetzt die Spielrunde beendet werden.`,
-        bodyHtml: '',
+
+      const isFinalRound = Number(session.roundIndex || 0) >= Number(session.maxRounds || MAX_ROUNDS_PER_SESSION);
+      if (isFinalRound) {
+        await finishCurrentRound();
+        return;
+      }
+
+      const nextRoundIndex = Number(session.roundIndex || 0) + 1;
+      const action = await showDialog({
+        title: `Spielrunde ${session.roundIndex}/${session.maxRounds} abgeschlossen`,
+        message: `Die Spielrunde ${session.currentRound.index} hat ${session.currentRound.target} von ${session.currentRound.target} Durchgängen erreicht. Du kannst jetzt direkt mit der nächsten Spielrunde weitermachen.`,
         actions: [
-          { label: 'OK', value: 'ok', className: 'primary' }
+          { label: `Weiter mit Spielrunde ${nextRoundIndex}/${session.maxRounds}`, value: 'next', className: 'primary' },
+          { label: 'Abbrechen', value: 'cancel' }
         ]
       });
+      if (action === 'next') {
+        await finalizeRoundAndSession({ endSession: false, earlyEnd: false, autoStartNext: true });
+      }
     }
 
     function settleTrueCounters(session, reason, focusPlayerId = null, focusPlayerName = '', focusTime = null) {
@@ -3392,12 +3474,23 @@
       const session = ensureSessionShape(state.currentSession);
       if (!session) return;
       const activeCount = session.players.filter((player) => player.status === 'active').length;
+      const isFinalRound = Number(session.roundIndex || 0) >= Number(session.maxRounds || MAX_ROUNDS_PER_SESSION);
+
       if (session.currentRound.status !== 'open') {
+        if (session.currentRound.status === 'finished' && !isFinalRound) {
+          const action = await showNextRoundOnlyPopup(session.roundIndex + 1, session.maxRounds);
+          if (action === 'next') startNextRound();
+          return;
+        }
+        if (session.currentRound.status === 'finished' && isFinalRound) {
+          await showFinalSettlementForAlreadyFinishedSession();
+          return;
+        }
         showToast('Diese Spielrunde ist bereits beendet.');
         return;
       }
+
       const roundComplete = session.currentRound.turnsCompleted >= session.currentRound.target || activeCount <= 1;
-      const isFinalRound = session.roundIndex >= session.maxRounds;
 
       if (!roundComplete) {
         const earlyAnswer = await showDialog({
@@ -3409,7 +3502,7 @@
           ]
         });
         if (earlyAnswer !== 'end') return;
-        await finalizeRoundAndSession({ endSession: true, earlyEnd: true });
+        await finishOpenRoundThenShowFinalSettlement({ earlyEnd: true });
         return;
       }
 
@@ -3444,12 +3537,19 @@
           }
           return;
         }
+        await finishOpenRoundThenShowFinalSettlement({ earlyEnd: false });
+        return;
       }
 
-      await finalizeRoundAndSession({ endSession: isFinalRound, earlyEnd: false });
+      if (isFinalRound) {
+        await finishOpenRoundThenShowFinalSettlement({ earlyEnd: false });
+        return;
+      }
+
+      await finalizeRoundAndSession({ endSession: false, earlyEnd: false });
     }
 
-    async function finalizeRoundAndSession({ endSession = false, earlyEnd = false }) {
+    async function finalizeRoundAndSession({ endSession = false, earlyEnd = false, autoStartNext = false } = {}) {
       const session = state.currentSession;
       if (!session) return;
 
@@ -3474,11 +3574,17 @@
       state.actionAudit = [];
       saveState(true);
 
-      const action = await showFinalRoundPopup(roundSnapshot, {
-        mode: endSession ? 'final' : 'round',
-        nextRoundIndex: finishedRoundIndex + 1,
-        maxRounds: finishedRoundMax
-      });
+      const action = endSession
+        ? await showFinalRoundPopup(roundSnapshot, {
+            mode: 'final',
+            nextRoundIndex: finishedRoundIndex + 1,
+            maxRounds: finishedRoundMax
+          })
+        : (autoStartNext ? 'next' : await showFinalRoundPopup(roundSnapshot, {
+            mode: 'round',
+            nextRoundIndex: finishedRoundIndex + 1,
+            maxRounds: finishedRoundMax
+          }));
 
       if (endSession || session.roundIndex >= session.maxRounds) {
         const gameArchive = createGameArchive(session);
@@ -3490,7 +3596,7 @@
         onlineSettings.nextSessionRequiresNewCode = Boolean(onlineSettings.enabled);
         saveOnlineSettings();
         state.currentSession = null;
-        state.ui.openTab = null;
+        state.ui.openTab = 'history';
         saveState();
         if (wasOnlineAtFinish) {
           window.clearTimeout(onlineSaveTimer);
@@ -3523,6 +3629,115 @@
       }
     }
 
+    async function finishOpenRoundThenShowFinalSettlement({ earlyEnd = false } = {}) {
+      const session = ensureSessionShape(state.currentSession);
+      if (!session) return;
+      if (!session.currentRound || session.currentRound.status !== 'open') {
+        await showFinalSettlementForAlreadyFinishedSession();
+        return;
+      }
+
+      settleTrueCounters(session, 'final', null, 'Partieende', new Date().toISOString());
+      session.currentRound.status = 'finished';
+      session.currentRound.finishedAt = new Date().toISOString();
+      session.currentRound.events.push({
+        id: uid('event'),
+        ts: new Date().toISOString(),
+        type: 'roundFinish',
+        label: earlyEnd ? `Spielrunde ${session.currentRound.index} vorzeitig beendet` : `Spielrunde ${session.currentRound.index} beendet`
+      });
+
+      const roundSnapshot = buildHistoryEntry(session);
+      session.finishedRounds = session.finishedRounds || [];
+      session.roundEntries = session.roundEntries || [];
+      if (!session.finishedRounds.some((round) => round && round.index === session.currentRound.index)) {
+        session.finishedRounds.push(deepClone(session.currentRound));
+      }
+      if (!session.roundEntries.some((entry) => entry && entry.roundIndex === session.currentRound.index)) {
+        session.roundEntries.push(deepClone(roundSnapshot));
+      }
+      state.actionAudit = [];
+      saveState(true);
+
+      const action = await showFinalRoundPopup(roundSnapshot, {
+        mode: 'final',
+        nextRoundIndex: Number(session.roundIndex || 0) + 1,
+        maxRounds: Number(session.maxRounds || MAX_ROUNDS_PER_SESSION)
+      });
+      if (action === 'finish') {
+        await archiveCurrentSessionAfterFinalSettlement();
+      } else {
+        render();
+      }
+    }
+
+    async function showFinalSettlementForAlreadyFinishedSession() {
+      const session = ensureSessionShape(state.currentSession);
+      if (!session) return;
+      if (!session.currentRound || session.currentRound.status === 'open') {
+        await finishOpenRoundThenShowFinalSettlement({ earlyEnd: false });
+        return;
+      }
+
+      const isFinalRound = Number(session.roundIndex || 0) >= Number(session.maxRounds || MAX_ROUNDS_PER_SESSION);
+      if (!isFinalRound) {
+        const action = await showNextRoundOnlyPopup(Number(session.roundIndex || 0) + 1, Number(session.maxRounds || MAX_ROUNDS_PER_SESSION));
+        if (action === 'next') startNextRound();
+        return;
+      }
+
+      const roundSnapshot = buildHistoryEntry(session);
+      session.finishedRounds = session.finishedRounds || [];
+      session.roundEntries = session.roundEntries || [];
+      if (!session.finishedRounds.some((round) => round && round.index === session.currentRound.index)) {
+        session.finishedRounds.push(deepClone(session.currentRound));
+      }
+      if (!session.roundEntries.some((entry) => entry && entry.roundIndex === session.currentRound.index)) {
+        session.roundEntries.push(deepClone(roundSnapshot));
+      }
+      saveState(true);
+
+      const action = await showFinalRoundPopup(roundSnapshot, {
+        mode: 'final',
+        nextRoundIndex: Number(session.roundIndex || 0) + 1,
+        maxRounds: Number(session.maxRounds || MAX_ROUNDS_PER_SESSION)
+      });
+      if (action === 'finish') {
+        await archiveCurrentSessionAfterFinalSettlement();
+      }
+    }
+
+    async function archiveCurrentSessionAfterFinalSettlement() {
+      const session = ensureSessionShape(state.currentSession);
+      if (!session) return;
+      const gameArchive = createGameArchive(session);
+      state.gamesHistory = state.gamesHistory || [];
+      state.gamesHistory.unshift(gameArchive);
+      state.gamesHistory = state.gamesHistory.slice(0, MAX_HISTORY);
+      const wasOnlineAtFinish = Boolean(onlineSettings.enabled);
+      await saveOnlineGameArchive(gameArchive);
+      onlineSettings.nextSessionRequiresNewCode = Boolean(onlineSettings.enabled);
+      saveOnlineSettings();
+      state.currentSession = null;
+      state.actionAudit = [];
+      state.ui = { ...(state.ui || {}), openTab: 'history' };
+      saveState();
+      if (wasOnlineAtFinish) {
+        window.clearTimeout(onlineSaveTimer);
+        onlineSaveTimer = null;
+        try {
+          await writeOnlineState();
+        } catch (error) {
+          console.error(error);
+          onlineRuntime.error = error && error.message ? error.message : 'Finaler Online-Stand konnte nicht aktualisiert werden.';
+          renderOnlineStatus();
+        }
+      }
+      render();
+      showToast('Partie beendet und im Online-Archiv gesichert.');
+      await returnToInitialPickerAfterFinishedGame();
+    }
+
     function buildHistoryEntry(session) {
       return {
         id: uid('history'),
@@ -3541,28 +3756,38 @@
     }
 
     async function showFinalRoundPopup(entry, { mode = 'round', nextRoundIndex = null, maxRounds = null } = {}) {
+      if (mode !== 'final') {
+        return showNextRoundOnlyPopup(nextRoundIndex, maxRounds);
+      }
+
       const beerSettlement = getBeerSettlement(entry);
       while (true) {
         const action = await showCustomDialog({
-          title: mode === 'final' ? `Endabrechnung Spielrunde ${entry.roundIndex}` : `Bierabrechnung Spielrunde ${entry.roundIndex}`,
+          title: `Endabrechnung Spielrunde ${entry.roundIndex}`,
           message: `${escapeHtml(entry.sessionTitle)} · ${formatDateTime(entry.finishedAt)} · ${entry.currentRound.turnsCompleted}/${entry.currentRound.target} Durchgänge`,
           bodyHtml: renderBeerSettlementSheet(entry, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: true }),
-          actions: mode === 'final'
-            ? [
-                { label: 'Text kopieren', value: 'copy', className: 'info' },
-                { label: 'Spiel beenden', value: 'finish', className: 'danger' }
-              ]
-            : [
-                { label: 'Text kopieren', value: 'copy', className: 'info' },
-                { label: `Jetzt Spielrunde ${nextRoundIndex}/${maxRounds} starten`, value: 'next', className: 'info' }
-              ]
+          actions: [
+            { label: 'Text kopieren', value: 'copy', className: 'info' },
+            { label: 'Spiel beenden', value: 'finish', className: 'danger' }
+          ]
         });
         if (action === 'copy') {
-          await handleSettlementCopyFeedback(entry, beerSettlement, mode === 'final' ? 'Endabrechnung' : 'Abrechnung');
+          await handleSettlementCopyFeedback(entry, beerSettlement, 'Endabrechnung');
           continue;
         }
         return action;
       }
+    }
+
+    async function showNextRoundOnlyPopup(nextRoundIndex, maxRounds) {
+      return showDialog({
+        title: `Spielrunde ${nextRoundIndex - 1}/${maxRounds} beendet`,
+        message: 'Die Spielrunde wurde abgeschlossen. Die Bierabrechnung bleibt in der Historie unter „Zuletzt abgeschlossene Spielrunden“ erhalten.',
+        actions: [
+          { label: `Weiter mit Spielrunde ${nextRoundIndex}/${maxRounds}`, value: 'next', className: 'primary' },
+          { label: 'Abbrechen', value: null }
+        ]
+      });
     }
 
     function startNextRound() {
@@ -3631,6 +3856,18 @@
       if (action === 'copy-settlement') {
         await handleHistoryCopyById(entryId, gameId);
       }
+      if (action === 'copy-final-settlement') {
+        await handleFinalSettlementCopyByGameId(gameId);
+      }
+    }
+
+    async function handleFinalSettlementCopyByGameId(gameId = null) {
+      let game = null;
+      if (gameId) game = (state.gamesHistory || []).find((item) => item.id === gameId);
+      if (!game && Array.isArray(state.gamesHistory) && state.gamesHistory.length) game = state.gamesHistory[0];
+      if (!game) return;
+      const beerSettlement = getBeerSettlement(game);
+      await handleSettlementCopyFeedback(game, beerSettlement, 'Endabrechnung');
     }
 
     function undoAuditEntry(auditId) {
@@ -3688,24 +3925,40 @@
       renderOnlineStatus();
       const session = ensureSessionShape(state.currentSession);
       const hasSession = Boolean(session);
+      const latestArchivedGame = !hasSession && Array.isArray(state.gamesHistory) && state.gamesHistory.length ? state.gamesHistory[0] : null;
+      const playerSectionTitle = document.querySelector('#playersSection .section-title');
+      const playerSectionSubtitle = document.querySelector('#playersSection .section-subtitle');
       el.scoreboardSection.classList.toggle('hidden', !hasSession);
-      el.playersSection.classList.toggle('hidden', !hasSession);
+      el.playersSection.classList.toggle('hidden', !(hasSession || latestArchivedGame));
       el.tabsSection.classList.toggle('hidden', !(hasSession || (state.gamesHistory || []).length));
 
       if (!hasSession) {
-        el.topGameName.textContent = 'Keine offene Partie';
-        el.topGameMeta.textContent = 'Knobelpartie mit Datum und Uhrzeit erscheint hier automatisch.';
+        el.topGameName.textContent = latestArchivedGame ? (latestArchivedGame.title || 'Beendete Knobelpartie') : 'Keine offene Partie';
+        el.topGameMeta.textContent = latestArchivedGame
+          ? `Beendete Partie · ${formatDateTime(latestArchivedGame.finishedAt || latestArchivedGame.createdAt)}`
+          : 'Knobelpartie mit Datum und Uhrzeit erscheint hier automatisch.';
         el.finishRoundBtn.disabled = true;
         el.newGameBtn.disabled = false;
         el.newGameBtn.textContent = 'Neue Partie anlegen';
         el.scoreRound.textContent = '–';
         el.scoreTurn.textContent = '–';
         el.scorePlayers.textContent = '–';
+        if (latestArchivedGame) {
+          if (playerSectionTitle) playerSectionTitle.textContent = 'Finale Wirtshausabrechnung';
+          if (playerSectionSubtitle) playerSectionSubtitle.textContent = 'Abschlussstand der zuletzt geöffneten oder beendeten Partie.';
+          el.playersGrid.innerHTML = renderArchivedGameFinalSettlement(latestArchivedGame);
+        } else {
+          if (playerSectionTitle) playerSectionTitle.textContent = 'Spielerkarten';
+          if (playerSectionSubtitle) playerSectionSubtitle.textContent = 'Grün = aktiv, grau = ausgestiegen. Neue Spieler kommen über die Plus-Karte hinzu.';
+          el.playersGrid.innerHTML = '';
+        }
       } else {
+        if (playerSectionTitle) playerSectionTitle.textContent = 'Spielerkarten';
+        if (playerSectionSubtitle) playerSectionSubtitle.textContent = 'Grün = aktiv, grau = ausgestiegen. Neue Spieler kommen über die Plus-Karte hinzu.';
         const activeCount = session.players.filter((player) => player.status === 'active').length;
         el.topGameName.textContent = session.title;
         el.topGameMeta.textContent = `Spielrunde ${session.roundIndex}/${session.maxRounds} · Durchgänge ${session.currentRound.turnsCompleted}/${session.currentRound.target} · Spieler ${session.players.length}`;
-        el.finishRoundBtn.disabled = !(session.currentRound.status === 'open' && (session.players.length > 0 || session.currentRound.turnsCompleted > 0));
+        el.finishRoundBtn.disabled = !((session.currentRound.status === 'open' && (session.players.length > 0 || session.currentRound.turnsCompleted > 0)) || (session.currentRound.status === 'finished' && session.roundIndex < session.maxRounds));
         if (session.currentRound.status === 'finished' && session.roundIndex < session.maxRounds) {
           el.newGameBtn.disabled = false;
           el.newGameBtn.textContent = `Nächste Spielrunde starten (${session.roundIndex + 1}/${session.maxRounds})`;
@@ -3722,6 +3975,28 @@
       renderTabs();
     }
 
+    function getLustKnobelnCount(container, playerId) {
+      const rounds = [];
+      if (container && container.currentRound) rounds.push(container.currentRound);
+      if (container && Array.isArray(container.finishedRounds)) rounds.push(...container.finishedRounds);
+      const seen = new Set();
+      let count = 0;
+      rounds.forEach((round) => {
+        (round.events || []).forEach((event) => {
+          if (!event || event.type !== 'lust' || event.actorId !== playerId) return;
+          const key = event.id || `${event.ts || ''}-${event.actorId || ''}-${event.label || ''}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          count += 1;
+        });
+      });
+      return count;
+    }
+
+    function renderLustKnobelnCompact(count) {
+      return `<span class="lust-compact"><span class="lust-dice-icon" aria-hidden="true">🎲</span><strong>× ${Number(count || 0)}</strong></span>`;
+    }
+
     function renderPlayers(session) {
       const players = [...session.players].sort((a, b) => {
         if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
@@ -3732,11 +4007,14 @@
         const receivesChips = renderBeerReceiveChips(view.incomingOpenDetails);
         const owesBeerChips = renderBeerDebtChips(view.outgoingOpenDetails);
         const cashPenaltySummary = getCashPenaltySummary(session, player.id);
+        const lustKnobelnCount = getLustKnobelnCount(session, player.id);
         const actionDisabled = player.status !== 'active' || session.currentRound.status !== 'open';
         const turnTargetReached = session.currentRound.turnsCompleted >= session.currentRound.target;
         const lossDisabled = actionDisabled || turnTargetReached;
         const lustDisabled = actionDisabled || turnTargetReached;
         const cashPenaltyLocked = isCashPenaltyLimitReached(session, player.id);
+        const cashPenaltyWarning = isCashPenaltyWarningActive(session, player.id);
+        const cashPenaltyButtonClass = `cashpenalty${cashPenaltyWarning ? ' cashpenalty-warning' : ''}`;
         const playerType = getPlayerType(player);
         const isGuest = playerType === 'guest';
         return `
@@ -3761,12 +4039,15 @@
               <div class="summary-value">${owesBeerChips}</div>
             </div>
 
-            <div class="info-rows">
-              ${isGuest ? '' : `
-              <div class="info-row">
-                <div class="muted">Summe Strafkasse</div>
-                <div>${renderCashPenaltyCompact(cashPenaltySummary)}</div>
-              </div>`}
+            <div class="player-metrics-grid">
+              <div class="player-metric-box">
+                <div class="tiny muted">Lustknobeln</div>
+                <div class="player-metric-value">${renderLustKnobelnCompact(lustKnobelnCount)}</div>
+              </div>
+              <div class="player-metric-box">
+                <div class="tiny muted">Summe Strafkasse</div>
+                <div class="player-metric-value">${renderCashPenaltyCompact(cashPenaltySummary, cashPenaltyWarning)}</div>
+              </div>
             </div>
 
             <div class="player-actions full-width-row">
@@ -3779,7 +4060,7 @@
               </div>` : `
               <div class="player-actions cash-grid">
                 <button data-action="lust" data-player-id="${escapeHtml(player.id)}" class="violet" ${lustDisabled ? 'disabled' : ''}>Lust-Knobeln</button>
-                <button data-action="cashfault" data-player-id="${escapeHtml(player.id)}" class="cashpenalty" ${(actionDisabled || cashPenaltyLocked) ? 'disabled' : ''}>Strafkasse</button>
+                <button data-action="cashfault" data-player-id="${escapeHtml(player.id)}" class="${cashPenaltyButtonClass}" ${(actionDisabled || cashPenaltyLocked) ? 'disabled' : ''}>Strafkasse</button>
               </div>`}
               <div class="player-actions full-width-row">
                 <button data-action="exit" data-player-id="${escapeHtml(player.id)}" class="warn full-width" ${lossDisabled ? 'disabled' : ''}>Ausstieg</button>
@@ -3868,6 +4149,12 @@
           if (entry) break;
         }
       }
+      if (!entry && gameId) {
+        for (const game of (state.gamesHistory || [])) {
+          entry = (game.roundEntries || []).find((item) => item.id === entryId);
+          if (entry) break;
+        }
+      }
       if (!entry) return;
       const beerSettlement = getBeerSettlement(entry);
       await handleSettlementCopyFeedback(entry, beerSettlement, entry.isLiveRound ? 'Zwischenstand' : 'Abrechnung');
@@ -3906,10 +4193,27 @@
       }
 
       return `
-        <details class="history-item">
+        <details class="history-item" ${index === 0 ? 'open' : ''}>
           <summary><strong>${escapeHtml(gameLabel)}</strong></summary>
           <div class="history-detail-list" style="margin-top:10px;">${finishedRoundsHtml}</div>
+          ${renderArchivedGameFinalSettlement(game)}
         </details>
+      `;
+    }
+
+    function renderArchivedGameFinalSettlement(game) {
+      const beerSettlement = getBeerSettlement(game);
+      return `
+        <div class="history-zone" style="margin-top:12px;">
+          <div class="label-row" style="justify-content:space-between; align-items:center;">
+            <div>
+              <div class="history-zone-title">Finale Wirtshausabrechnung</div>
+              <div class="tiny muted">Abschlussstand der geladenen Partie.</div>
+            </div>
+            <button type="button" class="info" data-history-action="copy-final-settlement" data-game-id="${escapeHtml(game.id || '')}" style="width:auto; min-width:170px; box-shadow:none;">Endabrechnung kopieren</button>
+          </div>
+          <div style="margin-top:10px;">${renderBeerSettlementSheet(game, beerSettlement, { showWirtshausabrechnung: true, showPlayerHeaders: false, showPlayerCards: false })}</div>
+        </div>
       `;
     }
 
@@ -4019,7 +4323,7 @@
       const lustEvents = events.filter((ev) => ev.type === 'lust');
       const exitEvents = events.filter((ev) => ev.type === 'exit');
       const rejoinEvents = events.filter((ev) => ev.type === 'rejoin');
-      const cashFaultEvents = events.filter((ev) => ['cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'].includes(ev.type));
+      const cashFaultEvents = events.filter((ev) => isCashPenaltyActionType(ev.type));
       const actorCounts = new Map();
       let newPoints = 0;
       for (const ev of [...lossEvents, ...lustEvents]) {
@@ -4037,7 +4341,7 @@
       const roundCashPenalties = (entry.cashPenalties || []).filter((item) => item.roundIndex === entry.roundIndex);
       const roundCashPenaltyCounts = {
         lust: roundCashPenalties.filter((item) => item.type === 'lust').length,
-        cashfault: roundCashPenalties.filter((item) => ['cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'].includes(item.type)).length
+        cashfault: roundCashPenalties.filter((item) => isCashPenaltyActionType(item.type)).length
       };
       const roundCashPenaltyTotalCoins = roundCashPenalties.reduce((sum, item) => sum + Number(item.amountCoins || 0), 0);
       const cashParts = Object.entries(CASH_PENALTY_TYPES)
@@ -4151,7 +4455,7 @@
     }
 
     function renderBeerSettlementSheet(container, beerSettlement, options = {}) {
-      const { showWirtshausabrechnung = true, showPlayerHeaders = true } = options;
+      const { showWirtshausabrechnung = true, showPlayerHeaders = true, showPlayerCards = true } = options;
       const title = beerSettlement.sessionTitle || container.sessionTitle || container.title || 'Knobelpartie';
       const timestamp = formatDateTime(beerSettlement.finishedAt || container.finishedAt || (container.currentRound ? container.currentRound.finishedAt : null));
       const cashPenaltySettlement = getCashPenaltySettlement(container);
@@ -4213,6 +4517,13 @@
         </div>
       `).join('');
 
+      const receiveLedgerRows = beerSettlement.perPlayer.map((item) => `
+        <div class="beer-ledger-row ${item.totalReceives === 0 ? 'zero' : ''}">
+          <div><strong>${escapeHtml(item.player.name)} (${escapeHtml(item.player.code)})</strong></div>
+          <div>${item.totalReceives} ${item.totalReceives === 1 ? 'Freibierfreude' : 'Freibierfreuden'}</div>
+        </div>
+      `).join('');
+
       return `
         <div class="beer-sheet">
           <div class="beer-sheet-header">
@@ -4234,8 +4545,13 @@
               <div class="tiny muted">Hier steht nur die Gesamtsumme der Strafkassenschulden pro Spieler.</div>
               <div class="beer-ledger" style="margin-top:10px;">${cashLedgerRows}</div>
             </div>
+            <div class="history-zone" style="margin-top:10px;">
+              <div class="history-zone-title">Freibierfreuden</div>
+              <div class="tiny muted">Hier stehen nur die Anzahl der Freibierfreuden der Mitspieler.</div>
+              <div class="beer-ledger" style="margin-top:10px;">${receiveLedgerRows}</div>
+            </div>
           ` : ''}
-          <div class="beer-player-list">${playerCards}</div>
+          ${showPlayerCards ? `<div class="beer-player-list">${playerCards}</div>` : ''}
         </div>
       `;
     }
@@ -4260,7 +4576,7 @@ function groupBeerByFrom(details) {
     function renderBeerReceiveChips(details) {
       const grouped = groupBeerByFrom(details);
       if (!grouped.length) return '<span class="empty">keins</span>';
-      return grouped.map((item) => `<span class="chip ${item.kind === 'lust' ? 'lust' : 'loss'}" title="${escapeHtml(item.fromName)}">${escapeHtml(item.code)}×${item.count}</span>`).join('');
+      return grouped.map((item) => `<span class="chip beer-receive" title="${escapeHtml(item.fromName)}">${escapeHtml(item.code)}×${item.count}</span>`).join('');
     }
 
     function groupBeerByTo(details) {
@@ -4283,7 +4599,7 @@ function groupBeerByFrom(details) {
     function renderBeerDebtChips(details) {
       const grouped = groupBeerByTo(details);
       if (!grouped.length) return '<span class="empty">keins</span>';
-      return grouped.map((item) => `<span class="chip counter" title="${escapeHtml(item.toName)}">${escapeHtml(item.code)}×${item.count}</span>`).join('');
+      return grouped.map((item) => `<span class="chip beer-debt" title="${escapeHtml(item.toName)}">${escapeHtml(item.code)}×${item.count}</span>`).join('');
     }
 
     function renderBeerOpenFromRows(details) {
@@ -4309,14 +4625,31 @@ function groupBeerByFrom(details) {
       return (container.cashPenalties || []).filter((item) => item.playerId === playerId);
     }
 
+    function getCashPenaltyActionTypes() {
+      return Object.keys(CASH_PENALTY_TYPES || {});
+    }
+
+    function isCashPenaltyActionType(type) {
+      return getCashPenaltyActionTypes().includes(type);
+    }
+
     function getCashPenaltyViolationCount(container, playerId) {
       return getCashPenaltyEntries(container, playerId)
-        .filter((item) => ['cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'].includes(item.type))
+        .filter((item) => isCashPenaltyActionType(item.type))
         .length;
     }
 
     function isCashPenaltyLimitReached(container, playerId) {
-      return CASH_PENALTY_BUTTON_LIMIT > 0 && getCashPenaltyViolationCount(container, playerId) >= CASH_PENALTY_BUTTON_LIMIT;
+      const limit = Number(CASH_PENALTY_BUTTON_LIMIT || 0);
+      return limit > 0 && getCashPenaltyViolationCount(container, playerId) >= limit;
+    }
+
+    function isCashPenaltyWarningActive(container, playerId) {
+      const freeViolations = Number(CASH_PENALTY_RULES.freeViolations || 0);
+      if (freeViolations <= 0) return false;
+      const violations = getCashPenaltyViolationCount(container, playerId);
+      if (isCashPenaltyLimitReached(container, playerId)) return false;
+      return violations >= freeViolations && getCashPenaltyCoinsForViolationNumber(violations + 1) > 0;
     }
 
     function getCashPenaltyUpcomingViolationNumber(container, playerId) {
@@ -4324,12 +4657,12 @@ function groupBeerByFrom(details) {
     }
 
     function getCashPenaltyCoinsForViolationNumber(violationNo) {
-      if (violationNo <= CASH_PENALTY_RULES.freeViolations) return 0;
-      return CASH_PENALTY_RULES.paidViolationCoins;
+      if (violationNo <= Number(CASH_PENALTY_RULES.freeViolations || 0)) return 0;
+      return Number(CASH_PENALTY_RULES.paidViolationCoins || 0);
     }
 
     function previewCashPenaltyAmountCoins(session, type, playerId) {
-      if (type === 'cashfault' || type === 'mattenflucht' || type === 'wuerfelflucht' || type === 'neuwuerfeln') {
+      if (isCashPenaltyActionType(type)) {
         const violationNo = getCashPenaltyUpcomingViolationNumber(session, playerId);
         return getCashPenaltyCoinsForViolationNumber(violationNo);
       }
@@ -4342,13 +4675,9 @@ function groupBeerByFrom(details) {
 
     function getCashPenaltySummary(container, playerId) {
       const entries = getCashPenaltyEntries(container, playerId);
-      const counts = {
-        lust: 0,
-        cashfault: 0
-      };
+      const counts = Object.fromEntries(Object.keys(CASH_PENALTY_TYPES || {}).map((type) => [type, 0]));
       entries.forEach((entry) => {
-        const normalizedType = ['cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'].includes(entry.type) ? 'cashfault' : entry.type;
-        if (counts[normalizedType] !== undefined) counts[normalizedType] += 1;
+        if (counts[entry.type] !== undefined) counts[entry.type] += 1;
       });
       const totalCoins = entries.reduce((sum, item) => sum + Number(item.amountCoins || 0), 0);
       const totalCents = entries.reduce((sum, item) => sum + Number(item.amountCents || 0), 0);
@@ -4361,9 +4690,10 @@ function groupBeerByFrom(details) {
       };
     }
 
-    function renderCashPenaltyCompact(summary) {
-      if (!summary.totalCount) return '<span class="empty">0 Coin</span>';
-      return `<strong>${formatCoins(summary.totalCoins)}</strong>`;
+    function renderCashPenaltyCompact(summary, warningActive = false) {
+      const totalCoins = Number(summary && summary.totalCoins ? summary.totalCoins : 0);
+      const warning = warningActive ? '<span class="cash-warning-mark" title="Achtung: Beim nächsten Strafkassen-Vergehen kostet es.">!</span>' : '';
+      return `<span class="cash-penalty-compact"><span class="cash-fly-icon" aria-hidden="true">💸</span><strong>${totalCoins > 0 ? `× ${totalCoins}` : '0 Coins'}</strong>${warning}</span>`;
     }
 
     function getCashPenaltySettlement(container) {
@@ -4415,6 +4745,10 @@ ${receives}`;
         .map((item) => `- ${item.player.name} (${item.player.code}): ${formatCoins(item.totalCoins)}`)
         .join('\n');
 
+      const receiveLedgerText = beerSettlement.perPlayer
+        .map((item) => `- ${item.player.name} (${item.player.code}): ${item.totalReceives} ${item.totalReceives === 1 ? 'Bier' : 'Biere'}`)
+        .join('\n');
+
       return `Die Wirtshausabrechnung
 
 ${title}
@@ -4430,6 +4764,10 @@ ${ledgerText}
 Strafkasse
 Hier steht nur die Gesamtsumme der Strafkassenschulden pro Spieler.
 ${cashLedgerText}
+
+Freibierfreuden
+Hier stehen nur die Anzahl der Freibierfreuden der Mitspieler.
+${receiveLedgerText}
 
 ${playerText}`;
     }
@@ -4851,59 +5189,160 @@ ${playerText}`;
     }
 
     async function openOnlineArchiveDialog() {
-      if (!onlineSettings.enabled) {
-        showToast('Bitte zuerst eine Online-Runde verbinden.');
+      if (!isFirebaseConfigured()) {
+        showToast('Firebase ist nicht konfiguriert.');
         return;
       }
-      let archiveMap = {};
-      try {
-        archiveMap = await readOnlineArchiveList();
-      } catch (error) {
-        console.error(error);
-        showToast('Online-Archiv konnte nicht geladen werden.');
+      const recentResult = await readOnlineParties({ hours: 24, limit: 20, includeArchives: true, includePrepared: false });
+      const choice = await showOnlineArchivePicker(recentResult.parties, recentResult.error);
+      if (!choice) return;
+      if (choice.type === 'full') {
+        const fullResult = await readOnlineParties({ hours: null, limit: 50, includeArchives: true, includePrepared: false });
+        const selected = await showOnlineArchiveFullList(fullResult.parties, fullResult.error);
+        if (selected) await loadOnlinePartyInAdmin(selected);
         return;
       }
-      const entries = Object.values(archiveMap)
-        .filter((item) => item && item.archive)
-        .sort((a, b) => Number(b.archivedAt || 0) - Number(a.archivedAt || 0));
-      if (!entries.length) {
-        showToast('Für diese Knobelrunde ist noch kein Online-Archiv vorhanden.');
-        return;
-      }
-      const selected = await showDialog({
-        title: 'Online-Archiv öffnen',
-        message: `Gespeicherte Partien für Runde ${sanitizeOnlineGameId(onlineSettings.gameId)}.`,
-        actions: [
-          ...entries.slice(0, 5).map((item, index) => ({
-            label: `${formatDateTime(item.archive.finishedAt || item.archive.createdAt)} · ${item.archive.title || 'Knobelpartie'}`,
-            value: item,
-            className: index === 0 ? 'primary' : 'info'
-          })),
-          { label: 'Abbrechen', value: null }
-        ]
+      if (choice.type === 'party') await loadOnlinePartyInAdmin(choice.party);
+    }
+
+    function formatOnlinePartyLabel(item) {
+      const titleText = String(item.title || '').trim();
+      const primaryLabel = titleText && titleText !== 'Knobelrunde'
+        ? `${titleText} - ${item.code}`
+        : item.code;
+      const timeText = item.updatedAt ? ` · zuletzt ${formatTimeOnly(new Date(item.updatedAt).toISOString())}` : '';
+      const archiveText = item.archiveCount ? ` · Archiv ${item.archiveCount}` : '';
+      return { primaryLabel, meta: `${item.status}${timeText}${archiveText}` };
+    }
+
+    function showOnlineArchivePicker(parties, errorText = '') {
+      return new Promise((resolve) => {
+        el.modalTitle.textContent = 'Online-Archiv';
+        el.modalMessage.textContent = 'Spiele der letzten 24 Stunden öffnen oder den Archivbestand anzeigen.';
+        el.modalBody.innerHTML = '';
+        el.modalActions.innerHTML = '';
+
+        const wrap = document.createElement('div');
+        wrap.className = 'grid';
+        const recentBox = document.createElement('details');
+        recentBox.open = true;
+        recentBox.innerHTML = `
+          <summary style="cursor:pointer;font-weight:900;margin-bottom:8px;">Spiele der letzten 24 Stunden</summary>
+          <div class="grid" id="archiveRecentButtonList"></div>
+        `;
+        const list = recentBox.querySelector('#archiveRecentButtonList');
+        if (parties && parties.length) {
+          parties.forEach((party) => {
+            const labels = formatOnlinePartyLabel(party);
+            const button = document.createElement('button');
+            button.className = `round-picker-btn ${party.status === 'laufend' ? 'primary' : 'info'}`;
+            button.type = 'button';
+            button.innerHTML = `<strong>${escapeHtml(labels.primaryLabel)}</strong><br><span class="tiny">${escapeHtml(labels.meta)}</span>`;
+            button.addEventListener('click', () => {
+              hideDialog();
+              resolve({ type: 'party', party });
+            });
+            list.appendChild(button);
+          });
+        } else {
+          const note = document.createElement('div');
+          note.className = 'empty';
+          note.textContent = errorText || 'In den letzten 24 Stunden wurden keine Online-Runden gefunden.';
+          list.appendChild(note);
+        }
+        wrap.appendChild(recentBox);
+        el.modalBody.appendChild(wrap);
+
+        const fullBtn = document.createElement('button');
+        fullBtn.textContent = 'Archivbestand öffnen (max. 50 Partien)';
+        fullBtn.className = 'info';
+        fullBtn.addEventListener('click', () => {
+          hideDialog();
+          resolve({ type: 'full' });
+        });
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Abbrechen';
+        cancelBtn.addEventListener('click', () => {
+          hideDialog();
+          resolve(null);
+        });
+        el.modalActions.appendChild(fullBtn);
+        el.modalActions.appendChild(cancelBtn);
+        el.modalBackdrop.classList.remove('hidden');
+        el.modalWrap.classList.remove('hidden');
       });
-      if (!selected) return;
-      const archive = selected.archive;
-      const next = await showDialog({
-        title: 'Archiv-Aktion',
-        message: `${archive.title || 'Knobelpartie'} öffnen oder als JSON herunterladen?`,
-        actions: [
-          { label: 'In Historie öffnen', value: 'open', className: 'primary' },
-          { label: 'JSON herunterladen', value: 'download', className: 'info' },
-          { label: 'Abbrechen', value: 'cancel' }
-        ]
+    }
+
+    function showOnlineArchiveFullList(parties, errorText = '') {
+      return new Promise((resolve) => {
+        el.modalTitle.textContent = 'Archivbestand';
+        el.modalMessage.textContent = 'Maximal die letzten 50 verfügbaren Partien aus Firebase. Grün markiert laufende Spiele.';
+        el.modalBody.innerHTML = '';
+        el.modalActions.innerHTML = '';
+        const list = document.createElement('div');
+        list.className = 'archive-link-list';
+        if (parties && parties.length) {
+          parties.forEach((party) => {
+            const labels = formatOnlinePartyLabel(party);
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `archive-text-link ${party.status === 'laufend' ? 'active' : ''}`;
+            button.innerHTML = `<strong>${escapeHtml(labels.primaryLabel)}</strong><br><span class="tiny">${escapeHtml(labels.meta)}</span>`;
+            button.addEventListener('click', () => {
+              hideDialog();
+              resolve(party);
+            });
+            list.appendChild(button);
+          });
+        } else {
+          const note = document.createElement('div');
+          note.className = 'empty';
+          note.textContent = errorText || 'Es wurden keine archivierten oder laufenden Partien gefunden.';
+          list.appendChild(note);
+        }
+        el.modalBody.appendChild(list);
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Schließen';
+        cancelBtn.className = 'primary';
+        cancelBtn.addEventListener('click', () => {
+          hideDialog();
+          resolve(null);
+        });
+        el.modalActions.appendChild(cancelBtn);
+        el.modalBackdrop.classList.remove('hidden');
+        el.modalWrap.classList.remove('hidden');
       });
-      if (next === 'download') {
-        downloadTextFile(`knobel-archiv-${sanitizeOnlineGameId(onlineSettings.gameId)}.json`, JSON.stringify(archive, null, 2), 'application/json');
-      } else if (next === 'open') {
+    }
+
+    async function loadOnlinePartyInAdmin(party) {
+      if (!party) return;
+      if (party.status === 'laufend') {
+        await connectAdminRoundFromCode(party.code, { initialPrompt: true, autoLoadExisting: true });
+        return;
+      }
+      if (party.archive) {
+        onlineSettings.enabled = true;
+        onlineSettings.gameId = sanitizeOnlineGameId(party.code);
+        if (!onlineSettings.deviceName) onlineSettings.deviceName = 'Admin';
+        onlineSettings.nextSessionRequiresNewCode = true;
+        saveOnlineSettings();
         state.currentSession = null;
-        state.gamesHistory = [deepClone(archive), ...(state.gamesHistory || []).filter((item) => item.sessionId !== archive.sessionId)].slice(0, MAX_HISTORY);
+        const archivedGame = normalizeGamesHistory([party.archive])[0] || deepClone(party.archive);
+        archivedGame.id = archivedGame.id || uid('game');
+        archivedGame.roundEntries = (archivedGame.roundEntries || []).map((entry, index) => ({
+          ...entry,
+          id: entry.id || `${archivedGame.id}-round-${index + 1}`
+        }));
+        state.gamesHistory = [archivedGame, ...(state.gamesHistory || []).filter((item) => item.sessionId !== archivedGame.sessionId)].slice(0, MAX_HISTORY);
         state.actionAudit = [];
         state.ui.openTab = 'history';
         saveState(true);
         render();
-        showToast('Archiv in der Historie geöffnet.');
+        renderOnlineStatus();
+        showToast('Archiv-Partie im Admin geöffnet.');
+        return;
       }
+      await connectAdminRoundFromCode(party.code, { initialPrompt: true, autoLoadExisting: true });
     }
 
     function exportBackup(prefix = 'knobeln-backup') {
