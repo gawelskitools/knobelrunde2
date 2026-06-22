@@ -1154,6 +1154,7 @@
     const STORAGE_KEY = 'knobeln-strafpunkte-v5';
     const ONLINE_SETTINGS_KEY = 'knobelklub-online-settings-v1';
     const VIEWER_FINAL_ARCHIVE_CACHE_KEY = 'knobelklub-viewer-final-archive-v1';
+    const VIEWER_LAST_GAME_ID_KEY = 'knobelklub-viewer-last-game-id-v1';
     const APP_MODE = 'viewer';
     const VIEW_ONLY_MODE = APP_MODE === 'viewer';
 
@@ -1322,6 +1323,8 @@
         // Nur ein Link mit ?game=... verbindet automatisch; sonst fragt das Begrüßungspopup den Runden-Code ab.
         onlineSettings.enabled = Boolean(urlGameId);
         onlineSettings.gameId = urlGameId ? sanitizeOnlineGameId(urlGameId) : '';
+        if (urlGameId) rememberViewerGameId(urlGameId);
+        else if (!onlineSettings.gameId) onlineSettings.gameId = getRememberedViewerGameId();
         onlineSettings.deviceName = 'Zuschauer';
         onlineSettings.lastKnownUpdatedAt = 0;
         saveOnlineSettings();
@@ -1350,6 +1353,7 @@
         }
         onlineSettings.enabled = true;
         onlineSettings.gameId = sanitizeOnlineGameId(gameIdInput);
+        rememberViewerGameId(onlineSettings.gameId);
         onlineSettings.deviceName = 'Zuschauer';
         onlineSettings.lastKnownUpdatedAt = 0;
         saveOnlineSettings();
@@ -1567,8 +1571,31 @@
     }
 
 
+    function rememberViewerGameId(value) {
+      if (!VIEW_ONLY_MODE) return;
+      const safe = sanitizeOnlineGameId(value || '');
+      if (!safe) return;
+      try {
+        localStorage.setItem(VIEWER_LAST_GAME_ID_KEY, safe);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    function getRememberedViewerGameId() {
+      if (!VIEW_ONLY_MODE) return '';
+      try {
+        return sanitizeOnlineGameId(localStorage.getItem(VIEWER_LAST_GAME_ID_KEY) || '');
+      } catch (error) {
+        console.error(error);
+        return '';
+      }
+    }
+
     function getCurrentViewerGameId() {
-      return sanitizeOnlineGameId(onlineSettings && onlineSettings.gameId ? onlineSettings.gameId : getUrlGameId());
+      const fromUrl = getUrlGameId();
+      const fromSettings = onlineSettings && onlineSettings.gameId ? onlineSettings.gameId : '';
+      return sanitizeOnlineGameId(fromUrl || fromSettings || getRememberedViewerGameId());
     }
 
     function completeViewerArchiveForHistory(archive) {
@@ -2155,17 +2182,28 @@
     }
 
 
-    async function readLatestOnlineArchiveForCurrentGame() {
-      if (!VIEW_ONLY_MODE || !onlineSettings.enabled || !sanitizeOnlineGameId(onlineSettings.gameId)) return null;
+    async function readLatestOnlineArchiveForCurrentGame(gameId = null) {
+      if (!VIEW_ONLY_MODE) return null;
+      const code = sanitizeOnlineGameId(gameId || getCurrentViewerGameId());
+      if (!code) return null;
       const db = await initFirebaseOnline();
       const sdk = await loadFirebaseSdk();
-      const code = sanitizeOnlineGameId(onlineSettings.gameId);
       const snapshot = await sdk.get(sdk.ref(db, `games/${code}/archive`));
       const archiveMap = snapshot.val() || {};
       const entries = Object.values(archiveMap)
         .filter((item) => item && item.archive)
         .sort((a, b) => Number(b.archivedAt || 0) - Number(a.archivedAt || 0));
       return entries[0] || null;
+    }
+
+    async function readOnlineLivePayloadForViewerGame(gameId = null) {
+      if (!VIEW_ONLY_MODE) return null;
+      const code = sanitizeOnlineGameId(gameId || getCurrentViewerGameId());
+      if (!code) return null;
+      const db = await initFirebaseOnline();
+      const sdk = await loadFirebaseSdk();
+      const snapshot = await sdk.get(sdk.ref(db, `games/${code}/live`));
+      return snapshot.val() || null;
     }
 
     function normalizeSingleGameArchive(archive) {
@@ -2180,7 +2218,7 @@
     }
 
     async function applyLatestOnlineArchiveFallback(options = {}) {
-      if (!VIEW_ONLY_MODE || !onlineSettings.enabled) return false;
+      if (!VIEW_ONLY_MODE) return false;
       try {
         const latest = await readLatestOnlineArchiveForCurrentGame();
         if (!latest || !latest.archive) return false;
@@ -2203,6 +2241,83 @@
       }
     }
 
+
+
+    async function loadViewerFullHistoryFromOnline(options = {}) {
+      if (!VIEW_ONLY_MODE) return false;
+      const silent = Boolean(options.silent);
+      const openHistory = options.openHistory !== false;
+      const code = sanitizeOnlineGameId(options.gameId || getCurrentViewerGameId());
+      if (!code) {
+        if (!silent) showToast('Kein Runden-Code vorhanden. Bitte Fanlink mit ?game=... öffnen oder Code eingeben.');
+        return false;
+      }
+      rememberViewerGameId(code);
+      try {
+        if (!isFirebaseConfigured()) {
+          if (!silent) showToast('Firebase-Konfiguration fehlt im Code.');
+          return false;
+        }
+        onlineRuntime.connecting = true;
+        onlineRuntime.error = '';
+        renderOnlineStatus();
+
+        const latestArchive = await readLatestOnlineArchiveForCurrentGame(code);
+        if (latestArchive && latestArchive.archive) {
+          const applied = applyViewerFinalArchiveToState(latestArchive.archive, { openHistory });
+          onlineRuntime.connecting = false;
+          if (applied) {
+            onlineRuntime.lastSyncAt = latestArchive.archivedAt ? new Date(Number(latestArchive.archivedAt)).toISOString() : new Date().toISOString();
+            onlineRuntime.lastRemoteBy = latestArchive.archivedBy || '';
+            disconnectViewerAfterFinalDisplay({ silent: true });
+            render();
+            if (!silent) showToast('Komplette Historie aus dem Online-Archiv geladen.');
+            return true;
+          }
+        }
+
+        const livePayload = await readOnlineLivePayloadForViewerGame(code);
+        onlineRuntime.connecting = false;
+        if (livePayload && livePayload.state) {
+          onlineSettings.enabled = true;
+          onlineSettings.gameId = code;
+          onlineSettings.lastKnownUpdatedAt = Number(livePayload.updatedAt || Date.now());
+          saveOnlineSettings();
+          applyRemoteState(livePayload.state, {
+            updatedAt: Number(livePayload.updatedAt || Date.now()),
+            updatedBy: livePayload.updatedBy || ''
+          });
+          if (openHistory) {
+            state.ui = { ...(state.ui || {}), openTab: 'history' };
+            render();
+          }
+          const finalApplied = await applyViewerFinalArchiveAfterRemote({ silent: true });
+          if (!finalApplied && !silent) showToast('Laufender Live-Verlauf geladen.');
+          return true;
+        }
+
+        const cached = loadViewerFinalArchiveCache();
+        if (cached) {
+          applyViewerFinalArchiveToState(cached, { openHistory });
+          onlineRuntime.connecting = false;
+          disconnectViewerAfterFinalDisplay({ silent: true });
+          render();
+          if (!silent) showToast('Letzte gespeicherte Abschluss-Historie geladen.');
+          return true;
+        }
+
+        if (!silent) showToast('Keine Live-Daten und kein Online-Archiv für diesen Runden-Code gefunden.');
+        render();
+        return false;
+      } catch (error) {
+        onlineRuntime.connecting = false;
+        onlineRuntime.error = error && error.message ? error.message : 'Historie konnte nicht geladen werden.';
+        renderOnlineStatus();
+        console.error(error);
+        if (!silent) showToast(onlineRuntime.error);
+        return false;
+      }
+    }
 
     async function refreshOnlineState(options = {}) {
       const silent = Boolean(options.silent);
@@ -2274,6 +2389,7 @@
     }
 
     function applyRemoteState(remoteState, meta = {}) {
+      if (VIEW_ONLY_MODE) rememberViewerGameId(getCurrentViewerGameId());
       const previousViewerArchive = getViewerFallbackArchiveFromCurrentState();
       const migrated = migrateState(remoteState);
       if (VIEW_ONLY_MODE && !migrated.currentSession && !(migrated.gamesHistory || []).length && previousViewerArchive) {
@@ -2479,6 +2595,7 @@
 
       onlineSettings.enabled = true;
       onlineSettings.gameId = sanitizeOnlineGameId(gameIdInput);
+      rememberViewerGameId(onlineSettings.gameId);
       onlineSettings.deviceName = 'Zuschauer';
       onlineSettings.lastKnownUpdatedAt = 0;
       saveOnlineSettings();
@@ -3465,6 +3582,11 @@
       const entryId = button.dataset.historyId;
       const gameId = button.dataset.gameId || null;
 
+      if (action === 'load-full-history') {
+        await loadViewerFullHistoryFromOnline({ openHistory: true });
+        return;
+      }
+
       if (action === 'copy-settlement') {
         await handleHistoryCopyById(entryId, gameId);
       }
@@ -3781,11 +3903,22 @@ function renderPlayers(session) {
     function renderHistory() {
       const games = getGameHistoryItems();
       el.tabCountHistory.textContent = String(games.length);
+      const loadButtonHtml = VIEW_ONLY_MODE ? `
+        <div class="history-zone" style="margin-bottom:10px;">
+          <div class="label-row" style="justify-content:space-between;align-items:center;">
+            <div>
+              <div class="history-zone-title">Historie laden / aktualisieren</div>
+              <div class="tiny muted">Während des Spiels wird der laufende Verlauf geladen. Nach Partieende wird die komplette Archiv-Historie nachgeladen.</div>
+            </div>
+            <button type="button" class="info" data-history-action="load-full-history" style="width:auto;min-width:190px;box-shadow:none;">Komplette Historie laden</button>
+          </div>
+        </div>
+      ` : '';
       if (!games.length) {
-        el.historyList.innerHTML = '<div class="empty">Noch keine laufenden oder abgeschlossenen Spiele.</div>';
+        el.historyList.innerHTML = `${loadButtonHtml}<div class="empty">Noch keine laufenden oder abgeschlossenen Spiele geladen.</div>`;
         return;
       }
-      el.historyList.innerHTML = games.map((game, index) => renderGameHistoryEntry(game, index)).join('');
+      el.historyList.innerHTML = `${loadButtonHtml}${games.map((game, index) => renderGameHistoryEntry(game, index)).join('')}`;
     }
 
     async function handleHistoryCopyById(entryId, gameId = null) {
@@ -4657,14 +4790,18 @@ ${playerText}`;
       return view.incomingOpenDetails.length - view.outgoingOpenDetails.length;
     }
 
-    function handleTabClick(event) {
+    async function handleTabClick(event) {
       const button = event.target.closest('button[data-tab]');
       if (!button) return;
       const tab = button.dataset.tab;
       if (VIEW_ONLY_MODE && tab !== 'history') return;
-      state.ui.openTab = state.ui.openTab === tab ? null : tab;
+      const willOpen = state.ui.openTab !== tab;
+      state.ui.openTab = willOpen ? tab : null;
       saveState();
       renderTabs();
+      if (VIEW_ONLY_MODE && tab === 'history' && willOpen && !getGameHistoryItems().length) {
+        await loadViewerFullHistoryFromOnline({ openHistory: true, silent: true });
+      }
     }
 
     function openHelpDialog() {
