@@ -3968,6 +3968,14 @@ function groupBeerByFrom(details) {
       return CASH_PENALTY_BUTTON_LIMIT > 0 && getCashPenaltyViolationCount(container, playerId) >= CASH_PENALTY_BUTTON_LIMIT;
     }
 
+    function isCashPenaltyWarningActive(container, playerId) {
+      const count = getCashPenaltyViolationCount(container, playerId);
+      if (CASH_PENALTY_BUTTON_LIMIT > 0) {
+        return count > 0 && count < CASH_PENALTY_BUTTON_LIMIT;
+      }
+      return count > 0;
+    }
+
     function getLustCashPenaltyCoins(totalPlayersCount) {
       if (totalPlayersCount <= 3) return 1;
       if (totalPlayersCount <= 5) return 2;
