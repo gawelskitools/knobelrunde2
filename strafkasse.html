@@ -522,7 +522,7 @@
           <div class="info-block">
             <h3>Auswertungszeitraum</h3>
             <ul>
-              <li><strong>Dropdown:</strong> Hier wird ein vorhandener Auswertungszeitraum ausgewählt, zum Beispiel <code>ausfahrt-2026</code>.</li>
+              <li><strong>Dropdown:</strong> Hier wird ein vorhandener Auswertungszeitraum ausgewählt, zum Beispiel <code>knobelclub-2026</code>.</li>
               <li><strong>Verfügbare IDs:</strong> Die Liste wird aus gespeicherten Datenbank-Snapshots, Datenbank-Perioden-Konfigurationen und lokal gespeicherten Admin-Einträgen gebildet.</li>
               <li><strong>Neue IDs:</strong> Neue Auswertungszeiträume mit Startdatum, Enddatum und Mindestspielen können nur im Adminbereich angelegt oder geändert werden.</li>
               <li><strong>Rückmeldung im Adminbereich:</strong> Beim Speichern erscheint sofort „Lokal gespeichert, Datenbank-Abgleich läuft …“. Danach folgt entweder „Datenbank-Abgleich abgeschlossen“ oder eine Fehlermeldung.</li>
@@ -632,7 +632,7 @@
       <div class="section-title">Auswertungszeitraum konfigurieren</div>
       <p class="section-subtitle">Neue Perioden-IDs sowie Startdatum, Enddatum und Mindestspiele werden nur hier im Adminbereich gepflegt. Die Auswahl im öffentlichen Block bleibt ein reines Dropdown.</p>
       <div class="grid-4" style="margin-top:12px;">
-        <label class="grid small field-with-help"><span class="field-title-row"><strong>Perioden-ID</strong><details class="inline-help"><summary>?</summary><div>Name des Auswertungszeitraums, z. B. ausfahrt-2026. Beim Speichern wird diese ID in die Dropdown-Liste übernommen.</div></details></span><input id="periodIdInput" type="text" value="ausfahrt-2026" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Perioden-ID</strong><details class="inline-help"><summary>?</summary><div>Name des Auswertungszeitraums, z. B. knobelclub-2026. Beim Speichern wird diese ID in die Dropdown-Liste übernommen.</div></details></span><input id="periodIdInput" type="text" value="knobelclub-2026" /></label>
         <label class="grid small field-with-help"><span class="field-title-row"><strong>Startdatum</strong><details class="inline-help"><summary>?</summary><div>Optionaler Filter: Nur Archive ab diesem Datum werden in die Berechnung aufgenommen.</div></details></span><input id="startDateInput" type="date" /></label>
         <label class="grid small field-with-help"><span class="field-title-row"><strong>Enddatum</strong><details class="inline-help"><summary>?</summary><div>Optionaler Filter: Nur Archive bis einschließlich diesem Datum werden in die Berechnung aufgenommen.</div></details></span><input id="endDateInput" type="date" /></label>
         <label class="grid small field-with-help"><span class="field-title-row"><strong>Mindestspiele für Bonuswertung</strong><details class="inline-help"><summary>?</summary><div>Ab dieser Anzahl Spiele wird ein Spieler in der Profiteur-/Bonuswertung offiziell berücksichtigt. 0 bedeutet: alle zählen.</div></details></span><input id="minGamesInput" type="number" min="0" step="1" value="0" /></label>
@@ -749,7 +749,7 @@
      * Modularer Aufbau: Neue Strafarten können in PENALTY_DEFINITIONS
      * ergänzt werden, ohne die Berechnungslogik umzubauen.
      **********************************************************************/
-    const DEFAULT_PERIOD_ID = 'ausfahrt-2026';
+    const DEFAULT_PERIOD_ID = 'knobelclub-2026';
     const DEFAULT_MIN_GAMES_FOR_BONUS = 0;
     const STORAGE_KEY = 'knobelklub-penalty-stats-settings-v3';
     const ADMIN_SESSION_KEY = 'knobelklub-penalty-stats-admin-unlocked-v1';
