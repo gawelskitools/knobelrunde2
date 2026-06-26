@@ -1,1 +1,2037 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Knobelclub – Strafkassen- & Fairness-Rangliste</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #111827;
+      --panel-2: #172033;
+      --panel-3: #0f172a;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --line: rgba(255,255,255,.10);
+      --green: #22c55e;
+      --green-soft: rgba(34,197,94,.22);
+      --blue: #38bdf8;
+      --blue-soft: rgba(56,189,248,.16);
+      --red: #ef4444;
+      --red-soft: rgba(239,68,68,.16);
+      --amber: #f59e0b;
+      --amber-soft: rgba(245,158,11,.16);
+      --violet: #a855f7;
+      --violet-soft: rgba(168,85,247,.18);
+      --shadow: 0 18px 40px rgba(0,0,0,.28);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #111a2e 0%, var(--bg) 45%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    button, input, select {
+      font: inherit;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+    }
+    input, select {
+      width: 100%;
+      background: rgba(8, 13, 23, .88);
+      color: var(--text);
+    }
+    button {
+      background: var(--panel-2);
+      color: var(--text);
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      width: 100%;
+      min-height: 48px;
+    }
+    button:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+    button.primary { background: var(--green); color: #06210e; border: none; font-weight: 900; }
+    button.info { background: var(--blue); color: #042637; border: none; font-weight: 900; }
+    button.warn { background: var(--amber); color: #331f03; border: none; font-weight: 900; }
+    button.ghost { background: transparent; box-shadow: none; }
+    .page {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 14px 12px 40px;
+      display: grid;
+      gap: 14px;
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+    .soft { background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)); }
+    .header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 1.26rem; line-height: 1.1; }
+    .section-title { font-size: 1.05rem; font-weight: 900; margin-bottom: 6px; }
+    .section-subtitle, .muted { color: var(--muted); }
+    .section-subtitle { font-size: .92rem; line-height: 1.45; }
+    .tiny { font-size: .82rem; }
+    .small { font-size: .93rem; }
+    .grid { display: grid; gap: 10px; }
+    .grid-2, .grid-3, .grid-4 { display: grid; gap: 10px; }
+    .line { height: 1px; background: rgba(255,255,255,.08); margin: 10px 0; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.09);
+      background: rgba(8,13,23,.75);
+      font-size: .84rem;
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .pill.green { background: var(--green-soft); border-color: rgba(34,197,94,.40); }
+    .pill.blue { background: var(--blue-soft); border-color: rgba(56,189,248,.35); }
+    .pill.amber { background: var(--amber-soft); border-color: rgba(245,158,11,.35); }
+    .pill.violet { background: var(--violet-soft); border-color: rgba(168,85,247,.40); }
+    .pill.red { background: var(--red-soft); border-color: rgba(239,68,68,.35); }
+    .status-box {
+      display: grid;
+      gap: 8px;
+      border-radius: 16px;
+      background: rgba(8,13,23,.45);
+      border: 1px solid rgba(255,255,255,.08);
+      padding: 10px 12px;
+    }
+    .status-box.connected { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.28); }
+    .status-box.error { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.28); }
+    .kpi-grid { display: grid; gap: 10px; }
+    .kpi {
+      border-radius: 16px;
+      padding: 12px;
+      background: rgba(8,13,23,.50);
+      border: 1px solid rgba(255,255,255,.08);
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+    .kpi .label { color: var(--muted); font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+    .kpi .value { font-size: 1.45rem; font-weight: 1000; line-height: 1.05; overflow-wrap: anywhere; }
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      background: rgba(8,13,23,.35);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+    }
+    th, td {
+      padding: 10px 11px;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      text-align: left;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #111827;
+      color: #d6f4ff;
+      font-size: .78rem;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    td.num, th.num { text-align: right; }
+    tr:last-child td { border-bottom: 0; }
+    .rank { font-weight: 1000; color: #fef3c7; }
+    .player { font-weight: 900; }
+    .sub { display: block; color: var(--muted); font-size: .78rem; margin-top: 2px; }
+    .bar-cell { min-width: 160px; }
+    .bar {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      overflow: hidden;
+      margin-top: 5px;
+    }
+    .bar > span {
+      display: block;
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(245,158,11,.96), rgba(34,197,94,.90));
+    }
+    .note {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(56,189,248,.10);
+      border: 1px solid rgba(56,189,248,.18);
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .warn-note { background: rgba(245,158,11,.11); border-color: rgba(245,158,11,.24); color: #fde68a; }
+    .hidden { display: none !important; }
+    .admin-lock-grid { display: grid; gap: 10px; }
+    .admin-login-actions { display: grid; gap: 8px; }
+    .locked-panel { opacity: .72; }
+    input:disabled, select:disabled, button:disabled { opacity: .55; cursor: not-allowed; }
+    .table-wrap { -webkit-overflow-scrolling: touch; }
+    .mobile-hint { display: none; color: var(--muted); font-size: .78rem; margin-top: 8px; }
+    .log {
+      max-height: 180px;
+      overflow: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: .78rem;
+      color: #cbd5e1;
+      background: rgba(8,13,23,.55);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      padding: 10px;
+      white-space: pre-wrap;
+    }
+
+    html, body { overflow-x: hidden; }
+    .page, .card, section, .status-box, .table-wrap { min-width: 0; max-width: 100%; }
+    code { overflow-wrap: anywhere; }
+    details.config-details,
+    details.fold-table,
+    details.admin-details {
+      border-radius: var(--radius);
+    }
+    details.fold-table > summary,
+    details.admin-details > summary {
+      cursor: pointer;
+      list-style: none;
+      display: grid;
+      gap: 4px;
+    }
+    details.fold-table > summary::-webkit-details-marker,
+    details.admin-details > summary::-webkit-details-marker { display: none; }
+    details.fold-table > summary::after,
+    details.admin-details > summary::after {
+      content: 'aufklappen';
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      justify-self: start;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      margin-top: 3px;
+    }
+    details.fold-table[open] > summary::after,
+    details.admin-details[open] > summary::after { content: 'zuklappen'; }
+    .field-with-help { display: grid; gap: 6px; }
+    .field-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .inline-help { position: relative; display: inline-grid; justify-items: end; }
+    .inline-help > summary {
+      cursor: pointer;
+      list-style: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(56,189,248,.35);
+      background: rgba(56,189,248,.14);
+      color: #d6f4ff;
+      font-weight: 1000;
+      font-size: .78rem;
+      user-select: none;
+    }
+    .inline-help > summary::-webkit-details-marker { display:none; }
+    .inline-help > div {
+      margin-top: 6px;
+      max-width: min(72vw, 320px);
+      border-radius: 12px;
+      padding: 8px 10px;
+      background: rgba(8,13,23,.94);
+      border: 1px solid rgba(56,189,248,.22);
+      color: var(--muted);
+      font-size: .78rem;
+      line-height: 1.35;
+      box-shadow: 0 10px 24px rgba(0,0,0,.22);
+      text-align: left;
+    }
+    .admin-only.hidden { display: none !important; }
+    .table-card-title { display: none; }
+    #profitSection { order: 5; }
+    #cashSection { order: 6; }
+    #bonusSection { order: 7; }
+    #actionsSection { order: 8; }
+    #logSection { order: 9; }
+
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .title-info-btn {
+      width: 34px;
+      min-height: 34px;
+      height: 34px;
+      padding: 0;
+      border-radius: 999px;
+      display: inline-grid;
+      place-items: center;
+      background: rgba(56,189,248,.14);
+      border: 1px solid rgba(56,189,248,.38);
+      color: #d6f4ff;
+      font-weight: 1000;
+      box-shadow: none;
+      flex: 0 0 auto;
+    }
+
+    .header-side {
+      display: flex;
+      gap: 8px;
+      min-width: min(100%, 320px);
+      flex: 1 1 520px;
+      justify-content: flex-end;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .header-pills {
+      justify-content: flex-end;
+      align-items: center;
+      width: 100%;
+    }
+    .header-status {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      max-width: min(100%, 520px);
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
+    .header-status strong { color: #d6f4ff; }
+    .header-status span { color: var(--muted); font-size: .78rem; }
+    .header-status.connected { background: var(--green-soft); border-color: rgba(34,197,94,.40); }
+    .header-status.connected strong { color: #dcfce7; }
+    .header-status.error { background: var(--red-soft); border-color: rgba(239,68,68,.35); }
+    .header-status.error strong { color: #fee2e2; }
+    .header-action-pill {
+      width: auto;
+      min-height: 0;
+      padding: 6px 12px;
+      border-radius: 999px;
+      box-shadow: none;
+      border: none;
+      background: var(--green);
+      color: #06210e;
+      font-size: .84rem;
+      font-weight: 1000;
+      flex: 0 1 auto;
+      white-space: normal;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(2,6,23,.76);
+      display: grid;
+      place-items: center;
+      padding: 14px;
+    }
+    .info-modal {
+      width: min(960px, 100%);
+      max-height: min(88vh, 860px);
+      overflow: auto;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(17,24,39,.98), rgba(8,13,23,.98));
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 28px 80px rgba(0,0,0,.55);
+      padding: 16px;
+    }
+    .info-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+    }
+    .modal-close-btn {
+      width: auto;
+      min-height: 36px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      box-shadow: none;
+      background: rgba(255,255,255,.06);
+      flex: 0 0 auto;
+    }
+    .info-blocks {
+      display: grid;
+      gap: 10px;
+    }
+    .info-block {
+      border-radius: 16px;
+      padding: 12px;
+      background: rgba(255,255,255,.035);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .info-block h3 {
+      margin: 0 0 6px;
+      font-size: .98rem;
+    }
+    .info-block ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: .9rem;
+    }
+    .info-block li + li { margin-top: 3px; }
+
+    @media (max-width: 759px) {
+
+      .title-row { align-items: flex-start; }
+      .header-side { flex-basis: 100%; justify-content: flex-start; }
+      .header-pills { justify-content: flex-start; }
+      .header-status { width: 100%; max-width: 100%; }
+      .header-action-pill { width: 100%; justify-content: center; min-height: 42px; }
+      .title-info-btn { width: 32px; height: 32px; min-height: 32px; }
+      .modal-backdrop { padding: 8px; align-items: start; }
+      .info-modal { max-height: calc(100vh - 16px); border-radius: 18px; padding: 12px; }
+      .info-modal-header { align-items: flex-start; }
+
+      .page { padding: 10px 8px 28px; }
+      .card { padding: 12px; border-radius: 16px; }
+      .table-wrap { overflow-x: visible; border: 0; background: transparent; }
+      table { min-width: 0; width: 100%; display: block; font-size: .9rem; }
+      thead { display: none; }
+      tbody { display: grid; gap: 10px; }
+      tr { display: grid; gap: 0; border: 1px solid rgba(255,255,255,.08); border-radius: 16px; background: rgba(8,13,23,.45); overflow: hidden; }
+      td { display: grid; grid-template-columns: minmax(118px, .9fr) minmax(0, 1fr); gap: 10px; padding: 9px 10px; white-space: normal; overflow-wrap: anywhere; align-items: start; }
+      td::before { content: attr(data-label); color: var(--muted); font-size: .74rem; text-transform: uppercase; letter-spacing: .03em; font-weight: 900; }
+      td.num { text-align: left; }
+      td.num::before { text-align: left; }
+      .bar-cell { min-width: 0; }
+      .table-card-title { display: block; font-weight: 1000; }
+      .mobile-hint { display: block; }
+      .kpi .value { font-size: 1.18rem; }
+      .pill-row { gap: 6px; }
+    }
+    @media (min-width: 760px) {
+      .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .status-box { grid-template-columns: 1fr minmax(220px, 340px); align-items: center; }
+    }
+  
+  </style>
+</head>
+
+<body>
+  <main class="page">
+    <section class="card">
+      <div class="header">
+        <div>
+          <div class="title-row">
+            <h1>Knobelclub – Strafkassen- & Fairness-Rangliste</h1>
+            <button id="infoOpenBtn" class="title-info-btn" type="button" aria-label="Erklärung zur Rangliste öffnen">?</button>
+          </div>
+          <p class="section-subtitle">Eigene Statistikseite für Strafgeld-Könige, Knobel-Engel und finale Profiteure aus Firebase-Archiven. Begriffe: Ein Spiel hat bis zu 3 Durchgänge; ein Durchgang hat bis zu 10 Spielrunden.</p>
+        </div>
+        <div class="header-side">
+          <div class="pill-row header-pills">
+            <span class="pill amber">Bonus: <strong id="bonusPill">–</strong></span>
+            <span class="pill violet">Malus: <strong id="malusPill">–</strong></span>
+            <span id="statusBox" class="pill blue header-status">
+              <strong id="statusTitle">Status: nicht verbunden</strong>
+              <span id="statusMeta">Noch keine Archive geladen.</span>
+            </span>
+            <button id="loadArchivesBtn" class="header-action-pill" type="button">Archive laden & berechnen</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="infoModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle">
+      <div class="info-modal" role="document">
+        <div class="info-modal-header">
+          <div>
+            <h2 id="infoModalTitle" class="section-title">Erklärung der Strafkassen- & Fairness-Rangliste</h2>
+            <p class="section-subtitle">Diese Übersicht erklärt blockweise, welche Felder wofür da sind und wie sie in die Wertung einfließen.</p>
+          </div>
+          <button id="infoCloseBtn" class="modal-close-btn" type="button">Schließen</button>
+        </div>
+        <div class="info-blocks">
+          <div class="info-block">
+            <h3>Zeitraum</h3>
+            <ul>
+              <li><strong>Perioden-ID:</strong> Name des gespeicherten Statistik-Snapshots in Firebase, zum Beispiel <code>ausfahrt-2026</code>.</li>
+              <li><strong>Startdatum/Enddatum:</strong> optionale Filter. Nur Archive innerhalb dieses Zeitraums fließen in die Berechnung ein.</li>
+              <li><strong>Mindestspiele für Bonuswertung:</strong> Spieler werden in der Profiteurwertung erst ab dieser Anzahl Spiele berücksichtigt. <code>0</code> bedeutet: alle zählen.</li>
+            </ul>
+          </div>
+          <div class="info-block">
+            <h3>Archive laden & Statistik-Snapshot</h3>
+            <ul>
+              <li><strong>Archive laden & berechnen:</strong> sitzt oben im Kopfbereich im gleichen Stil wie Bonus/Malus, liest die beendeten Spiele aus <code>games/{code}/archive</code> und berechnet die Tabellen neu.</li>
+              <li><strong>Gespeicherten Statistik-Snapshot laden:</strong> sitzt im Admin-Bereich „Speichern und Export“ und lädt eine zuvor gespeicherte Auswertung aus <code>stats/cashbox/periods/{periodId}</code>.</li>
+            </ul>
+          </div>
+          <div class="info-block">
+            <h3>Strafen modular konfigurieren</h3>
+            <ul>
+              <li><strong>Coin-Wert in Cent:</strong> Geldwert eines Coins für diese Strafart. Daraus entsteht der Euro-Wert im Strafgeldtopf.</li>
+              <li><strong>Malus je gewertetem Coin:</strong> Abzug in der Profiteurwertung. Beispiel: <code>0,10</code> bedeutet: 1 Straf-Coin erzeugt 0,10 Malus-Coins.</li>
+              <li><strong>Coins je Ereignis ohne gespeicherten Coinwert:</strong> reiner Ersatzwert. Er wird nur genutzt, wenn Firebase ein Ereignis ohne gespeicherten Coin-/Cent-Wert liefert. Ist in Firebase ein Wert gespeichert, zählt der Firebase-Wert; ein bewusst gespeicherter Wert <code>0</code> bleibt <code>0</code>.</li>
+            </ul>
+          </div>
+          <div class="info-block">
+            <h3>Bonus-/Fairnesswertung</h3>
+            <ul>
+              <li><strong>Bonus je sauberem Durchgang:</strong> Bonus-Coins für jeden Durchgang, in dem der Spieler keine gewertete Strafe hatte.</li>
+              <li><strong>Bonus je sauberer Spielrunde:</strong> Bonus-Coins für saubere Spielrunden innerhalb der Durchgänge. Ohne exakten Zeitstempel wird eine bezahlte Strafe näherungsweise als eine verschmutzte Spielrunde gewertet.</li>
+              <li><strong>Bonus je komplett sauberem Spiel:</strong> Zusatzbonus, wenn ein Spieler in der ganzen Partie keine gewertete konfigurierte Strafe hatte.</li>
+            </ul>
+          </div>
+          <div class="info-block">
+            <h3>Profiteure</h3>
+            <ul>
+              <li>Der wichtigste finale Block. Er berechnet den fairen Anteil am Strafgeldtopf.</li>
+              <li><strong>Formel:</strong> Bonus gesamt minus Malus aus Strafkasse und Lustknobeln ergibt den Profiteur-Score.</li>
+              <li>Nur positive Profiteur-Scores werden auf den Topf verteilt. Daraus entstehen finaler Topf-Anteil und rechnerischer Topfwert.</li>
+            </ul>
+          </div>
+          <div class="info-block">
+            <h3>Strafgeld-Könige</h3>
+            <ul>
+              <li>Zeigt, wer den Strafgeldtopf finanziert hat.</li>
+              <li>Gezählt werden nur tatsächlich gewertete/bezahlte Coins. Straffreie Ereignisse ohne Wert bleiben draußen.</li>
+              <li>Strafkasse und Lustknobeln werden getrennt ausgewiesen, danach als Gesamtwert zusammengeführt.</li>
+            </ul>
+          </div>
+          <div class="info-block">
+            <h3>Knobel-Engel</h3>
+            <ul>
+              <li>Zeigt sauberes Spielen: saubere Durchgänge, saubere Spielrunden und komplett saubere Spiele.</li>
+              <li>Die eingestellten Bonuswerte erzeugen Bonus-Coins. Diese Bonus-Coins fließen in den Profiteur-Score ein.</li>
+            </ul>
+          </div>
+          <div class="info-block">
+            <h3>Speichern, Export und Protokoll</h3>
+            <ul>
+              <li><strong>Speichern:</strong> legt die berechnete Statistik als Snapshot in Firebase ab, ohne Spielarchive zu verändern.</li>
+              <li><strong>JSON herunterladen/kopieren:</strong> exportiert die aktuelle Berechnung zur Kontrolle oder Sicherung.</li>
+              <li><strong>Protokoll:</strong> zeigt technische Lade- und Berechnungshinweise. Diese Bereiche sind nur nach Admin-Anmeldung sichtbar.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="card soft">
+      <div class="section-title">Zeitraum</div>
+      <p class="section-subtitle">Die Perioden-ID bestimmt, unter welchem Namen der Statistik-Snapshot in Firebase gespeichert wird.</p>
+      <div class="grid-4" style="margin-top:12px;">
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Perioden-ID</strong><details class="inline-help"><summary>?</summary><div>Name des Statistik-Snapshots in Firebase, z. B. ausfahrt-2026. Damit können mehrere Auswertungszeiträume getrennt gespeichert werden.</div></details></span><input id="periodIdInput" type="text" value="ausfahrt-2026" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Startdatum</strong><details class="inline-help"><summary>?</summary><div>Optionaler Filter: Nur Archive ab diesem Datum werden in die Berechnung aufgenommen.</div></details></span><input id="startDateInput" type="date" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Enddatum</strong><details class="inline-help"><summary>?</summary><div>Optionaler Filter: Nur Archive bis einschließlich diesem Datum werden in die Berechnung aufgenommen.</div></details></span><input id="endDateInput" type="date" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Mindestspiele für Bonuswertung</strong><details class="inline-help"><summary>?</summary><div>Ab dieser Anzahl Spiele wird ein Spieler in der Profiteur-/Bonuswertung offiziell berücksichtigt. 0 bedeutet: alle zählen.</div></details></span><input id="minGamesInput" type="number" min="0" step="1" value="0" /></label>
+      </div>
+    </section>
+
+
+    <section class="card soft" id="adminLoginSection">
+      <details id="adminLoginDetails" class="admin-details">
+        <summary>
+          <span class="section-title">Admin-Anmeldung für Konfiguration</span>
+          <span class="section-subtitle">Ohne Anmeldung bleiben Strafen, Bonuswerte, Speichern/Export und Protokoll verborgen. Lesen und Rangliste berechnen bleibt möglich.</span>
+        </summary>
+        <div class="grid-3" style="margin-top:12px;">
+          <label class="grid small field-with-help"><span class="field-title-row"><strong>Benutzer</strong><details class="inline-help"><summary>?</summary><div>Admin-Benutzer für die Konfiguration. Standard im Code ist bewusst einfach gehalten und nur als Oberflächen-Sperre gedacht.</div></details></span><input id="adminUserInput" type="text" autocomplete="username" /></label>
+          <label class="grid small field-with-help"><span class="field-title-row"><strong>Passwort</strong><details class="inline-help"><summary>?</summary><div>Passwort für die Konfiguration. Diese HTML-Sperre schützt vor versehentlichem Ändern, ersetzt aber keine echte Firebase-Authentifizierung.</div></details></span><input id="adminPasswordInput" type="password" autocomplete="current-password" /></label>
+          <div class="admin-login-actions">
+            <button id="adminLoginBtn" class="primary" type="button">Konfiguration entsperren</button>
+            <button id="adminLogoutBtn" class="ghost hidden" type="button">Konfiguration sperren</button>
+          </div>
+        </div>
+        <div id="adminLoginStatus" class="note" style="margin-top:12px;">Konfiguration gesperrt.</div>
+      </details>
+    </section>
+
+    <section id="penaltyConfigSection" class="card soft locked-panel admin-only hidden">
+      <div class="section-title">Strafen modular konfigurieren</div>
+      <p class="section-subtitle">Jede Strafart hat eigene erkannte Firebase-Typen, eigenen Coin-Wert und eigenen Malus. Neue Strafarten können später oben im Code in <code>PENALTY_DEFINITIONS</code> ergänzt werden.</p>
+      <div id="penaltySettingsGrid" class="grid-2" style="margin-top:12px;"></div>
+    </section>
+
+    <section id="bonusConfigSection" class="card soft locked-panel admin-only hidden">
+      <div class="section-title">Bonus-/Fairnesswertung konfigurieren</div>
+      <p class="section-subtitle">Bonus-Coins sind Wertungspunkte für die Profiteur-Tabelle. Konfigurierbar sind Bonus je sauberem Durchgang, je sauberer Spielrunde und je komplett sauberem Spiel.</p>
+      <div id="bonusSettingsGrid" class="grid-3" style="margin-top:12px;"></div>
+      <div class="note warn-note" style="margin-top:12px;">
+        <strong>Definition:</strong> Gewertet werden nur tatsächlich bezahlte/gewertete Strafen mit Coins &gt; 0. Ein sauberer Durchgang hat keine bezahlte konfigurierte Strafe. Eine saubere Spielrunde wird näherungsweise aus abgeschlossenen Spielrunden minus bezahlten Strafen im Durchgang berechnet. Ein komplett sauberes Spiel hat für den Spieler keine bezahlte konfigurierte Strafe in der Partie.
+      </div>
+    </section>
+
+    <section id="summarySection" class="card hidden">
+      <div class="section-title">Zusammenfassung</div>
+      <div class="kpi-grid" style="margin-top:10px;">
+        <div class="kpi"><span class="label">Partien</span><span id="kpiGames" class="value">0</span></div>
+        <div class="kpi"><span class="label">Straf-Coins gesamt</span><span id="kpiPenaltyCoins" class="value">0</span></div>
+        <div class="kpi"><span class="label">Strafgeldtopf</span><span id="kpiPenaltyValue" class="value">0,00 €</span></div>
+        <div class="kpi"><span class="label">Bonus gesamt</span><span id="kpiBonus" class="value">0</span></div>
+        <div class="kpi"><span class="label">Profiteur-Score</span><span id="kpiProfit" class="value">0</span></div>
+      </div>
+      <div class="pill-row" style="margin-top:10px;">
+        <span id="kpiArchiveCount" class="pill blue">0 Archive ausgewertet</span>
+        <span id="kpiPlayerCount" class="pill green">0 Preset-Spieler</span>
+        <span id="kpiPeriod" class="pill violet">Zeitraum: alle Archive</span>
+      </div>
+    </section>
+
+    <section id="cashSection" class="card hidden">
+      <details id="cashDetails" class="fold-table">
+        <summary>
+          <span class="section-title">Strafgeld-Könige</span>
+          <span class="section-subtitle">Zeigt, wer den Strafgeldtopf finanziert hat. Straffreie Vergehen mit 0 Coins werden ignoriert. Strafkasse und Lustknobeln werden getrennt ausgewiesen.</span>
+        </summary>
+        <div class="mobile-hint">Auf kleinen Displays werden Tabellen als Karten dargestellt.</div>
+        <div class="table-wrap" style="margin-top:12px;">
+          <table>
+            <thead id="cashTableHead"></thead>
+            <tbody id="cashTableBody"></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <section id="bonusSection" class="card hidden">
+      <details id="bonusDetails" class="fold-table">
+        <summary>
+          <span class="section-title">Knobel-Engel</span>
+          <span class="section-subtitle">Bonus-/Fairnesswertung für saubere Durchgänge, saubere Spielrunden und komplett saubere Spiele.</span>
+        </summary>
+        <div class="mobile-hint">Auf kleinen Displays werden Tabellen als Karten dargestellt.</div>
+        <div class="table-wrap" style="margin-top:12px;">
+          <table>
+            <thead id="bonusTableHead"></thead>
+            <tbody id="bonusTableBody"></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <section id="profitSection" class="card hidden">
+      <div class="section-title">Profiteure</div>
+      <p class="section-subtitle">Finaler fairer Anteil am Strafgeldtopf: Bonus-Coins minus separate Malus-Werte je Strafart. Nur positive Profiteur-Scores werden auf den Topf verteilt.</p>
+      <div class="mobile-hint">Auf kleinen Displays werden Tabellen als Karten dargestellt.</div>
+      <div class="table-wrap" style="margin-top:12px;">
+        <table>
+          <thead id="profitTableHead"></thead>
+          <tbody id="profitTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="actionsSection" class="card hidden admin-only">
+      <div class="section-title">Speichern und Export</div>
+      <p class="section-subtitle">Der Snapshot wird separat unter <code>stats/cashbox/periods/{periodId}</code> abgelegt und verändert keine Spielarchive.</p>
+      <div class="grid-4" style="margin-top:12px;">
+        <button id="loadStatsBtn" class="info" type="button">Gespeicherten Statistik-Snapshot laden</button>
+        <button id="saveStatsBtn" class="warn" type="button">Berechneten Snapshot in Firebase speichern</button>
+        <button id="downloadJsonBtn" class="info" type="button">JSON herunterladen</button>
+        <button id="copyJsonBtn" class="ghost" type="button">JSON kopieren</button>
+      </div>
+    </section>
+
+    <section id="logSection" class="card soft admin-only hidden">
+      <div class="section-title">Protokoll</div>
+      <div id="logBox" class="log">Bereit.</div>
+    </section>
+  </main>
+
+  <script>
+
+    /**********************************************************************
+     * ZENTRALE EINSTELLUNGEN
+     * Modularer Aufbau: Neue Strafarten können in PENALTY_DEFINITIONS
+     * ergänzt werden, ohne die Berechnungslogik umzubauen.
+     **********************************************************************/
+    const DEFAULT_PERIOD_ID = 'ausfahrt-2026';
+    const DEFAULT_MIN_GAMES_FOR_BONUS = 0;
+    const STORAGE_KEY = 'knobelklub-penalty-stats-settings-v3';
+    const ADMIN_SESSION_KEY = 'knobelklub-penalty-stats-admin-unlocked-v1';
+    const CONFIG_ADMIN_USER = 'admin';
+    const CONFIG_ADMIN_PASSWORD = 'admin';
+
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyAho0XYtG4P5nfwQVcgY9Gb3k_aUwF_1mA",
+      authDomain: "knobelklub.firebaseapp.com",
+      databaseURL: "https://knobelklub-default-rtdb.europe-west1.firebasedatabase.app/",
+      projectId: "knobelklub",
+      storageBucket: "knobelklub.firebasestorage.app",
+      messagingSenderId: "429666869030",
+      appId: "1:429666869030:web:cee5bc7cf01af7976c6be7",
+      measurementId: "G-317V3N4SHZ"
+    };
+
+    const PRESET_PLAYERS = [
+      { name: 'Alex', code: 'A' },
+      { name: 'Buri', code: 'B' },
+      { name: 'Dennis', code: 'D' },
+      { name: 'Klappi', code: 'K' },
+      { name: 'Niko', code: 'N' },
+      { name: 'Raik', code: 'R' },
+      { name: 'Sascha', code: 'S' },
+      { name: 'Thomas', code: 'TÜV' },
+      { name: 'Timo', code: 'T' }
+    ];
+
+    const PENALTY_DEFINITIONS = [
+      {
+        id: 'cashfault',
+        label: 'Strafkasse',
+        shortLabel: 'Strafkasse',
+        matchTypes: ['cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'],
+        defaultCoinValueCents: 100,
+        defaultMalusFactor: 0.10,
+        defaultCoinsPerEvent: 0,
+        countEventsWithoutAmount: false
+      },
+      {
+        id: 'lust',
+        label: 'Lustknobeln',
+        shortLabel: 'Lust',
+        matchTypes: ['lust', 'lustknobeln', 'lust-knobeln', 'lustKnobeln', 'lust_knobeln', 'lustknobeln-event'],
+        defaultCoinValueCents: 100,
+        defaultMalusFactor: 0.10,
+        defaultCoinsPerEvent: 1,
+        countEventsWithoutAmount: true
+      }
+    ];
+
+    const BONUS_DEFINITIONS = [
+      {
+        id: 'cleanRound',
+        label: 'Bonus je sauberem Durchgang',
+        shortLabel: 'sauberer Durchgang',
+        metricKey: 'cleanRounds',
+        defaultCoins: 0.02
+      },
+      {
+        id: 'cleanTurn',
+        label: 'Bonus je sauberer Spielrunde',
+        shortLabel: 'saubere Spielrunde',
+        metricKey: 'cleanTurns',
+        defaultCoins: 0.00
+      },
+      {
+        id: 'cleanGame',
+        label: 'Bonus je komplett sauberem Spiel',
+        shortLabel: 'sauberes Spiel',
+        metricKey: 'cleanGames',
+        defaultCoins: 0.00
+      }
+    ];
+
+    const el = {
+      infoOpenBtn: document.getElementById('infoOpenBtn'),
+      infoCloseBtn: document.getElementById('infoCloseBtn'),
+      infoModal: document.getElementById('infoModal'),
+      statusBox: document.getElementById('statusBox'),
+      statusTitle: document.getElementById('statusTitle'),
+      statusMeta: document.getElementById('statusMeta'),
+      loadArchivesBtn: document.getElementById('loadArchivesBtn'),
+      loadStatsBtn: document.getElementById('loadStatsBtn'),
+      periodIdInput: document.getElementById('periodIdInput'),
+      startDateInput: document.getElementById('startDateInput'),
+      endDateInput: document.getElementById('endDateInput'),
+      minGamesInput: document.getElementById('minGamesInput'),
+      adminUserInput: document.getElementById('adminUserInput'),
+      adminPasswordInput: document.getElementById('adminPasswordInput'),
+      adminLoginBtn: document.getElementById('adminLoginBtn'),
+      adminLogoutBtn: document.getElementById('adminLogoutBtn'),
+      adminLoginStatus: document.getElementById('adminLoginStatus'),
+      adminLoginDetails: document.getElementById('adminLoginDetails'),
+      penaltyConfigSection: document.getElementById('penaltyConfigSection'),
+      bonusConfigSection: document.getElementById('bonusConfigSection'),
+      penaltySettingsGrid: document.getElementById('penaltySettingsGrid'),
+      bonusSettingsGrid: document.getElementById('bonusSettingsGrid'),
+      bonusPill: document.getElementById('bonusPill'),
+      malusPill: document.getElementById('malusPill'),
+      summarySection: document.getElementById('summarySection'),
+      cashSection: document.getElementById('cashSection'),
+      bonusSection: document.getElementById('bonusSection'),
+      profitSection: document.getElementById('profitSection'),
+      actionsSection: document.getElementById('actionsSection'),
+      logSection: document.getElementById('logSection'),
+      cashDetails: document.getElementById('cashDetails'),
+      bonusDetails: document.getElementById('bonusDetails'),
+      kpiGames: document.getElementById('kpiGames'),
+      kpiPenaltyValue: document.getElementById('kpiPenaltyValue'),
+      kpiPenaltyCoins: document.getElementById('kpiPenaltyCoins'),
+      kpiBonus: document.getElementById('kpiBonus'),
+      kpiProfit: document.getElementById('kpiProfit'),
+      kpiArchiveCount: document.getElementById('kpiArchiveCount'),
+      kpiPlayerCount: document.getElementById('kpiPlayerCount'),
+      kpiPeriod: document.getElementById('kpiPeriod'),
+      cashTableHead: document.getElementById('cashTableHead'),
+      cashTableBody: document.getElementById('cashTableBody'),
+      bonusTableHead: document.getElementById('bonusTableHead'),
+      bonusTableBody: document.getElementById('bonusTableBody'),
+      profitTableHead: document.getElementById('profitTableHead'),
+      profitTableBody: document.getElementById('profitTableBody'),
+      saveStatsBtn: document.getElementById('saveStatsBtn'),
+      downloadJsonBtn: document.getElementById('downloadJsonBtn'),
+      copyJsonBtn: document.getElementById('copyJsonBtn'),
+      logBox: document.getElementById('logBox')
+    };
+
+    const runtime = {
+      sdk: null,
+      app: null,
+      db: null,
+      lastSnapshot: null
+    };
+
+    renderConfigControls();
+    bindEvents();
+    loadSettings();
+    renderConfigLockState();
+    renderEmpty();
+
+    function renderConfigControls() {
+      const help = (text) => `<details class="inline-help"><summary>?</summary><div>${escapeHtml(text)}</div></details>`;
+      el.penaltySettingsGrid.innerHTML = PENALTY_DEFINITIONS.map((definition) => `
+        <div class="history-zone">
+          <div class="history-zone-title">${escapeHtml(definition.label)}</div>
+          <label class="grid small field-with-help">
+            <span class="field-title-row"><strong>Coin-Wert in Cent</strong>${help('Geldwert eines Coins für diese Strafart. Dieser Wert fließt in den Strafgeldtopf und die Prozentanteile ein.')}</span>
+            <input id="penalty-${escapeHtml(definition.id)}-coinValue" data-config-input="1" type="number" min="0" step="1" value="${Number(definition.defaultCoinValueCents || 0)}" />
+          </label>
+          <label class="grid small field-with-help">
+            <span class="field-title-row"><strong>Malus je gewertetem Coin</strong>${help('Dieser Faktor wird vom Bonus abgezogen. Beispiel: 0,10 bedeutet 1 Straf-Coin erzeugt 0,10 Malus-Coins in der Profiteurwertung.')}</span>
+            <input id="penalty-${escapeHtml(definition.id)}-malus" data-config-input="1" type="number" min="0" step="0.01" value="${Number(definition.defaultMalusFactor || 0)}" />
+          </label>
+          <label class="grid small field-with-help">
+            <span class="field-title-row"><strong>Coins je Ereignis ohne gespeicherten Coinwert</strong>${help('Ersatzwert, falls Firebase ein Ereignis ohne gespeicherten Coin-/Cent-Wert liefert. Ist in Firebase ein Wert gespeichert, zählt immer der Firebase-Wert; ein gespeicherter Wert 0 bleibt 0. Für Lustknobeln meist sinnvoll, für straffreie Strafkasse normalerweise 0 lassen.')}</span>
+            <input id="penalty-${escapeHtml(definition.id)}-coinsPerEvent" data-config-input="1" type="number" min="0" step="0.01" value="${Number(definition.defaultCoinsPerEvent || 0)}" />
+          </label>
+          <div class="tiny muted">Erkannte Firebase-Typen: <code>${escapeHtml((definition.matchTypes || []).join(', '))}</code></div>
+        </div>
+      `).join('');
+
+      el.bonusSettingsGrid.innerHTML = BONUS_DEFINITIONS.map((definition) => `
+        <label class="grid small field-with-help">
+          <span class="field-title-row"><strong>${escapeHtml(definition.label)}</strong>${help(getBonusHelpText(definition.id))}</span>
+          <input id="bonus-${escapeHtml(definition.id)}-coins" data-config-input="1" type="number" min="0" step="0.01" value="${Number(definition.defaultCoins || 0)}" />
+        </label>
+      `).join('');
+    }
+
+    function getBonusHelpText(id) {
+      if (id === 'cleanRound') return 'Bonus für jeden sauberen Durchgang eines Spiels. Ein Spiel hat maximal 3 Durchgänge.';
+      if (id === 'cleanTurn') return 'Bonus für jede saubere Spielrunde innerhalb eines Durchgangs. Ein Durchgang hat bis zu 10 Spielrunden.';
+      if (id === 'cleanGame') return 'Bonus, wenn ein Spieler in einer kompletten Partie keine gewertete konfigurierte Strafe hatte.';
+      return 'Bonuswert für diese Fairness-Kategorie.';
+    }
+
+    function bindEvents() {
+      el.loadArchivesBtn.addEventListener('click', () => loadArchivesAndCalculate());
+      el.loadStatsBtn.addEventListener('click', () => loadSavedStatsSnapshot());
+      el.saveStatsBtn.addEventListener('click', () => saveStatsSnapshot());
+      el.downloadJsonBtn.addEventListener('click', () => downloadCurrentSnapshot());
+      el.copyJsonBtn.addEventListener('click', () => copyCurrentSnapshot());
+      if (el.adminLoginBtn) el.adminLoginBtn.addEventListener('click', () => handleAdminLogin());
+      if (el.adminLogoutBtn) el.adminLogoutBtn.addEventListener('click', () => handleAdminLogout());
+      if (el.adminPasswordInput) {
+        el.adminPasswordInput.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') handleAdminLogin();
+        });
+      }
+      if (el.infoOpenBtn) el.infoOpenBtn.addEventListener('click', () => openInfoModal());
+      if (el.infoCloseBtn) el.infoCloseBtn.addEventListener('click', () => closeInfoModal());
+      if (el.infoModal) {
+        el.infoModal.addEventListener('click', (event) => {
+          if (event.target === el.infoModal) closeInfoModal();
+        });
+      }
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && el.infoModal && !el.infoModal.classList.contains('hidden')) closeInfoModal();
+      });
+      getConfigInputs().forEach((input) => {
+        input.addEventListener('change', () => {
+          saveSettings();
+          updateConfigPills();
+          if (runtime.lastSnapshot && runtime.lastSnapshot.archivesRaw) {
+            calculateAndRender(runtime.lastSnapshot.archivesRaw);
+          } else if (runtime.lastSnapshot) {
+            renderSnapshot(runtime.lastSnapshot);
+          }
+        });
+      });
+    }
+
+    function getConfigInputs() {
+      return Array.from(document.querySelectorAll('[data-config-input="1"]'))
+        .concat([el.periodIdInput, el.startDateInput, el.endDateInput, el.minGamesInput])
+        .filter(Boolean);
+    }
+
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const settings = raw ? JSON.parse(raw) : {};
+        el.periodIdInput.value = settings.periodId || DEFAULT_PERIOD_ID;
+        el.startDateInput.value = settings.startDate || '';
+        el.endDateInput.value = settings.endDate || '';
+        el.minGamesInput.value = settings.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS;
+        const penaltySettings = settings.penalties || {};
+        PENALTY_DEFINITIONS.forEach((definition) => {
+          const stored = penaltySettings[definition.id] || {};
+          const coinInput = document.getElementById(`penalty-${definition.id}-coinValue`);
+          const malusInput = document.getElementById(`penalty-${definition.id}-malus`);
+          const coinsPerEventInput = document.getElementById(`penalty-${definition.id}-coinsPerEvent`);
+          if (coinInput) coinInput.value = stored.coinValueCents ?? definition.defaultCoinValueCents;
+          if (malusInput) malusInput.value = stored.malusFactor ?? definition.defaultMalusFactor;
+          if (coinsPerEventInput) coinsPerEventInput.value = stored.coinsPerEvent ?? definition.defaultCoinsPerEvent ?? 0;
+        });
+
+        const bonusSettings = settings.bonuses || {};
+        BONUS_DEFINITIONS.forEach((definition) => {
+          const input = document.getElementById(`bonus-${definition.id}-coins`);
+          if (input) input.value = bonusSettings[definition.id]?.coins ?? definition.defaultCoins;
+        });
+      } catch (error) {
+        log(`Einstellungen konnten nicht geladen werden: ${error.message}`);
+      }
+      updateConfigPills();
+    }
+
+    function saveSettings() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(getSettings()));
+    }
+
+    function getSettings() {
+      const penalties = {};
+      PENALTY_DEFINITIONS.forEach((definition) => {
+        const coinInput = document.getElementById(`penalty-${definition.id}-coinValue`);
+        const malusInput = document.getElementById(`penalty-${definition.id}-malus`);
+        const coinsPerEventInput = document.getElementById(`penalty-${definition.id}-coinsPerEvent`);
+        penalties[definition.id] = {
+          coinValueCents: Number(coinInput?.value || definition.defaultCoinValueCents || 0),
+          malusFactor: Number(malusInput?.value || definition.defaultMalusFactor || 0),
+          coinsPerEvent: Number(coinsPerEventInput?.value || definition.defaultCoinsPerEvent || 0)
+        };
+      });
+
+      const bonuses = {};
+      BONUS_DEFINITIONS.forEach((definition) => {
+        const input = document.getElementById(`bonus-${definition.id}-coins`);
+        bonuses[definition.id] = {
+          coins: Number(input?.value || definition.defaultCoins || 0)
+        };
+      });
+
+      return {
+        periodId: sanitizeKey(el.periodIdInput.value || DEFAULT_PERIOD_ID),
+        startDate: el.startDateInput.value || '',
+        endDate: el.endDateInput.value || '',
+        minGamesForBonus: Number(el.minGamesInput.value || DEFAULT_MIN_GAMES_FOR_BONUS),
+        sortMode: 'profitScore',
+        penalties,
+        bonuses
+      };
+    }
+
+    function updateConfigPills() {
+      const settings = getSettings();
+      const bonusParts = BONUS_DEFINITIONS
+        .map((definition) => `${definition.shortLabel}: ${formatDecimal(settings.bonuses[definition.id]?.coins || 0, 2)}`)
+        .join(' · ');
+      const malusParts = PENALTY_DEFINITIONS
+        .map((definition) => `${definition.shortLabel}: ${formatDecimal(settings.penalties[definition.id]?.malusFactor || 0, 2)}`)
+        .join(' · ');
+      el.bonusPill.textContent = bonusParts;
+      el.malusPill.textContent = malusParts;
+    }
+
+    function isAdminUnlocked() {
+      try {
+        return sessionStorage.getItem(ADMIN_SESSION_KEY) === '1';
+      } catch (error) {
+        return false;
+      }
+    }
+
+    function setAdminUnlocked(value) {
+      try {
+        if (value) sessionStorage.setItem(ADMIN_SESSION_KEY, '1');
+        else sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      } catch (error) {
+        console.error(error);
+      }
+      renderConfigLockState();
+    }
+
+    function renderConfigLockState() {
+      const unlocked = isAdminUnlocked();
+      document.querySelectorAll('[data-config-input="1"]').forEach((input) => {
+        input.disabled = !unlocked;
+      });
+      if (el.minGamesInput) el.minGamesInput.disabled = !unlocked;
+      if (el.adminLoginBtn) el.adminLoginBtn.classList.toggle('hidden', unlocked);
+      if (el.adminLogoutBtn) el.adminLogoutBtn.classList.toggle('hidden', !unlocked);
+      if (el.penaltyConfigSection) {
+        el.penaltyConfigSection.classList.toggle('locked-panel', !unlocked);
+        el.penaltyConfigSection.classList.toggle('hidden', !unlocked);
+      }
+      if (el.bonusConfigSection) {
+        el.bonusConfigSection.classList.toggle('locked-panel', !unlocked);
+        el.bonusConfigSection.classList.toggle('hidden', !unlocked);
+      }
+      if (el.actionsSection) el.actionsSection.classList.toggle('hidden', !unlocked);
+      if (el.saveStatsBtn) el.saveStatsBtn.disabled = !runtime.lastSnapshot;
+      if (el.downloadJsonBtn) el.downloadJsonBtn.disabled = !runtime.lastSnapshot;
+      if (el.copyJsonBtn) el.copyJsonBtn.disabled = !runtime.lastSnapshot;
+      if (el.logSection) el.logSection.classList.toggle('hidden', !unlocked);
+      if (el.adminLoginDetails && unlocked) el.adminLoginDetails.open = true;
+      if (el.adminLoginStatus) {
+        el.adminLoginStatus.classList.toggle('warn-note', !unlocked);
+        el.adminLoginStatus.textContent = unlocked
+          ? 'Konfiguration entsperrt. Strafarten, Coin-Werte, Malus- und Bonuswerte können angepasst werden.'
+          : 'Konfiguration gesperrt. Nur angemeldete Admins können Strafarten, Coin-Werte, Malus- und Bonuswerte ändern.';
+      }
+    }
+
+    function handleAdminLogin() {
+      const user = String(el.adminUserInput?.value || '').trim();
+      const pass = String(el.adminPasswordInput?.value || '');
+      if (user === CONFIG_ADMIN_USER && pass === CONFIG_ADMIN_PASSWORD) {
+        setAdminUnlocked(true);
+        if (el.adminPasswordInput) el.adminPasswordInput.value = '';
+        log('Konfiguration entsperrt.');
+        return;
+      }
+      setAdminUnlocked(false);
+      if (el.adminLoginStatus) el.adminLoginStatus.textContent = 'Anmeldung fehlgeschlagen. Benutzer/Passwort prüfen.';
+      log('Admin-Anmeldung fehlgeschlagen.');
+    }
+
+    function handleAdminLogout() {
+      setAdminUnlocked(false);
+      log('Konfiguration gesperrt.');
+    }
+
+    function openInfoModal() {
+      if (!el.infoModal) return;
+      el.infoModal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      if (el.infoCloseBtn) el.infoCloseBtn.focus();
+    }
+
+    function closeInfoModal() {
+      if (!el.infoModal) return;
+      el.infoModal.classList.add('hidden');
+      document.body.style.overflow = '';
+      if (el.infoOpenBtn) el.infoOpenBtn.focus();
+    }
+
+    async function initFirebase() {
+      if (runtime.db) return runtime.db;
+      const [appModule, databaseModule] = await Promise.all([
+        import('https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js'),
+        import('https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js')
+      ]);
+      runtime.sdk = databaseModule;
+      runtime.app = appModule.initializeApp(FIREBASE_CONFIG);
+      runtime.db = databaseModule.getDatabase(runtime.app);
+      return runtime.db;
+    }
+
+    async function loadArchivesAndCalculate() {
+      setBusy(true, 'Archive werden geladen …');
+      try {
+        const db = await initFirebase();
+        const sdk = runtime.sdk;
+        const snapshot = await sdk.get(sdk.ref(db, 'games'));
+        const gamesMap = snapshot.val() || {};
+        const archives = collectArchivesFromGamesMap(gamesMap);
+        log(`${archives.length} Archiv-Einträge aus Firebase gelesen.`);
+        calculateAndRender(archives);
+        setStatus('verbunden', `${archives.length} Archiv-Einträge gelesen und ausgewertet.`, true);
+      } catch (error) {
+        console.error(error);
+        setStatus('Fehler beim Laden', error.message || String(error), false, true);
+        log(`Fehler: ${error.message || error}`);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function collectArchivesFromGamesMap(gamesMap) {
+      const archives = [];
+      Object.entries(gamesMap || {}).forEach(([code, value]) => {
+        const safeCode = sanitizeKey(code);
+        if (!value || typeof value !== 'object') return;
+
+        if (value.archive && typeof value.archive === 'object') {
+          Object.entries(value.archive).forEach(([archiveKey, item]) => {
+            const archive = item && item.archive ? item.archive : item;
+            if (!archive || typeof archive !== 'object') return;
+            archives.push({
+              source: 'archive',
+              code: safeCode,
+              archiveKey: sanitizeKey(archiveKey),
+              archivedAt: item && item.archivedAt ? item.archivedAt : archive.finishedAt,
+              archive: normalizeArchive(archive, safeCode, archiveKey)
+            });
+          });
+        }
+
+        const publicHistory = value.live && value.live.public && value.live.public.state && Array.isArray(value.live.public.state.gamesHistory)
+          ? value.live.public.state.gamesHistory
+          : [];
+        publicHistory.forEach((archive, index) => {
+          archives.push({
+            source: 'live-public-gamesHistory',
+            code: safeCode,
+            archiveKey: `public-${index}`,
+            archivedAt: archive.finishedAt,
+            archive: normalizeArchive(archive, safeCode, `public-${index}`)
+          });
+        });
+
+        const legacyHistory = value.live && value.live.state && Array.isArray(value.live.state.gamesHistory)
+          ? value.live.state.gamesHistory
+          : [];
+        legacyHistory.forEach((archive, index) => {
+          archives.push({
+            source: 'live-legacy-gamesHistory',
+            code: safeCode,
+            archiveKey: `legacy-${index}`,
+            archivedAt: archive.finishedAt,
+            archive: normalizeArchive(archive, safeCode, `legacy-${index}`)
+          });
+        });
+      });
+      return archives;
+    }
+
+    function calculateAndRender(archivesRaw) {
+      saveSettings();
+      const settings = getSettings();
+      const filtered = filterArchivesByPeriod(archivesRaw, settings);
+      const snapshot = calculateStatsSnapshot(filtered, settings);
+      snapshot.archivesRaw = archivesRaw;
+      runtime.lastSnapshot = snapshot;
+      renderSnapshot(snapshot);
+    }
+
+    function calculateStatsSnapshot(archiveItems, settings) {
+      const presetMap = new Map(PRESET_PLAYERS.map((player) => [normalizeName(player.name), player]));
+      const players = new Map();
+      const processedGames = {};
+      const warnings = [];
+      const penaltyDefinitionsByMatchType = buildPenaltyMatchMap();
+
+      function ensurePlayer(playerLike) {
+        const preset = resolvePresetPlayer(playerLike, presetMap);
+        if (!preset) return null;
+        const key = normalizeName(preset.name);
+        if (!players.has(key)) {
+          const penalties = {};
+          PENALTY_DEFINITIONS.forEach((definition) => {
+            penalties[definition.id] = {
+              count: 0,
+              coins: 0,
+              cents: 0,
+              malusCoins: 0,
+              sharePercent: 0
+            };
+          });
+          const bonuses = {};
+          BONUS_DEFINITIONS.forEach((definition) => {
+            bonuses[definition.id] = {
+              metric: 0,
+              coins: 0,
+              sharePercent: 0
+            };
+          });
+          players.set(key, {
+            playerId: key,
+            name: preset.name,
+            code: preset.code,
+            gamesPlayed: 0,
+            roundCount: 0,
+            turnCount: 0,
+            cleanRounds: 0,
+            cleanTurns: 0,
+            cleanGames: 0,
+            penalties,
+            bonuses,
+            totalPenaltyCount: 0,
+            totalPenaltyCoins: 0,
+            totalPenaltyCents: 0,
+            totalBonusCoins: 0,
+            totalMalusCoins: 0,
+            profitScoreCoins: 0,
+            penaltySharePercent: 0,
+            bonusSharePercent: 0,
+            profitSharePercent: 0,
+            profitValueCents: 0,
+            penaltyValuePerGameCents: 0,
+            bonusEligible: true,
+            gameIds: []
+          });
+        }
+        return players.get(key);
+      }
+
+      archiveItems.forEach((item) => {
+        const archive = normalizeArchive(item.archive, item.code, item.archiveKey);
+        if (!archive) return;
+        const gameId = buildGameId(item, archive);
+        if (processedGames[gameId]) return;
+        processedGames[gameId] = true;
+
+        const archivePlayers = Array.isArray(archive.players) ? archive.players : [];
+        const presetParticipants = archivePlayers
+          .map((player) => resolvePresetPlayer(player, presetMap))
+          .filter(Boolean);
+        if (!presetParticipants.length) return;
+
+        const rounds = extractFinishedRoundSnapshots(archive);
+        if (!rounds.length) warnings.push(`${archive.title || item.code}: keine abgeschlossenen Durchgänge gefunden.`);
+        const totalTurnsInGame = rounds.reduce((sum, round) => sum + Number(round.turnsCompleted || 0), 0);
+
+        const paidPenalties = extractPaidPenalties(archive, settings, presetMap, penaltyDefinitionsByMatchType);
+        const penaltiesByPlayer = groupPaidPenaltiesByPlayer(paidPenalties);
+
+        presetParticipants.forEach((preset) => {
+          const stat = ensurePlayer(preset);
+          if (!stat) return;
+          stat.gamesPlayed += 1;
+          stat.roundCount += rounds.length;
+          stat.turnCount += totalTurnsInGame;
+          stat.gameIds.push(gameId);
+        });
+
+        paidPenalties.forEach((entry) => {
+          const stat = ensurePlayer(entry.preset);
+          if (!stat) return;
+          if (!stat.gameIds.includes(gameId)) {
+            stat.gamesPlayed += 1;
+            stat.roundCount += rounds.length;
+            stat.turnCount += totalTurnsInGame;
+            stat.gameIds.push(gameId);
+          }
+          const bucket = stat.penalties[entry.definition.id];
+          bucket.count += 1;
+          bucket.coins += entry.coins;
+          bucket.cents += entry.cents;
+          stat.totalPenaltyCount += 1;
+          stat.totalPenaltyCoins += entry.coins;
+          stat.totalPenaltyCents += entry.cents;
+        });
+
+        presetParticipants.forEach((preset) => {
+          const stat = ensurePlayer(preset);
+          if (!stat) return;
+          const playerKey = normalizeName(preset.name);
+          const playerPenalties = penaltiesByPlayer.get(playerKey) || [];
+          const penaltiesByRound = new Map();
+          playerPenalties.forEach((entry) => {
+            const roundIndex = Number(entry.roundIndex || 0);
+            if (!penaltiesByRound.has(roundIndex)) penaltiesByRound.set(roundIndex, []);
+            penaltiesByRound.get(roundIndex).push(entry);
+          });
+
+          let gameHadPaidPenalty = playerPenalties.length > 0;
+          rounds.forEach((round) => {
+            const roundIndex = Number(round.index || 0);
+            const roundTurns = Number(round.turnsCompleted || 0);
+            const dirtyPenaltyCount = (penaltiesByRound.get(roundIndex) || []).length;
+            if (!dirtyPenaltyCount) stat.cleanRounds += 1;
+            stat.cleanTurns += Math.max(0, roundTurns - Math.min(roundTurns, dirtyPenaltyCount));
+          });
+          if (!gameHadPaidPenalty && rounds.length) stat.cleanGames += 1;
+        });
+      });
+
+      const playerRows = Array.from(players.values());
+      const summaryPenaltyByType = {};
+      PENALTY_DEFINITIONS.forEach((definition) => {
+        summaryPenaltyByType[definition.id] = { count: 0, coins: 0, cents: 0, malusCoins: 0 };
+      });
+
+      let totalPenaltyCoins = 0;
+      let totalPenaltyCents = 0;
+      playerRows.forEach((item) => {
+        PENALTY_DEFINITIONS.forEach((definition) => {
+          const bucket = item.penalties[definition.id];
+          const penaltySettings = settings.penalties[definition.id] || {};
+          bucket.coins = roundTo(bucket.coins, 4);
+          bucket.cents = Math.round(bucket.cents || 0);
+          bucket.malusCoins = roundTo(bucket.coins * Number(penaltySettings.malusFactor || 0), 4);
+          item.totalMalusCoins += bucket.malusCoins;
+          summaryPenaltyByType[definition.id].count += bucket.count;
+          summaryPenaltyByType[definition.id].coins += bucket.coins;
+          summaryPenaltyByType[definition.id].cents += bucket.cents;
+          summaryPenaltyByType[definition.id].malusCoins += bucket.malusCoins;
+        });
+        item.totalPenaltyCoins = roundTo(item.totalPenaltyCoins, 4);
+        item.totalPenaltyCents = Math.round(item.totalPenaltyCents || 0);
+        item.totalMalusCoins = roundTo(item.totalMalusCoins, 4);
+        item.penaltyValuePerGameCents = item.gamesPlayed ? Math.round(item.totalPenaltyCents / item.gamesPlayed) : 0;
+        totalPenaltyCoins += item.totalPenaltyCoins;
+        totalPenaltyCents += item.totalPenaltyCents;
+      });
+
+      playerRows.forEach((item) => {
+        item.bonusEligible = Number(item.gamesPlayed || 0) >= Number(settings.minGamesForBonus || 0);
+        let totalBonusCoins = 0;
+        BONUS_DEFINITIONS.forEach((definition) => {
+          const metricValue = Number(item[definition.metricKey] || 0);
+          const coins = roundTo(metricValue * Number(settings.bonuses[definition.id]?.coins || 0), 4);
+          item.bonuses[definition.id].metric = metricValue;
+          item.bonuses[definition.id].coins = coins;
+          totalBonusCoins += item.bonusEligible ? coins : 0;
+        });
+        item.totalBonusCoins = roundTo(totalBonusCoins, 4);
+        item.profitScoreCoins = roundTo(Math.max(0, item.totalBonusCoins - item.totalMalusCoins), 4);
+        item.cleanRoundRatePercent = item.roundCount ? roundTo((item.cleanRounds / item.roundCount) * 100, 4) : 0;
+        item.cleanTurnRatePercent = item.turnCount ? roundTo((item.cleanTurns / item.turnCount) * 100, 4) : 0;
+        item.penaltySharePercent = totalPenaltyCents > 0 ? roundTo((item.totalPenaltyCents / totalPenaltyCents) * 100, 4) : 0;
+      });
+
+      PENALTY_DEFINITIONS.forEach((definition) => {
+        const totalTypeCents = summaryPenaltyByType[definition.id].cents || 0;
+        playerRows.forEach((item) => {
+          const bucket = item.penalties[definition.id];
+          bucket.sharePercent = totalTypeCents > 0 ? roundTo((bucket.cents / totalTypeCents) * 100, 4) : 0;
+        });
+      });
+
+      const totalBonusCoins = playerRows.reduce((sum, item) => sum + Number(item.totalBonusCoins || 0), 0);
+      BONUS_DEFINITIONS.forEach((definition) => {
+        const totalBonusForType = playerRows.reduce((sum, item) => sum + Number(item.bonuses[definition.id]?.coins || 0), 0);
+        playerRows.forEach((item) => {
+          item.bonuses[definition.id].sharePercent = totalBonusForType > 0
+            ? roundTo((Number(item.bonuses[definition.id].coins || 0) / totalBonusForType) * 100, 4)
+            : 0;
+        });
+      });
+      playerRows.forEach((item) => {
+        item.bonusSharePercent = totalBonusCoins > 0 ? roundTo((item.totalBonusCoins / totalBonusCoins) * 100, 4) : 0;
+      });
+
+      const totalProfitScoreCoins = playerRows.reduce((sum, item) => sum + Number(item.profitScoreCoins || 0), 0);
+      playerRows.forEach((item) => {
+        item.profitSharePercent = totalProfitScoreCoins > 0 ? roundTo((item.profitScoreCoins / totalProfitScoreCoins) * 100, 4) : 0;
+        item.profitValueCents = Math.round(totalPenaltyCents * (Number(item.profitSharePercent || 0) / 100));
+        item.gameIds = Array.from(new Set(item.gameIds || []));
+      });
+
+      Object.values(summaryPenaltyByType).forEach((bucket) => {
+        bucket.coins = roundTo(bucket.coins, 4);
+        bucket.cents = Math.round(bucket.cents || 0);
+        bucket.malusCoins = roundTo(bucket.malusCoins, 4);
+      });
+
+      return {
+        schemaVersion: 2,
+        type: 'knobelklub-penalty-stats',
+        periodId: settings.periodId,
+        generatedAt: new Date().toISOString(),
+        filters: {
+          startDate: settings.startDate,
+          endDate: settings.endDate
+        },
+        config: {
+          penalties: deepClone(settings.penalties),
+          bonuses: deepClone(settings.bonuses),
+          minGamesForBonus: settings.minGamesForBonus,
+          penaltyDefinitions: PENALTY_DEFINITIONS.map((definition) => ({
+            id: definition.id,
+            label: definition.label,
+            matchTypes: definition.matchTypes,
+            countEventsWithoutAmount: Boolean(definition.countEventsWithoutAmount),
+            defaultCoinsPerEvent: Number(definition.defaultCoinsPerEvent || 0)
+          })),
+          bonusDefinitions: BONUS_DEFINITIONS.map((definition) => ({
+            id: definition.id,
+            label: definition.label,
+            metricKey: definition.metricKey
+          })),
+          cleanRoundDefinition: 'Sauberer Durchgang = keine tatsächlich gewertete/bezahlte konfigurierte Strafe in diesem Durchgang.',
+          cleanTurnDefinition: 'Saubere Spielrunde = abgeschlossene Spielrunden minus tatsächlich gewertete/bezahlte Strafen des Spielers im Durchgang; ohne exakten Spielrunden-Zeitstempel wird jede bezahlte Strafe als eine verschmutzte Spielrunde gewertet.',
+          cleanGameDefinition: 'Komplett sauberes Spiel = Preset-Spieler hatte in der archivierten Partie keine tatsächlich gewertete/bezahlte konfigurierte Strafe.'
+        },
+        summary: {
+          archiveItemsRead: archiveItems.length,
+          gamesProcessed: Object.keys(processedGames).length,
+          playerCount: playerRows.length,
+          totalPenaltyCoins: roundTo(totalPenaltyCoins, 4),
+          totalPenaltyCents: Math.round(totalPenaltyCents),
+          totalBonusCoins: roundTo(totalBonusCoins, 4),
+          totalProfitScoreCoins: roundTo(totalProfitScoreCoins, 4),
+          totalCleanRounds: playerRows.reduce((sum, item) => sum + Number(item.cleanRounds || 0), 0),
+          totalCleanTurns: playerRows.reduce((sum, item) => sum + Number(item.cleanTurns || 0), 0),
+          totalCleanGames: playerRows.reduce((sum, item) => sum + Number(item.cleanGames || 0), 0),
+          penaltyByType: summaryPenaltyByType,
+          warnings
+        },
+        players: sortPlayers(playerRows, settings.sortMode),
+        processedGames
+      };
+    }
+
+    function normalizePenaltyType(value) {
+      const raw = String(value || '').trim();
+      const compact = normalizeName(raw).replace(/[^a-z0-9]/g, '');
+      if (!compact) return '';
+      if (compact.includes('lust')) return 'lust';
+      if (compact.includes('strafkasse')) return 'cashfault';
+      if (compact.includes('cashfault')) return 'cashfault';
+      if (compact.includes('mattenflucht')) return 'mattenflucht';
+      if (compact.includes('wuerfelflucht') || compact.includes('wurfelflucht')) return 'wuerfelflucht';
+      if (compact.includes('neuwuerfeln') || compact.includes('neuwurfeln')) return 'neuwuerfeln';
+      return compact;
+    }
+
+    function getEventPenaltyType(value) {
+      if (!value || typeof value !== 'object') return '';
+      return normalizePenaltyType(value.type || value.kind || value.actionType || value.eventType || value.penaltyType || value.label || value.title || value.message || '');
+    }
+
+    function buildPenaltyMatchMap() {
+      const map = new Map();
+      PENALTY_DEFINITIONS.forEach((definition) => {
+        (definition.matchTypes || []).forEach((type) => map.set(normalizePenaltyType(type), definition));
+      });
+      return map;
+    }
+
+    function extractPaidPenalties(archive, settings, presetMap, penaltyDefinitionsByMatchType) {
+      const result = [];
+      const countedEventIds = new Set();
+      const entries = Array.isArray(archive.cashPenalties) ? archive.cashPenalties : [];
+
+      entries.forEach((penalty) => {
+        const type = getEventPenaltyType(penalty);
+        const definition = penaltyDefinitionsByMatchType.get(type);
+        if (!definition) return;
+        const preset = resolvePresetPlayer(penalty, presetMap);
+        if (!preset) return;
+        const paid = getPaidPenaltyValue(penalty, definition, settings, { fromStoredPenalty: true });
+        if (paid.coins <= 0 && paid.cents <= 0) return;
+        const eventKey = getPenaltyEventKey(penalty, type, Number(penalty.roundIndex || 0));
+        if (eventKey) countedEventIds.add(eventKey);
+        result.push({
+          penalty,
+          definition,
+          preset,
+          roundIndex: Number(penalty.roundIndex || 0),
+          coins: paid.coins,
+          cents: paid.cents
+        });
+      });
+
+      extractPenaltyEventsFromArchive(archive).forEach(({ event, roundIndex }) => {
+        const type = getEventPenaltyType(event);
+        const definition = penaltyDefinitionsByMatchType.get(type);
+        if (!definition || !definition.countEventsWithoutAmount) return;
+        const eventKey = getPenaltyEventKey(event, type, roundIndex);
+        if (eventKey && countedEventIds.has(eventKey)) return;
+        const preset = resolvePresetPlayer(event, presetMap);
+        if (!preset) return;
+        const paid = getPaidPenaltyValue(event, definition, settings, { fromStoredPenalty: false });
+        if (paid.coins <= 0 && paid.cents <= 0) return;
+        if (eventKey) countedEventIds.add(eventKey);
+        result.push({
+          penalty: event,
+          definition,
+          preset,
+          roundIndex: Number(roundIndex || event.roundIndex || 0),
+          coins: paid.coins,
+          cents: paid.cents
+        });
+      });
+
+      return result;
+    }
+
+    function extractPenaltyEventsFromArchive(archive) {
+      const result = [];
+      const seen = new Set();
+      function addEvent(event, roundIndex) {
+        if (!event || typeof event !== 'object') return;
+        const type = getEventPenaltyType(event);
+        if (!type) return;
+        const key = getPenaltyEventKey(event, type, roundIndex);
+        if (key && seen.has(key)) return;
+        if (key) seen.add(key);
+        result.push({ event, roundIndex: Number(roundIndex || event.roundIndex || 0) });
+      }
+      function addEvents(events, roundIndex) {
+        if (!Array.isArray(events)) return;
+        events.forEach((event) => addEvent(event, roundIndex));
+      }
+
+      (archive.finishedRounds || []).forEach((round) => addEvents(round.events, round.index || round.roundIndex));
+      (archive.roundEntries || []).forEach((entry) => {
+        addEvents(entry.events, entry.roundIndex || (entry.currentRound && entry.currentRound.index));
+        if (entry.currentRound) addEvents(entry.currentRound.events, entry.roundIndex || entry.currentRound.index);
+      });
+      if (archive.currentRound) addEvents(archive.currentRound.events, archive.currentRound.index || archive.currentRound.roundIndex);
+
+      // Fallback für alte Archive: Lustknobeln kann in points als kind='lust' stehen.
+      // Pro eventId/fromId/roundIndex/turnNo wird daraus nur ein Ereignis gebildet,
+      // damit nicht jeder Empfängerpunkt separat als Lustknobeln zählt.
+      const pointEvents = new Map();
+      (archive.points || []).forEach((point) => {
+        if (!point || getEventPenaltyType(point) !== 'lust') return;
+        const roundIndex = Number(point.roundIndex || 0);
+        const key = String(point.eventId || `lust-${point.fromId || point.fromName || point.fromCode || ''}-${roundIndex}-${point.turnNo || ''}`);
+        if (!pointEvents.has(key)) {
+          pointEvents.set(key, {
+            id: key,
+            eventId: key,
+            type: 'lust',
+            ts: point.ts,
+            roundIndex,
+            actorId: point.fromId,
+            actorName: point.fromName,
+            actorCode: point.fromCode,
+            playerId: point.fromId,
+            playerName: point.fromName,
+            playerCode: point.fromCode
+          });
+        }
+      });
+      pointEvents.forEach((event) => addEvent(event, event.roundIndex));
+      return result;
+    }
+
+    function getPenaltyEventKey(value, type, roundIndex) {
+      if (!value) return '';
+      return String(value.eventId || value.id || `${type}-${roundIndex || value.roundIndex || 0}-${value.ts || ''}-${value.actorId || value.playerId || value.actorName || value.playerName || ''}`);
+    }
+
+    function getStoredNumber(value, keys) {
+      if (!value || typeof value !== 'object') return { exists: false, value: 0 };
+      for (const key of keys) {
+        if (Object.prototype.hasOwnProperty.call(value, key) && value[key] !== null && value[key] !== undefined && value[key] !== '') {
+          const numberValue = Number(value[key]);
+          return { exists: true, value: Number.isFinite(numberValue) ? numberValue : 0 };
+        }
+      }
+      return { exists: false, value: 0 };
+    }
+
+    function getPaidPenaltyValue(penalty, definition, settings, options = {}) {
+      const storedCoins = getStoredNumber(penalty, ['amountCoins', 'coins', 'coinAmount']);
+      const storedCents = getStoredNumber(penalty, ['amountCents', 'cents', 'centAmount']);
+      const penaltySettings = settings && settings.penalties && settings.penalties[definition.id] ? settings.penalties[definition.id] : {};
+      const coinValueCents = Number(penaltySettings.coinValueCents || definition.defaultCoinValueCents || 100);
+      const fallbackCoins = Number(penaltySettings.coinsPerEvent ?? definition.defaultCoinsPerEvent ?? 0);
+      let coins = 0;
+
+      if (storedCoins.exists) {
+        coins = Math.max(0, storedCoins.value);
+      } else if (storedCents.exists && coinValueCents > 0) {
+        coins = Math.max(0, storedCents.value) / coinValueCents;
+      } else if (definition.countEventsWithoutAmount && fallbackCoins > 0) {
+        // Reiner Ersatzwert: nur verwenden, wenn Firebase GAR KEINEN Coin-/Cent-Wert gespeichert hat.
+        // Ein bewusst gespeicherter Wert 0 bleibt 0 und wird nicht durch den Ersatzwert überschrieben.
+        coins = fallbackCoins;
+      }
+
+      const cents = coins > 0 ? coins * coinValueCents : 0;
+      return {
+        coins: roundTo(coins, 4),
+        cents: Math.round(cents)
+      };
+    }
+
+    function groupPaidPenaltiesByPlayer(paidPenalties) {
+      const map = new Map();
+      paidPenalties.forEach((entry) => {
+        const key = normalizeName(entry.preset && entry.preset.name);
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(entry);
+      });
+      return map;
+    }
+
+    function filterArchivesByPeriod(archiveItems, settings) {
+      const startTime = settings.startDate ? new Date(`${settings.startDate}T00:00:00`).getTime() : 0;
+      const endTime = settings.endDate ? new Date(`${settings.endDate}T23:59:59`).getTime() : 0;
+      return archiveItems.filter((item) => {
+        const archive = item.archive || {};
+        const ts = parseDateToTime(archive.finishedAt || item.archivedAt || archive.createdAt);
+        if (!ts) return true;
+        if (startTime && ts < startTime) return false;
+        if (endTime && ts > endTime) return false;
+        return true;
+      });
+    }
+
+    function normalizeArchive(archive, code, archiveKey) {
+      if (!archive || typeof archive !== 'object') return null;
+      return {
+        ...archive,
+        id: archive.id || archiveKey || archive.sessionId || code,
+        sessionId: archive.sessionId || archive.id || archiveKey || code,
+        title: archive.title || archive.sessionTitle || code || 'Knobelpartie',
+        players: Array.isArray(archive.players) ? archive.players : [],
+        cashPenalties: Array.isArray(archive.cashPenalties) ? archive.cashPenalties : [],
+        finishedRounds: Array.isArray(archive.finishedRounds) ? archive.finishedRounds : [],
+        roundEntries: Array.isArray(archive.roundEntries) ? archive.roundEntries : [],
+        points: Array.isArray(archive.points) ? archive.points : []
+      };
+    }
+
+    function buildGameId(item, archive) {
+      return sanitizeKey(`${item.code || 'game'}__${archive.sessionId || archive.id || item.archiveKey || archive.finishedAt || 'archive'}`);
+    }
+
+    function extractFinishedRoundSnapshots(archive) {
+      const byIndex = new Map();
+      function addRound(roundLike) {
+        if (!roundLike || typeof roundLike !== 'object') return;
+        const index = Number(roundLike.index || roundLike.roundIndex || 0);
+        if (!index) return;
+        const events = Array.isArray(roundLike.events) ? roundLike.events : [];
+        const turnEvents = events.filter((entry) => entry && (entry.type === 'loss' || entry.type === 'lust'));
+        const fromEvents = turnEvents.length;
+        const fromTurnNo = Math.max(0, ...((archive.points || [])
+          .filter((point) => Number(point.roundIndex || 0) === index)
+          .map((point) => Number(point.turnNo || 0))));
+        const turnsCompleted = Math.max(
+          Number(roundLike.turnsCompleted || 0),
+          fromEvents,
+          fromTurnNo
+        );
+        const existing = byIndex.get(index) || { index, turnsCompleted: 0, events: [] };
+        existing.turnsCompleted = Math.max(existing.turnsCompleted, turnsCompleted);
+        if (events.length > existing.events.length) existing.events = events;
+        byIndex.set(index, existing);
+      }
+
+      (archive.finishedRounds || []).forEach(addRound);
+      (archive.roundEntries || []).forEach((entry) => addRound(entry.currentRound || entry));
+
+      (archive.cashPenalties || []).forEach((entry) => {
+        const index = Number(entry && entry.roundIndex || 0);
+        if (!index || byIndex.has(index)) return;
+        byIndex.set(index, { index, turnsCompleted: 0, events: [] });
+      });
+      (archive.points || []).forEach((entry) => {
+        const index = Number(entry && entry.roundIndex || 0);
+        if (!index) return;
+        const existing = byIndex.get(index) || { index, turnsCompleted: 0, events: [] };
+        existing.turnsCompleted = Math.max(existing.turnsCompleted, Number(entry.turnNo || 0));
+        byIndex.set(index, existing);
+      });
+
+      return Array.from(byIndex.values()).sort((a, b) => Number(a.index || 0) - Number(b.index || 0));
+    }
+
+    function resolvePresetPlayer(value, presetMap) {
+      const name = value && (value.name || value.playerName || value.actorName || value.fromName || value.toName) || '';
+      const code = value && (value.code || value.playerCode || value.actorCode || value.fromCode || value.toCode) || '';
+      const byName = presetMap.get(normalizeName(name));
+      if (byName) return byName;
+      const byCode = PRESET_PLAYERS.find((player) => normalizeName(player.code) === normalizeName(code));
+      return byCode || null;
+    }
+
+    function getPenaltyBucket(row, id) {
+      return row && row.penalties && row.penalties[id]
+        ? row.penalties[id]
+        : { count: 0, coins: 0, cents: 0, malusCoins: 0, sharePercent: 0 };
+    }
+
+    function sortPlayers(rows, sortMode) {
+      const list = rows.slice();
+      list.sort((a, b) => {
+        if (sortMode === 'cashCoins') {
+          return Number(getPenaltyBucket(b, 'cashfault').coins || 0) - Number(getPenaltyBucket(a, 'cashfault').coins || 0) || Number(b.totalPenaltyCents || 0) - Number(a.totalPenaltyCents || 0) || compareName(a, b);
+        }
+        if (sortMode === 'lustCoins') {
+          return Number(getPenaltyBucket(b, 'lust').coins || 0) - Number(getPenaltyBucket(a, 'lust').coins || 0) || Number(b.totalPenaltyCents || 0) - Number(a.totalPenaltyCents || 0) || compareName(a, b);
+        }
+        if (sortMode === 'penaltyValue') {
+          return Number(b.totalPenaltyCents || 0) - Number(a.totalPenaltyCents || 0) || Number(b.totalPenaltyCoins || 0) - Number(a.totalPenaltyCoins || 0) || compareName(a, b);
+        }
+        if (sortMode === 'bonusCoins') {
+          return Number(b.totalBonusCoins || 0) - Number(a.totalBonusCoins || 0) || Number(b.cleanRounds || 0) - Number(a.cleanRounds || 0) || Number(b.cleanTurns || 0) - Number(a.cleanTurns || 0) || compareName(a, b);
+        }
+        if (sortMode === 'cleanTurns') {
+          return Number(b.cleanTurns || 0) - Number(a.cleanTurns || 0) || Number(b.cleanRounds || 0) - Number(a.cleanRounds || 0) || Number(b.gamesPlayed || 0) - Number(a.gamesPlayed || 0) || compareName(a, b);
+        }
+        if (sortMode === 'cleanGames') {
+          return Number(b.cleanGames || 0) - Number(a.cleanGames || 0) || Number(b.cleanRounds || 0) - Number(a.cleanRounds || 0) || compareName(a, b);
+        }
+        return Number(b.profitScoreCoins || 0) - Number(a.profitScoreCoins || 0) || Number(b.profitSharePercent || 0) - Number(a.profitSharePercent || 0) || Number(b.totalBonusCoins || 0) - Number(a.totalBonusCoins || 0) || compareName(a, b);
+      });
+      return list;
+    }
+
+    function compareName(a, b) {
+      return String(a.name || '').localeCompare(String(b.name || ''), 'de');
+    }
+
+    function renderSnapshot(snapshot) {
+      runtime.lastSnapshot = snapshot;
+      const settings = getSettings();
+      const rows = sortPlayers(snapshot.players || [], settings.sortMode);
+      snapshot.players = rows;
+      el.summarySection.classList.remove('hidden');
+      el.cashSection.classList.remove('hidden');
+      el.bonusSection.classList.remove('hidden');
+      el.profitSection.classList.remove('hidden');
+      el.actionsSection.classList.toggle('hidden', !isAdminUnlocked());
+      if (el.saveStatsBtn) el.saveStatsBtn.disabled = false;
+      if (el.downloadJsonBtn) el.downloadJsonBtn.disabled = false;
+      if (el.copyJsonBtn) el.copyJsonBtn.disabled = false;
+      if (el.cashDetails) el.cashDetails.open = false;
+      if (el.bonusDetails) el.bonusDetails.open = false;
+
+      el.kpiGames.textContent = String(snapshot.summary.gamesProcessed || 0);
+      el.kpiPenaltyCoins.textContent = formatCoins(snapshot.summary.totalPenaltyCoins || 0, 2);
+      el.kpiPenaltyValue.textContent = formatCents(snapshot.summary.totalPenaltyCents || 0);
+      el.kpiBonus.textContent = formatCoins(snapshot.summary.totalBonusCoins || 0, 2);
+      el.kpiProfit.textContent = formatCoins(snapshot.summary.totalProfitScoreCoins || 0, 2);
+      el.kpiArchiveCount.textContent = `${snapshot.summary.archiveItemsRead || 0} Archive ausgewertet`;
+      el.kpiPlayerCount.textContent = `${snapshot.summary.playerCount || 0} Preset-Spieler`;
+      el.kpiPeriod.textContent = buildPeriodLabel(snapshot.filters || {});
+
+      renderPenaltyKingsTable(rows, snapshot.summary.totalPenaltyCents || 0);
+      renderAngelsTable(rows, snapshot.summary.totalBonusCoins || 0);
+      renderProfitTable(rows, snapshot.summary.totalProfitScoreCoins || 0, snapshot.summary.totalPenaltyCents || 0);
+      if (snapshot.summary.warnings && snapshot.summary.warnings.length) {
+        log(`Hinweise:\n- ${snapshot.summary.warnings.slice(0, 8).join('\n- ')}${snapshot.summary.warnings.length > 8 ? '\n…' : ''}`);
+      }
+    }
+
+    function renderPenaltyKingsTable(rows, totalPenaltyCents) {
+      const labels = [
+        '#', 'Spieler', 'Spiele',
+        ...PENALTY_DEFINITIONS.flatMap((definition) => [
+          `${definition.shortLabel} gewertet`,
+          `${definition.shortLabel} Coins`,
+          `${definition.shortLabel} Wert`
+        ]),
+        'Gesamt-Coins', 'Gesamtwert', 'Ø Wert/Spiel', 'Anteil am Strafgeldtopf'
+      ];
+      el.cashTableHead.innerHTML = `
+        <tr>
+          <th class="num">#</th>
+          <th>Spieler</th>
+          <th class="num">Spiele</th>
+          ${PENALTY_DEFINITIONS.map((definition) => `<th class="num">${escapeHtml(definition.shortLabel)} gewertet</th><th class="num">${escapeHtml(definition.shortLabel)} Coins</th><th class="num">${escapeHtml(definition.shortLabel)} Wert</th>`).join('')}
+          <th class="num">Gesamt-Coins</th>
+          <th class="num">Gesamtwert</th>
+          <th class="num">Ø Wert/Spiel</th>
+          <th>Anteil am Strafgeldtopf</th>
+        </tr>
+      `;
+      const filtered = rows.filter((row) => row.gamesPlayed || row.totalPenaltyCoins || row.totalPenaltyCount);
+      if (!filtered.length) {
+        el.cashTableBody.innerHTML = `<tr><td data-label="Hinweis" colspan="${labels.length}" class="muted">Keine gewerteten Straf-Coins gefunden.</td></tr>`;
+        return;
+      }
+      const sorted = filtered.slice().sort((a, b) => b.totalPenaltyCents - a.totalPenaltyCents || b.totalPenaltyCoins - a.totalPenaltyCoins || compareName(a, b));
+      el.cashTableBody.innerHTML = sorted.map((row, index) => {
+        const penaltyCells = PENALTY_DEFINITIONS.map((definition) => {
+          const bucket = getPenaltyBucket(row, definition.id);
+          return `<td data-label="${escapeHtml(definition.shortLabel)} gewertet" class="num">${formatInt(bucket.count)}</td><td data-label="${escapeHtml(definition.shortLabel)} Coins" class="num"><strong>${formatCoins(bucket.coins, 2)}</strong></td><td data-label="${escapeHtml(definition.shortLabel)} Wert" class="num">${formatCents(bucket.cents)}</td>`;
+        }).join('');
+        return `
+          <tr>
+            <td data-label="#" class="num rank">${index + 1}</td>
+            <td data-label="Spieler"><span class="player">${escapeHtml(row.name)} (${escapeHtml(row.code)})</span><span class="sub">${escapeHtml(row.playerId)}</span></td>
+            <td data-label="Spiele" class="num">${formatInt(row.gamesPlayed)}</td>
+            ${penaltyCells}
+            <td data-label="Gesamt-Coins" class="num"><strong>${formatCoins(row.totalPenaltyCoins, 2)}</strong></td>
+            <td data-label="Gesamtwert" class="num"><strong>${formatCents(row.totalPenaltyCents)}</strong></td>
+            <td data-label="Ø Wert/Spiel" class="num">${formatCents(row.penaltyValuePerGameCents)}</td>
+            <td data-label="Anteil am Strafgeldtopf" class="bar-cell"><strong>${formatPercent(row.penaltySharePercent)}</strong><div class="bar"><span style="width:${clampPercent(row.penaltySharePercent)}%"></span></div></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderAngelsTable(rows, totalBonusCoins) {
+      el.bonusTableHead.innerHTML = `
+        <tr>
+          <th class="num">#</th>
+          <th>Spieler</th>
+          <th class="num">Spiele</th>
+          <th class="num">Durchgänge</th>
+          <th class="num">saubere Durchgänge</th>
+          <th class="num">Spielrunden</th>
+          <th class="num">saubere Spielrunden</th>
+          <th class="num">saubere Spiele</th>
+          ${BONUS_DEFINITIONS.map((definition) => `<th class="num">${escapeHtml(definition.shortLabel)}</th>`).join('')}
+          <th class="num">Bonus gesamt</th>
+          <th>Bonus-Anteil</th>
+        </tr>
+      `;
+      const filtered = rows.filter((row) => row.gamesPlayed || row.totalBonusCoins || row.cleanRounds || row.cleanTurns || row.cleanGames);
+      if (!filtered.length) {
+        el.bonusTableBody.innerHTML = `<tr><td data-label="Hinweis" colspan="${10 + BONUS_DEFINITIONS.length}" class="muted">Keine Bonusdaten gefunden.</td></tr>`;
+        return;
+      }
+      const sorted = filtered.slice().sort((a, b) => b.totalBonusCoins - a.totalBonusCoins || b.cleanRounds - a.cleanRounds || b.cleanTurns - a.cleanTurns || b.cleanGames - a.cleanGames || compareName(a, b));
+      el.bonusTableBody.innerHTML = sorted.map((row, index) => {
+        const bonusCells = BONUS_DEFINITIONS.map((definition) => `<td data-label="${escapeHtml(definition.shortLabel)}" class="num">${formatCoins(row.bonuses[definition.id]?.coins || 0, 2)}</td>`).join('');
+        return `
+          <tr>
+            <td data-label="#" class="num rank">${index + 1}</td>
+            <td data-label="Spieler"><span class="player">${escapeHtml(row.name)} (${escapeHtml(row.code)})</span>${row.bonusEligible ? '' : '<span class="sub">noch nicht bonusberechtigt</span>'}</td>
+            <td data-label="Spiele" class="num">${formatInt(row.gamesPlayed)}</td>
+            <td data-label="Durchgänge" class="num">${formatInt(row.roundCount)}</td>
+            <td data-label="saubere Durchgänge" class="num"><strong>${formatInt(row.cleanRounds)}</strong><div class="sub">${formatPercent(row.cleanRoundRatePercent)}</div></td>
+            <td data-label="Spielrunden" class="num">${formatInt(row.turnCount)}</td>
+            <td data-label="saubere Spielrunden" class="num"><strong>${formatInt(row.cleanTurns)}</strong><div class="sub">${formatPercent(row.cleanTurnRatePercent)}</div></td>
+            <td data-label="saubere Spiele" class="num"><strong>${formatInt(row.cleanGames)}</strong></td>
+            ${bonusCells}
+            <td data-label="Bonus gesamt" class="num"><strong>${formatCoins(row.totalBonusCoins, 2)}</strong></td>
+            <td data-label="Bonus-Anteil" class="bar-cell"><strong>${formatPercent(row.bonusSharePercent)}</strong><div class="bar"><span style="width:${clampPercent(row.bonusSharePercent)}%"></span></div></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderProfitTable(rows, totalProfitScoreCoins, totalPenaltyCents) {
+      el.profitTableHead.innerHTML = `
+        <tr>
+          <th class="num">#</th>
+          <th>Spieler</th>
+          <th class="num">Spiele</th>
+          <th class="num">Bonus gesamt</th>
+          ${PENALTY_DEFINITIONS.map((definition) => `<th class="num">${escapeHtml(definition.shortLabel)}-Malus</th>`).join('')}
+          <th class="num">Malus gesamt</th>
+          <th class="num">Profiteur-Score</th>
+          <th>Finaler Topf-Anteil</th>
+          <th class="num">rechnerischer Topfwert</th>
+        </tr>
+      `;
+      const filtered = rows.filter((row) => row.gamesPlayed || row.totalBonusCoins || row.totalPenaltyCoins || row.profitScoreCoins);
+      if (!filtered.length) {
+        el.profitTableBody.innerHTML = `<tr><td data-label="Hinweis" colspan="${7 + PENALTY_DEFINITIONS.length}" class="muted">Keine Profiteur-Daten gefunden.</td></tr>`;
+        return;
+      }
+      const sorted = filtered.slice().sort((a, b) => b.profitScoreCoins - a.profitScoreCoins || b.profitSharePercent - a.profitSharePercent || b.totalBonusCoins - a.totalBonusCoins || compareName(a, b));
+      el.profitTableBody.innerHTML = sorted.map((row, index) => {
+        const malusCells = PENALTY_DEFINITIONS.map((definition) => `<td data-label="${escapeHtml(definition.shortLabel)}-Malus" class="num">-${formatCoins(getPenaltyBucket(row, definition.id).malusCoins || 0, 2)}</td>`).join('');
+        return `
+          <tr>
+            <td data-label="#" class="num rank">${index + 1}</td>
+            <td data-label="Spieler"><span class="player">${escapeHtml(row.name)} (${escapeHtml(row.code)})</span>${row.bonusEligible ? '' : '<span class="sub">noch nicht bonusberechtigt</span>'}</td>
+            <td data-label="Spiele" class="num">${formatInt(row.gamesPlayed)}</td>
+            <td data-label="Bonus gesamt" class="num"><strong>${formatCoins(row.totalBonusCoins, 2)}</strong></td>
+            ${malusCells}
+            <td data-label="Malus gesamt" class="num">-${formatCoins(row.totalMalusCoins, 2)}</td>
+            <td data-label="Profiteur-Score" class="num"><strong>${formatCoins(row.profitScoreCoins, 2)}</strong></td>
+            <td data-label="Finaler Topf-Anteil" class="bar-cell"><strong>${formatPercent(row.profitSharePercent)}</strong><div class="bar"><span style="width:${clampPercent(row.profitSharePercent)}%"></span></div></td>
+            <td data-label="rechnerischer Topfwert" class="num">${formatCents(row.profitValueCents)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function saveStatsSnapshot() {
+      if (!runtime.lastSnapshot) return;
+      setBusy(true, 'Statistik-Snapshot wird gespeichert …');
+      try {
+        const db = await initFirebase();
+        const sdk = runtime.sdk;
+        const snapshot = cleanSnapshotForSaving(runtime.lastSnapshot);
+        const periodId = sanitizeKey(snapshot.periodId || getSettings().periodId);
+        await sdk.set(sdk.ref(db, `stats/cashbox/periods/${periodId}`), snapshot);
+        setStatus('gespeichert', `Snapshot unter stats/cashbox/periods/${periodId} gespeichert.`, true);
+        log(`Snapshot gespeichert: stats/cashbox/periods/${periodId}`);
+      } catch (error) {
+        console.error(error);
+        setStatus('Fehler beim Speichern', error.message || String(error), false, true);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function loadSavedStatsSnapshot() {
+      const settings = getSettings();
+      const periodId = sanitizeKey(settings.periodId || DEFAULT_PERIOD_ID);
+      setBusy(true, 'Gespeicherter Snapshot wird geladen …');
+      try {
+        const db = await initFirebase();
+        const sdk = runtime.sdk;
+        const snapshot = await sdk.get(sdk.ref(db, `stats/cashbox/periods/${periodId}`));
+        const value = snapshot.val();
+        if (!value) {
+          setStatus('kein Snapshot', `Unter stats/cashbox/periods/${periodId} wurde noch nichts gespeichert.`, false);
+          return;
+        }
+        runtime.lastSnapshot = value;
+        renderSnapshot(value);
+        setStatus('Snapshot geladen', `Snapshot ${periodId} geladen.`, true);
+      } catch (error) {
+        console.error(error);
+        setStatus('Fehler beim Laden', error.message || String(error), false, true);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function cleanSnapshotForSaving(snapshot) {
+      const copy = JSON.parse(JSON.stringify(snapshot));
+      delete copy.archivesRaw;
+      copy.savedAt = new Date().toISOString();
+      copy.savedBy = 'strafkasse.html';
+      return copy;
+    }
+
+    function downloadCurrentSnapshot() {
+      if (!runtime.lastSnapshot) return;
+      const snapshot = cleanSnapshotForSaving(runtime.lastSnapshot);
+      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `knobel-strafen-${sanitizeKey(snapshot.periodId || 'snapshot')}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function copyCurrentSnapshot() {
+      if (!runtime.lastSnapshot) return;
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(cleanSnapshotForSaving(runtime.lastSnapshot), null, 2));
+        log('Snapshot als JSON in die Zwischenablage kopiert.');
+      } catch (error) {
+        log(`Kopieren nicht möglich: ${error.message || error}`);
+      }
+    }
+
+    function renderEmpty() {
+      el.summarySection.classList.add('hidden');
+      el.cashSection.classList.add('hidden');
+      el.bonusSection.classList.add('hidden');
+      el.profitSection.classList.add('hidden');
+      el.actionsSection.classList.toggle('hidden', !isAdminUnlocked());
+      if (el.saveStatsBtn) el.saveStatsBtn.disabled = true;
+      if (el.downloadJsonBtn) el.downloadJsonBtn.disabled = true;
+      if (el.copyJsonBtn) el.copyJsonBtn.disabled = true;
+    }
+
+    function setBusy(isBusy, text = '') {
+      [el.loadArchivesBtn, el.loadStatsBtn, el.saveStatsBtn, el.downloadJsonBtn, el.copyJsonBtn].forEach((button) => {
+        if (button) button.disabled = isBusy;
+      });
+      if (text) log(text);
+    }
+
+    function setStatus(title, meta, connected = false, error = false) {
+      el.statusTitle.textContent = `Status: ${title}`;
+      el.statusMeta.textContent = meta || '';
+      el.statusBox.classList.toggle('connected', Boolean(connected));
+      el.statusBox.classList.toggle('error', Boolean(error));
+    }
+
+    function log(message) {
+      const ts = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      el.logBox.textContent = `[${ts}] ${message}\n` + (el.logBox.textContent || '');
+    }
+
+    function buildPeriodLabel(filters) {
+      if (filters.startDate && filters.endDate) return `Zeitraum: ${filters.startDate} bis ${filters.endDate}`;
+      if (filters.startDate) return `Zeitraum: ab ${filters.startDate}`;
+      if (filters.endDate) return `Zeitraum: bis ${filters.endDate}`;
+      return 'Zeitraum: alle Archive';
+    }
+
+    function sanitizeKey(value) {
+      return String(value || '')
+        .trim()
+        .replace(/[.#$\[\]\/]/g, '-')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .slice(0, 100) || 'default';
+    }
+
+    function normalizeName(value) {
+      return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    function parseDateToTime(value) {
+      if (!value) return 0;
+      const time = new Date(value).getTime();
+      return Number.isFinite(time) ? time : 0;
+    }
+
+    function roundTo(value, places = 2) {
+      const factor = 10 ** places;
+      return Math.round((Number(value || 0) + Number.EPSILON) * factor) / factor;
+    }
+
+    function formatInt(value) {
+      return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(Number(value || 0));
+    }
+
+    function formatDecimal(value, digits = 2) {
+      return new Intl.NumberFormat('de-DE', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Number(value || 0));
+    }
+
+    function formatCoins(value, digits = 0) {
+      const number = Number(value || 0);
+      const fractionDigits = digits;
+      return `${new Intl.NumberFormat('de-DE', { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits }).format(number)} Coin${number === 1 ? '' : 's'}`;
+    }
+
+    function formatCents(value) {
+      return `${new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0) / 100)} €`;
+    }
+
+    function formatPercent(value) {
+      return `${new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0))} %`;
+    }
+
+    function clampPercent(value) {
+      return Math.max(0, Math.min(100, Number(value || 0)));
+    }
+
+    function deepClone(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+    }
+
+  </script>
+</body>
+</html>
 
