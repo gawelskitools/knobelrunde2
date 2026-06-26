@@ -75,7 +75,7 @@
       backdrop-filter: blur(8px);
     }
     .soft { background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)); }
-    .header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+    .header { display: grid; gap: 12px; align-items: start; }
     h1, h2, h3, p { margin: 0; }
     h1 { font-size: 1.26rem; line-height: 1.1; }
     .section-title { font-size: 1.05rem; font-weight: 900; margin-bottom: 6px; }
@@ -182,6 +182,9 @@
       line-height: 1.45;
     }
     .warn-note { background: rgba(245,158,11,.11); border-color: rgba(245,158,11,.24); color: #fde68a; }
+    .action-feedback { color: #d1d5db; }
+    .action-feedback.success { background: rgba(34,197,94,.10); border-color: rgba(34,197,94,.24); color: #dcfce7; }
+    .action-feedback.error { background: rgba(239,68,68,.10); border-color: rgba(239,68,68,.24); color: #fee2e2; }
     .hidden { display: none !important; }
     .admin-lock-grid { display: grid; gap: 10px; }
     .admin-login-actions { display: grid; gap: 8px; }
@@ -299,49 +302,75 @@
       flex: 0 0 auto;
     }
 
-    .header-side {
-      display: flex;
-      gap: 8px;
-      min-width: min(100%, 320px);
-      flex: 1 1 520px;
-      justify-content: flex-end;
-      align-items: flex-start;
-      flex-wrap: wrap;
-    }
-    .header-pills {
-      justify-content: flex-end;
-      align-items: center;
+    .header-metrics {
+      display: block;
       width: 100%;
+      margin-top: 12px;
+      border-top: 1px solid rgba(255,255,255,.08);
     }
-    .header-status {
-      display: inline-flex;
-      gap: 6px;
-      align-items: center;
-      max-width: min(100%, 520px);
-      line-height: 1.25;
+    .metric-card {
+      min-width: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      padding: 7px 0;
+      display: grid;
+      grid-template-columns: minmax(160px, 260px) minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      line-height: 1.35;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .metric-label {
+      color: var(--muted);
+      font-size: .76rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .metric-value {
+      color: var(--text);
+      font-size: .9rem;
+      font-weight: 650;
       overflow-wrap: anywhere;
-      white-space: normal;
     }
-    .header-status strong { color: #d6f4ff; }
-    .header-status span { color: var(--muted); font-size: .78rem; }
-    .header-status.connected { background: var(--green-soft); border-color: rgba(34,197,94,.40); }
-    .header-status.connected strong { color: #dcfce7; }
-    .header-status.error { background: var(--red-soft); border-color: rgba(239,68,68,.35); }
-    .header-status.error strong { color: #fee2e2; }
-    .header-action-pill {
+    .metric-card.amber,
+    .metric-card.violet,
+    .metric-card.blue,
+    .metric-card.green,
+    .metric-card.connected,
+    .metric-card.error {
+      background: transparent;
+      border-color: rgba(255,255,255,.06);
+    }
+    .metric-card.connected .metric-label,
+    .metric-card.connected .metric-value,
+    .metric-card.error .metric-label,
+    .metric-card.error .metric-value {
+      color: inherit;
+    }
+    .metric-card.connected .metric-label,
+    .metric-card.error .metric-label { color: var(--muted); }
+    .metric-action {
       width: auto;
-      min-height: 0;
-      padding: 6px 12px;
-      border-radius: 999px;
+      min-height: 42px;
+      padding: 9px 14px;
+      border-radius: 14px;
       box-shadow: none;
-      border: none;
+      border: 0;
       background: var(--green);
       color: #06210e;
-      font-size: .84rem;
+      font-size: .9rem;
       font-weight: 1000;
-      flex: 0 1 auto;
-      white-space: normal;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      text-decoration: none;
+      justify-self: start;
+      margin-top: 8px;
     }
+    .metric-action:disabled { opacity: .55; }
 
     .modal-backdrop {
       position: fixed;
@@ -406,10 +435,10 @@
     @media (max-width: 759px) {
 
       .title-row { align-items: flex-start; }
-      .header-side { flex-basis: 100%; justify-content: flex-start; }
-      .header-pills { justify-content: flex-start; }
-      .header-status { width: 100%; max-width: 100%; }
-      .header-action-pill { width: 100%; justify-content: center; min-height: 42px; }
+      .header-metrics { margin-top: 10px; }
+      .metric-card { grid-template-columns: 1fr; gap: 2px; padding: 8px 0; }
+      .metric-card { padding: 9px 10px; }
+      .metric-action { min-height: 44px; }
       .title-info-btn { width: 32px; height: 32px; min-height: 32px; }
       .modal-backdrop { padding: 8px; align-items: start; }
       .info-modal { max-height: calc(100vh - 16px); border-radius: 18px; padding: 12px; }
@@ -452,17 +481,29 @@
             <h1>Knobelclub – Strafkassen- & Fairness-Rangliste</h1>
             <button id="infoOpenBtn" class="title-info-btn" type="button" aria-label="Erklärung zur Rangliste öffnen">?</button>
           </div>
-          <p class="section-subtitle">Eigene Statistikseite für Strafgeld-Könige, Knobel-Engel und finale Profiteure aus Firebase-Archiven. Begriffe: Ein Spiel hat bis zu 3 Durchgänge; ein Durchgang hat bis zu 10 Spielrunden.</p>
-        </div>
-        <div class="header-side">
-          <div class="pill-row header-pills">
-            <span class="pill amber">Bonus: <strong id="bonusPill">–</strong></span>
-            <span class="pill violet">Malus: <strong id="malusPill">–</strong></span>
-            <span id="statusBox" class="pill blue header-status">
-              <strong id="statusTitle">Status: nicht verbunden</strong>
-              <span id="statusMeta">Noch keine Archive geladen.</span>
-            </span>
-            <button id="loadArchivesBtn" class="header-action-pill" type="button">Archive laden & berechnen</button>
+          <p class="section-subtitle">Eigene Statistikseite für Strafgeld-Könige, Knobel-Engel und finale Profiteure aus Datenbank-Archiven. Begriffe: Ein Spiel hat bis zu 3 Durchgänge; ein Durchgang hat bis zu 10 Spielrunden.</p>
+          <div class="header-metrics" aria-label="Aktuelle Einstellungen und Status">
+            <div class="metric-card">
+              <span class="metric-label">Bonus</span>
+              <span id="bonusPill" class="metric-value">–</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Malus</span>
+              <span id="malusPill" class="metric-value">–</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Zeitraum</span>
+              <span id="periodRangePill" class="metric-value">alle Archive</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">Mindestspiele für Bonuswertung</span>
+              <span id="periodMinGamesPill" class="metric-value">0</span>
+            </div>
+            <div id="statusBox" class="metric-card">
+              <span id="statusTitle" class="metric-label">Status: nicht verbunden</span>
+              <span id="statusMeta" class="metric-value">Noch keine Archive geladen.</span>
+            </div>
+            <button id="loadArchivesBtn" class="metric-action" type="button">Archive laden & berechnen</button>
           </div>
         </div>
       </div>
@@ -479,17 +520,30 @@
         </div>
         <div class="info-blocks">
           <div class="info-block">
-            <h3>Zeitraum</h3>
+            <h3>Auswertungszeitraum</h3>
             <ul>
-              <li><strong>Perioden-ID:</strong> Name des gespeicherten Statistik-Snapshots in Firebase, zum Beispiel <code>ausfahrt-2026</code>.</li>
-              <li><strong>Startdatum/Enddatum:</strong> optionale Filter. Nur Archive innerhalb dieses Zeitraums fließen in die Berechnung ein.</li>
-              <li><strong>Mindestspiele für Bonuswertung:</strong> Spieler werden in der Profiteurwertung erst ab dieser Anzahl Spiele berücksichtigt. <code>0</code> bedeutet: alle zählen.</li>
+              <li><strong>Dropdown:</strong> Hier wird ein vorhandener Auswertungszeitraum ausgewählt, zum Beispiel <code>ausfahrt-2026</code>.</li>
+              <li><strong>Verfügbare IDs:</strong> Die Liste wird aus gespeicherten Datenbank-Snapshots, Datenbank-Perioden-Konfigurationen und lokal gespeicherten Admin-Einträgen gebildet.</li>
+              <li><strong>Neue IDs:</strong> Neue Auswertungszeiträume mit Startdatum, Enddatum und Mindestspielen können nur im Adminbereich angelegt oder geändert werden.</li>
+              <li><strong>Rückmeldung im Adminbereich:</strong> Beim Speichern erscheint sofort „Lokal gespeichert, Datenbank-Abgleich läuft …“. Danach folgt entweder „Datenbank-Abgleich abgeschlossen“ oder eine Fehlermeldung.</li>
+              <li><strong>Kopfanzeige:</strong> Zeitraum und Mindestspiele werden im Kopfbereich als dezente Textzeilen unter der Beschreibung angezeigt.</li>
+            </ul>
+          </div>
+          <div class="info-block">
+            <h3>Kopfbereich</h3>
+            <ul>
+              <li>Direkt unter der Seitenbeschreibung steht eine dezente Textansicht ohne farbige Kacheln.</li>
+              <li><strong>Bonus:</strong> zeigt die aktuell eingestellten Bonuswerte für saubere Durchgänge, saubere Spielrunden und komplett saubere Spiele.</li>
+              <li><strong>Malus:</strong> zeigt die aktuell eingestellten Maluswerte je Strafart, zum Beispiel Strafkasse und Lustknobeln.</li>
+              <li><strong>Zeitraum:</strong> zeigt, ob alle Archive oder nur ein Start-/Endzeitraum ausgewertet werden.</li>
+              <li><strong>Mindestspiele für Bonuswertung:</strong> zeigt die Hürde, ab der Spieler offiziell in Bonus-/Profiteurwertung zählen.</li>
+              <li><strong>Status:</strong> zeigt Verbindung und Ladezustand. Der grüne Button „Archive laden & berechnen“ liest die beendeten Spiele aus <code>games/{code}/archive</code> und berechnet die Tabellen neu.</li>
             </ul>
           </div>
           <div class="info-block">
             <h3>Archive laden & Statistik-Snapshot</h3>
             <ul>
-              <li><strong>Archive laden & berechnen:</strong> sitzt oben im Kopfbereich im gleichen Stil wie Bonus/Malus, liest die beendeten Spiele aus <code>games/{code}/archive</code> und berechnet die Tabellen neu.</li>
+              <li><strong>Archive laden & berechnen:</strong> sitzt oben im Kopfbereich unter der Beschreibung als grüner Button und berechnet die Rangliste aus den Datenbank-Archiven neu.</li>
               <li><strong>Gespeicherten Statistik-Snapshot laden:</strong> sitzt im Admin-Bereich „Speichern und Export“ und lädt eine zuvor gespeicherte Auswertung aus <code>stats/cashbox/periods/{periodId}</code>.</li>
             </ul>
           </div>
@@ -498,7 +552,7 @@
             <ul>
               <li><strong>Coin-Wert in Cent:</strong> Geldwert eines Coins für diese Strafart. Daraus entsteht der Euro-Wert im Strafgeldtopf.</li>
               <li><strong>Malus je gewertetem Coin:</strong> Abzug in der Profiteurwertung. Beispiel: <code>0,10</code> bedeutet: 1 Straf-Coin erzeugt 0,10 Malus-Coins.</li>
-              <li><strong>Coins je Ereignis ohne gespeicherten Coinwert:</strong> reiner Ersatzwert. Er wird nur genutzt, wenn Firebase ein Ereignis ohne gespeicherten Coin-/Cent-Wert liefert. Ist in Firebase ein Wert gespeichert, zählt der Firebase-Wert; ein bewusst gespeicherter Wert <code>0</code> bleibt <code>0</code>.</li>
+              <li><strong>Coins je Ereignis ohne gespeicherten Coinwert:</strong> reiner Ersatzwert. Er wird nur genutzt, wenn die Datenbank ein Ereignis ohne gespeicherten Coin-/Cent-Wert liefert. Ist in der Datenbank ein Wert gespeichert, zählt der Datenbank-Wert; ein bewusst gespeicherter Wert <code>0</code> bleibt <code>0</code>.</li>
             </ul>
           </div>
           <div class="info-block">
@@ -535,23 +589,23 @@
           <div class="info-block">
             <h3>Speichern, Export und Protokoll</h3>
             <ul>
-              <li><strong>Speichern:</strong> legt die berechnete Statistik als Snapshot in Firebase ab, ohne Spielarchive zu verändern.</li>
+              <li><strong>Speichern:</strong> legt die berechnete Statistik als Snapshot in der Datenbank ab, ohne Spielarchive zu verändern.</li>
               <li><strong>JSON herunterladen/kopieren:</strong> exportiert die aktuelle Berechnung zur Kontrolle oder Sicherung.</li>
-              <li><strong>Protokoll:</strong> zeigt technische Lade- und Berechnungshinweise. Diese Bereiche sind nur nach Admin-Anmeldung sichtbar.</li>
+              <li><strong>Protokoll:</strong> steht ganz unten, ist initial eingeklappt und zeigt technische Lade- und Berechnungshinweise. Button-Aktionen wie Speichern und Periodenliste laden werden zusätzlich direkt im Adminblock bestätigt.</li>
             </ul>
           </div>
         </div>
       </div>
     </div>
 
-    <section class="card soft">
-      <div class="section-title">Zeitraum</div>
-      <p class="section-subtitle">Die Perioden-ID bestimmt, unter welchem Namen der Statistik-Snapshot in Firebase gespeichert wird.</p>
-      <div class="grid-4" style="margin-top:12px;">
-        <label class="grid small field-with-help"><span class="field-title-row"><strong>Perioden-ID</strong><details class="inline-help"><summary>?</summary><div>Name des Statistik-Snapshots in Firebase, z. B. ausfahrt-2026. Damit können mehrere Auswertungszeiträume getrennt gespeichert werden.</div></details></span><input id="periodIdInput" type="text" value="ausfahrt-2026" /></label>
-        <label class="grid small field-with-help"><span class="field-title-row"><strong>Startdatum</strong><details class="inline-help"><summary>?</summary><div>Optionaler Filter: Nur Archive ab diesem Datum werden in die Berechnung aufgenommen.</div></details></span><input id="startDateInput" type="date" /></label>
-        <label class="grid small field-with-help"><span class="field-title-row"><strong>Enddatum</strong><details class="inline-help"><summary>?</summary><div>Optionaler Filter: Nur Archive bis einschließlich diesem Datum werden in die Berechnung aufgenommen.</div></details></span><input id="endDateInput" type="date" /></label>
-        <label class="grid small field-with-help"><span class="field-title-row"><strong>Mindestspiele für Bonuswertung</strong><details class="inline-help"><summary>?</summary><div>Ab dieser Anzahl Spiele wird ein Spieler in der Profiteur-/Bonuswertung offiziell berücksichtigt. 0 bedeutet: alle zählen.</div></details></span><input id="minGamesInput" type="number" min="0" step="1" value="0" /></label>
+    <section class="card soft" id="periodPublicSection">
+      <div class="section-title">Auswertungszeitraum</div>
+      <p class="section-subtitle">Hier kannst du einen verfügbaren Auswertungszeitraum auswählen. Neue Auswertungszeiträume, Start-/Enddatum und Mindestspiele werden geschützt im Adminbereich gepflegt.</p>
+      <div class="grid" style="margin-top:12px;">
+        <label class="grid small field-with-help">
+          <span class="field-title-row"><strong>Verfügbarer Auswertungszeitraum</strong></span>
+          <select id="periodSelect"></select>
+        </label>
       </div>
     </section>
 
@@ -560,11 +614,11 @@
       <details id="adminLoginDetails" class="admin-details">
         <summary>
           <span class="section-title">Admin-Anmeldung für Konfiguration</span>
-          <span class="section-subtitle">Ohne Anmeldung bleiben Strafen, Bonuswerte, Speichern/Export und Protokoll verborgen. Lesen und Rangliste berechnen bleibt möglich.</span>
+          <span class="section-subtitle">Ohne Anmeldung bleiben Auswertungszeiträume, Strafen, Bonuswerte, Speichern/Export und Protokoll verborgen. Lesen und Rangliste berechnen bleibt möglich.</span>
         </summary>
         <div class="grid-3" style="margin-top:12px;">
           <label class="grid small field-with-help"><span class="field-title-row"><strong>Benutzer</strong><details class="inline-help"><summary>?</summary><div>Admin-Benutzer für die Konfiguration. Standard im Code ist bewusst einfach gehalten und nur als Oberflächen-Sperre gedacht.</div></details></span><input id="adminUserInput" type="text" autocomplete="username" /></label>
-          <label class="grid small field-with-help"><span class="field-title-row"><strong>Passwort</strong><details class="inline-help"><summary>?</summary><div>Passwort für die Konfiguration. Diese HTML-Sperre schützt vor versehentlichem Ändern, ersetzt aber keine echte Firebase-Authentifizierung.</div></details></span><input id="adminPasswordInput" type="password" autocomplete="current-password" /></label>
+          <label class="grid small field-with-help"><span class="field-title-row"><strong>Passwort</strong><details class="inline-help"><summary>?</summary><div>Passwort für die Konfiguration. Diese HTML-Sperre schützt vor versehentlichem Ändern, ersetzt aber keine echte Datenbank-Authentifizierung.</div></details></span><input id="adminPasswordInput" type="password" autocomplete="current-password" /></label>
           <div class="admin-login-actions">
             <button id="adminLoginBtn" class="primary" type="button">Konfiguration entsperren</button>
             <button id="adminLogoutBtn" class="ghost hidden" type="button">Konfiguration sperren</button>
@@ -574,9 +628,26 @@
       </details>
     </section>
 
+    <section id="periodAdminSection" class="card soft locked-panel admin-only hidden">
+      <div class="section-title">Auswertungszeitraum konfigurieren</div>
+      <p class="section-subtitle">Neue Perioden-IDs sowie Startdatum, Enddatum und Mindestspiele werden nur hier im Adminbereich gepflegt. Die Auswahl im öffentlichen Block bleibt ein reines Dropdown.</p>
+      <div class="grid-4" style="margin-top:12px;">
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Perioden-ID</strong><details class="inline-help"><summary>?</summary><div>Name des Auswertungszeitraums, z. B. ausfahrt-2026. Beim Speichern wird diese ID in die Dropdown-Liste übernommen.</div></details></span><input id="periodIdInput" type="text" value="ausfahrt-2026" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Startdatum</strong><details class="inline-help"><summary>?</summary><div>Optionaler Filter: Nur Archive ab diesem Datum werden in die Berechnung aufgenommen.</div></details></span><input id="startDateInput" type="date" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Enddatum</strong><details class="inline-help"><summary>?</summary><div>Optionaler Filter: Nur Archive bis einschließlich diesem Datum werden in die Berechnung aufgenommen.</div></details></span><input id="endDateInput" type="date" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Mindestspiele für Bonuswertung</strong><details class="inline-help"><summary>?</summary><div>Ab dieser Anzahl Spiele wird ein Spieler in der Profiteur-/Bonuswertung offiziell berücksichtigt. 0 bedeutet: alle zählen.</div></details></span><input id="minGamesInput" type="number" min="0" step="1" value="0" /></label>
+      </div>
+      <div class="grid-2" style="margin-top:12px;">
+        <button id="savePeriodBtn" class="primary" type="button">Auswertungszeitraum speichern/übernehmen</button>
+        <button id="refreshPeriodIdsBtn" class="info" type="button">Periodenliste aus Datenbank aktualisieren</button>
+      </div>
+      <div id="periodActionFeedback" class="note action-feedback" style="margin-top:12px;">Bereit. Änderungen am Auswertungszeitraum werden zuerst lokal übernommen und anschließend mit der Datenbank abgeglichen.</div>
+      <div class="note" style="margin-top:12px;">Beim Speichern wird die Perioden-Konfiguration zusätzlich unter <code>stats/cashbox/periodConfigs/{periodId}</code> abgelegt. So kann die Dropdown-Liste später wieder aus der Datenbank aufgebaut werden.</div>
+    </section>
+
     <section id="penaltyConfigSection" class="card soft locked-panel admin-only hidden">
       <div class="section-title">Strafen modular konfigurieren</div>
-      <p class="section-subtitle">Jede Strafart hat eigene erkannte Firebase-Typen, eigenen Coin-Wert und eigenen Malus. Neue Strafarten können später oben im Code in <code>PENALTY_DEFINITIONS</code> ergänzt werden.</p>
+      <p class="section-subtitle">Jede Strafart hat eigene erkannte Datenbank-Typen, eigenen Coin-Wert und eigenen Malus. Neue Strafarten können später oben im Code in <code>PENALTY_DEFINITIONS</code> ergänzt werden.</p>
       <div id="penaltySettingsGrid" class="grid-2" style="margin-top:12px;"></div>
     </section>
 
@@ -654,15 +725,20 @@
       <p class="section-subtitle">Der Snapshot wird separat unter <code>stats/cashbox/periods/{periodId}</code> abgelegt und verändert keine Spielarchive.</p>
       <div class="grid-4" style="margin-top:12px;">
         <button id="loadStatsBtn" class="info" type="button">Gespeicherten Statistik-Snapshot laden</button>
-        <button id="saveStatsBtn" class="warn" type="button">Berechneten Snapshot in Firebase speichern</button>
+        <button id="saveStatsBtn" class="warn" type="button">Berechneten Snapshot in der Datenbank speichern</button>
         <button id="downloadJsonBtn" class="info" type="button">JSON herunterladen</button>
         <button id="copyJsonBtn" class="ghost" type="button">JSON kopieren</button>
       </div>
     </section>
 
     <section id="logSection" class="card soft admin-only hidden">
-      <div class="section-title">Protokoll</div>
-      <div id="logBox" class="log">Bereit.</div>
+      <details id="logDetails" class="admin-details">
+        <summary>
+          <span class="section-title">Protokoll</span>
+          <span class="section-subtitle">Technische Lade- und Berechnungshinweise. Initial eingeklappt und nur nach Admin-Anmeldung sichtbar.</span>
+        </summary>
+        <div id="logBox" class="log" style="margin-top:12px;">Bereit.</div>
+      </details>
     </section>
   </main>
 
@@ -759,6 +835,14 @@
       statusMeta: document.getElementById('statusMeta'),
       loadArchivesBtn: document.getElementById('loadArchivesBtn'),
       loadStatsBtn: document.getElementById('loadStatsBtn'),
+      periodSelect: document.getElementById('periodSelect'),
+      periodInfoBox: document.getElementById('periodInfoBox'),
+      periodActionFeedback: document.getElementById('periodActionFeedback'),
+      periodRangePill: document.getElementById('periodRangePill'),
+      periodMinGamesPill: document.getElementById('periodMinGamesPill'),
+      periodAdminSection: document.getElementById('periodAdminSection'),
+      savePeriodBtn: document.getElementById('savePeriodBtn'),
+      refreshPeriodIdsBtn: document.getElementById('refreshPeriodIdsBtn'),
       periodIdInput: document.getElementById('periodIdInput'),
       startDateInput: document.getElementById('startDateInput'),
       endDateInput: document.getElementById('endDateInput'),
@@ -807,7 +891,9 @@
       sdk: null,
       app: null,
       db: null,
-      lastSnapshot: null
+      lastSnapshot: null,
+      periodConfigs: {},
+      periodIdsLoadedFromFirebase: false
     };
 
     renderConfigControls();
@@ -815,6 +901,7 @@
     loadSettings();
     renderConfigLockState();
     renderEmpty();
+    loadAvailablePeriodIds({ silent: true });
 
     function renderConfigControls() {
       const help = (text) => `<details class="inline-help"><summary>?</summary><div>${escapeHtml(text)}</div></details>`;
@@ -830,10 +917,10 @@
             <input id="penalty-${escapeHtml(definition.id)}-malus" data-config-input="1" type="number" min="0" step="0.01" value="${Number(definition.defaultMalusFactor || 0)}" />
           </label>
           <label class="grid small field-with-help">
-            <span class="field-title-row"><strong>Coins je Ereignis ohne gespeicherten Coinwert</strong>${help('Ersatzwert, falls Firebase ein Ereignis ohne gespeicherten Coin-/Cent-Wert liefert. Ist in Firebase ein Wert gespeichert, zählt immer der Firebase-Wert; ein gespeicherter Wert 0 bleibt 0. Für Lustknobeln meist sinnvoll, für straffreie Strafkasse normalerweise 0 lassen.')}</span>
+            <span class="field-title-row"><strong>Coins je Ereignis ohne gespeicherten Coinwert</strong>${help('Ersatzwert, falls die Datenbank ein Ereignis ohne gespeicherten Coin-/Cent-Wert liefert. Ist in der Datenbank ein Wert gespeichert, zählt immer der Datenbank-Wert; ein gespeicherter Wert 0 bleibt 0. Für Lustknobeln meist sinnvoll, für straffreie Strafkasse normalerweise 0 lassen.')}</span>
             <input id="penalty-${escapeHtml(definition.id)}-coinsPerEvent" data-config-input="1" type="number" min="0" step="0.01" value="${Number(definition.defaultCoinsPerEvent || 0)}" />
           </label>
-          <div class="tiny muted">Erkannte Firebase-Typen: <code>${escapeHtml((definition.matchTypes || []).join(', '))}</code></div>
+          <div class="tiny muted">Erkannte Datenbank-Typen: <code>${escapeHtml((definition.matchTypes || []).join(', '))}</code></div>
         </div>
       `).join('');
 
@@ -858,6 +945,9 @@
       el.saveStatsBtn.addEventListener('click', () => saveStatsSnapshot());
       el.downloadJsonBtn.addEventListener('click', () => downloadCurrentSnapshot());
       el.copyJsonBtn.addEventListener('click', () => copyCurrentSnapshot());
+      if (el.periodSelect) el.periodSelect.addEventListener('change', () => selectPeriod(el.periodSelect.value, { recalculate: true }));
+      if (el.savePeriodBtn) el.savePeriodBtn.addEventListener('click', () => saveCurrentPeriodConfig());
+      if (el.refreshPeriodIdsBtn) el.refreshPeriodIdsBtn.addEventListener('click', () => loadAvailablePeriodIds({ silent: false }));
       if (el.adminLoginBtn) el.adminLoginBtn.addEventListener('click', () => handleAdminLogin());
       if (el.adminLogoutBtn) el.adminLogoutBtn.addEventListener('click', () => handleAdminLogout());
       if (el.adminPasswordInput) {
@@ -890,7 +980,6 @@
 
     function getConfigInputs() {
       return Array.from(document.querySelectorAll('[data-config-input="1"]'))
-        .concat([el.periodIdInput, el.startDateInput, el.endDateInput, el.minGamesInput])
         .filter(Boolean);
     }
 
@@ -898,10 +987,13 @@
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         const settings = raw ? JSON.parse(raw) : {};
-        el.periodIdInput.value = settings.periodId || DEFAULT_PERIOD_ID;
-        el.startDateInput.value = settings.startDate || '';
-        el.endDateInput.value = settings.endDate || '';
-        el.minGamesInput.value = settings.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS;
+        runtime.periodConfigs = normalizePeriodConfigs(settings.periodConfigs || settings.periods || {}, settings);
+        const selectedPeriodId = sanitizeKey(settings.periodId || DEFAULT_PERIOD_ID);
+        if (!runtime.periodConfigs[selectedPeriodId]) {
+          runtime.periodConfigs[selectedPeriodId] = makePeriodConfig(selectedPeriodId, settings.startDate || '', settings.endDate || '', settings.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS);
+        }
+        renderPeriodSelect(selectedPeriodId);
+        applyPeriodConfigToAdminFields(selectedPeriodId);
         const penaltySettings = settings.penalties || {};
         PENALTY_DEFINITIONS.forEach((definition) => {
           const stored = penaltySettings[definition.id] || {};
@@ -920,15 +1012,25 @@
         });
       } catch (error) {
         log(`Einstellungen konnten nicht geladen werden: ${error.message}`);
+        runtime.periodConfigs = normalizePeriodConfigs({}, { periodId: DEFAULT_PERIOD_ID });
+        renderPeriodSelect(DEFAULT_PERIOD_ID);
+        applyPeriodConfigToAdminFields(DEFAULT_PERIOD_ID);
       }
       updateConfigPills();
     }
 
     function saveSettings() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(getSettings()));
+      const settings = getSettings();
+      settings.periodConfigs = deepClone(runtime.periodConfigs || {});
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     }
 
     function getSettings() {
+      const selectedPeriodId = sanitizeKey(el.periodSelect?.value || DEFAULT_PERIOD_ID);
+      if (!runtime.periodConfigs || !Object.keys(runtime.periodConfigs).length) {
+        runtime.periodConfigs = normalizePeriodConfigs({}, { periodId: selectedPeriodId });
+      }
+      const selectedPeriod = runtime.periodConfigs[selectedPeriodId] || makePeriodConfig(selectedPeriodId, '', '', DEFAULT_MIN_GAMES_FOR_BONUS);
       const penalties = {};
       PENALTY_DEFINITIONS.forEach((definition) => {
         const coinInput = document.getElementById(`penalty-${definition.id}-coinValue`);
@@ -950,14 +1052,207 @@
       });
 
       return {
-        periodId: sanitizeKey(el.periodIdInput.value || DEFAULT_PERIOD_ID),
-        startDate: el.startDateInput.value || '',
-        endDate: el.endDateInput.value || '',
-        minGamesForBonus: Number(el.minGamesInput.value || DEFAULT_MIN_GAMES_FOR_BONUS),
+        periodId: selectedPeriodId,
+        startDate: selectedPeriod.startDate || '',
+        endDate: selectedPeriod.endDate || '',
+        minGamesForBonus: Number(selectedPeriod.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS),
         sortMode: 'profitScore',
         penalties,
         bonuses
       };
+    }
+
+    function makePeriodConfig(periodId, startDate = '', endDate = '', minGamesForBonus = DEFAULT_MIN_GAMES_FOR_BONUS) {
+      const id = sanitizeKey(periodId || DEFAULT_PERIOD_ID);
+      return {
+        periodId: id,
+        label: id,
+        startDate: startDate || '',
+        endDate: endDate || '',
+        minGamesForBonus: Number(minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS)
+      };
+    }
+
+    function normalizePeriodConfigs(configs, fallbackSettings = {}) {
+      const normalized = {};
+      Object.entries(configs || {}).forEach(([key, value]) => {
+        const id = sanitizeKey((value && value.periodId) || key);
+        normalized[id] = makePeriodConfig(
+          id,
+          value && value.startDate || '',
+          value && value.endDate || '',
+          (value && value.minGamesForBonus) ?? DEFAULT_MIN_GAMES_FOR_BONUS
+        );
+      });
+      const fallbackId = sanitizeKey(fallbackSettings.periodId || DEFAULT_PERIOD_ID);
+      if (!normalized[fallbackId]) {
+        normalized[fallbackId] = makePeriodConfig(
+          fallbackId,
+          fallbackSettings.startDate || '',
+          fallbackSettings.endDate || '',
+          fallbackSettings.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS
+        );
+      }
+      if (!normalized[DEFAULT_PERIOD_ID]) {
+        normalized[DEFAULT_PERIOD_ID] = makePeriodConfig(DEFAULT_PERIOD_ID, '', '', DEFAULT_MIN_GAMES_FOR_BONUS);
+      }
+      return normalized;
+    }
+
+    function getPeriodSortKey(id) {
+      if (id === DEFAULT_PERIOD_ID) return `0-${id}`;
+      return `1-${id}`;
+    }
+
+    function renderPeriodSelect(selectedId = '') {
+      if (!el.periodSelect) return;
+      const current = sanitizeKey(selectedId || el.periodSelect.value || DEFAULT_PERIOD_ID);
+      const ids = Object.keys(runtime.periodConfigs || {}).sort((a, b) => getPeriodSortKey(a).localeCompare(getPeriodSortKey(b), 'de'));
+      const finalIds = ids.length ? ids : [DEFAULT_PERIOD_ID];
+      el.periodSelect.innerHTML = finalIds
+        .map((id) => `<option value="${escapeHtml(id)}">${escapeHtml(runtime.periodConfigs[id]?.label || id)}</option>`)
+        .join('');
+      el.periodSelect.value = runtime.periodConfigs[current] ? current : finalIds[0];
+      updatePeriodInfoBox();
+    }
+
+    function applyPeriodConfigToAdminFields(periodId) {
+      const id = sanitizeKey(periodId || el.periodSelect?.value || DEFAULT_PERIOD_ID);
+      const config = runtime.periodConfigs[id] || makePeriodConfig(id, '', '', DEFAULT_MIN_GAMES_FOR_BONUS);
+      if (el.periodIdInput) el.periodIdInput.value = config.periodId;
+      if (el.startDateInput) el.startDateInput.value = config.startDate || '';
+      if (el.endDateInput) el.endDateInput.value = config.endDate || '';
+      if (el.minGamesInput) el.minGamesInput.value = config.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS;
+      updatePeriodInfoBox();
+    }
+
+    function updatePeriodInfoBox() {
+      const settings = getSettings();
+      const periodText = buildPeriodLabel(settings);
+      const minGames = Number(settings.minGamesForBonus || 0);
+      const periodShortText = String(periodText || '').replace(/^Zeitraum:\s*/i, '');
+      if (el.periodRangePill) el.periodRangePill.textContent = periodShortText || 'alle Archive';
+      if (el.periodMinGamesPill) el.periodMinGamesPill.textContent = formatInt(minGames);
+      if (el.periodInfoBox) {
+        el.periodInfoBox.innerHTML = `${escapeHtml(periodText)}<br>Mindestspiele für Bonuswertung: <strong>${formatInt(minGames)}</strong>`;
+      }
+    }
+
+    function selectPeriod(periodId, options = {}) {
+      const id = sanitizeKey(periodId || DEFAULT_PERIOD_ID);
+      if (!runtime.periodConfigs[id]) runtime.periodConfigs[id] = makePeriodConfig(id, '', '', DEFAULT_MIN_GAMES_FOR_BONUS);
+      if (el.periodSelect) el.periodSelect.value = id;
+      applyPeriodConfigToAdminFields(id);
+      saveSettings();
+      updateConfigPills();
+      if (options.recalculate) {
+        if (runtime.lastSnapshot && runtime.lastSnapshot.archivesRaw) {
+          calculateAndRender(runtime.lastSnapshot.archivesRaw);
+        } else if (runtime.lastSnapshot) {
+          renderSnapshot(runtime.lastSnapshot);
+        }
+      }
+    }
+
+    async function saveCurrentPeriodConfig() {
+      if (!isAdminUnlocked()) {
+        showPeriodActionFeedback('Bitte zuerst die Admin-Konfiguration entsperren.', 'error');
+        return;
+      }
+      const id = sanitizeKey(el.periodIdInput?.value || DEFAULT_PERIOD_ID);
+      const config = makePeriodConfig(
+        id,
+        el.startDateInput?.value || '',
+        el.endDateInput?.value || '',
+        Number(el.minGamesInput?.value || DEFAULT_MIN_GAMES_FOR_BONUS)
+      );
+
+      setBusy(true, 'Auswertungszeitraum wird lokal gespeichert. Datenbank-Abgleich läuft …');
+      showPeriodActionFeedback('Lokal gespeichert, Datenbank-Abgleich läuft …');
+
+      runtime.periodConfigs[id] = config;
+      renderPeriodSelect(id);
+      selectPeriod(id, { recalculate: true });
+      saveSettings();
+
+      try {
+        const db = await initFirebase();
+        const sdk = runtime.sdk;
+        await sdk.set(sdk.ref(db, `stats/cashbox/periodConfigs/${id}`), {
+          ...config,
+          updatedAt: new Date().toISOString(),
+          updatedBy: 'strafkasse.html'
+        });
+        const message = `Auswertungszeitraum „${id}“ lokal gespeichert. Datenbank-Abgleich abgeschlossen.`;
+        setStatus('Zeitraum gespeichert', message, true);
+        showPeriodActionFeedback(message, 'success');
+        log(message);
+      } catch (error) {
+        const message = `Auswertungszeitraum „${id}“ lokal gespeichert. Datenbank-Abgleich fehlgeschlagen: ${error.message || error}`;
+        setStatus('lokal gespeichert', message, false, true);
+        showPeriodActionFeedback(message, 'error');
+        log(message);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function loadAvailablePeriodIds(options = {}) {
+      const manual = !options.silent;
+      if (manual) {
+        setBusy(true, 'Periodenliste wird aus der Datenbank geladen …');
+        showPeriodActionFeedback('Periodenliste wird aus der Datenbank geladen …');
+      }
+      try {
+        const db = await initFirebase();
+        const sdk = runtime.sdk;
+        const [periodsSnapshot, configsSnapshot] = await Promise.all([
+          sdk.get(sdk.ref(db, 'stats/cashbox/periods')),
+          sdk.get(sdk.ref(db, 'stats/cashbox/periodConfigs'))
+        ]);
+        const periods = periodsSnapshot.val() || {};
+        const configs = configsSnapshot.val() || {};
+        Object.entries(periods || {}).forEach(([key, value]) => {
+          const id = sanitizeKey(key);
+          if (!runtime.periodConfigs[id]) {
+            runtime.periodConfigs[id] = makePeriodConfig(
+              id,
+              value && value.filters && value.filters.startDate || '',
+              value && value.filters && value.filters.endDate || '',
+              (value && value.config && value.config.minGamesForBonus) ?? DEFAULT_MIN_GAMES_FOR_BONUS
+            );
+          }
+        });
+        Object.entries(configs || {}).forEach(([key, value]) => {
+          const id = sanitizeKey((value && value.periodId) || key);
+          runtime.periodConfigs[id] = makePeriodConfig(
+            id,
+            value && value.startDate || runtime.periodConfigs[id]?.startDate || '',
+            value && value.endDate || runtime.periodConfigs[id]?.endDate || '',
+            (value && value.minGamesForBonus) ?? runtime.periodConfigs[id]?.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS
+          );
+        });
+        runtime.periodIdsLoadedFromFirebase = true;
+        const current = sanitizeKey(el.periodSelect?.value || DEFAULT_PERIOD_ID);
+        renderPeriodSelect(current);
+        applyPeriodConfigToAdminFields(el.periodSelect?.value || current);
+        saveSettings();
+        const message = `${Object.keys(runtime.periodConfigs).length} Auswertungszeiträume aus der Datenbank geladen.`;
+        if (manual) {
+          setStatus('Periodenliste geladen', message, true);
+          showPeriodActionFeedback(message, 'success');
+        }
+        log(message);
+      } catch (error) {
+        const message = `Periodenliste konnte nicht aus der Datenbank geladen werden: ${error.message || error}`;
+        if (manual) {
+          setStatus('Periodenliste nicht geladen', message, false, true);
+          showPeriodActionFeedback(message, 'error');
+        }
+        log(message);
+      } finally {
+        if (manual) setBusy(false);
+      }
     }
 
     function updateConfigPills() {
@@ -995,9 +1290,18 @@
       document.querySelectorAll('[data-config-input="1"]').forEach((input) => {
         input.disabled = !unlocked;
       });
+      if (el.periodIdInput) el.periodIdInput.disabled = !unlocked;
+      if (el.startDateInput) el.startDateInput.disabled = !unlocked;
+      if (el.endDateInput) el.endDateInput.disabled = !unlocked;
       if (el.minGamesInput) el.minGamesInput.disabled = !unlocked;
+      if (el.savePeriodBtn) el.savePeriodBtn.disabled = !unlocked;
+      if (el.refreshPeriodIdsBtn) el.refreshPeriodIdsBtn.disabled = !unlocked;
       if (el.adminLoginBtn) el.adminLoginBtn.classList.toggle('hidden', unlocked);
       if (el.adminLogoutBtn) el.adminLogoutBtn.classList.toggle('hidden', !unlocked);
+      if (el.periodAdminSection) {
+        el.periodAdminSection.classList.toggle('locked-panel', !unlocked);
+        el.periodAdminSection.classList.toggle('hidden', !unlocked);
+      }
       if (el.penaltyConfigSection) {
         el.penaltyConfigSection.classList.toggle('locked-panel', !unlocked);
         el.penaltyConfigSection.classList.toggle('hidden', !unlocked);
@@ -1015,8 +1319,8 @@
       if (el.adminLoginStatus) {
         el.adminLoginStatus.classList.toggle('warn-note', !unlocked);
         el.adminLoginStatus.textContent = unlocked
-          ? 'Konfiguration entsperrt. Strafarten, Coin-Werte, Malus- und Bonuswerte können angepasst werden.'
-          : 'Konfiguration gesperrt. Nur angemeldete Admins können Strafarten, Coin-Werte, Malus- und Bonuswerte ändern.';
+          ? 'Konfiguration entsperrt. Auswertungszeiträume, Strafarten, Coin-Werte, Malus- und Bonuswerte können angepasst werden.'
+          : 'Konfiguration gesperrt. Nur angemeldete Admins können Auswertungszeiträume, Strafarten, Coin-Werte, Malus- und Bonuswerte ändern.';
       }
     }
 
@@ -1073,7 +1377,7 @@
         const snapshot = await sdk.get(sdk.ref(db, 'games'));
         const gamesMap = snapshot.val() || {};
         const archives = collectArchivesFromGamesMap(gamesMap);
-        log(`${archives.length} Archiv-Einträge aus Firebase gelesen.`);
+        log(`${archives.length} Archiv-Einträge aus der Datenbank gelesen.`);
         calculateAndRender(archives);
         setStatus('verbunden', `${archives.length} Archiv-Einträge gelesen und ausgewertet.`, true);
       } catch (error) {
@@ -1559,7 +1863,7 @@
       } else if (storedCents.exists && coinValueCents > 0) {
         coins = Math.max(0, storedCents.value) / coinValueCents;
       } else if (definition.countEventsWithoutAmount && fallbackCoins > 0) {
-        // Reiner Ersatzwert: nur verwenden, wenn Firebase GAR KEINEN Coin-/Cent-Wert gespeichert hat.
+        // Reiner Ersatzwert: nur verwenden, wenn die Datenbank GAR KEINEN Coin-/Cent-Wert gespeichert hat.
         // Ein bewusst gespeicherter Wert 0 bleibt 0 und wird nicht durch den Ersatzwert überschrieben.
         coins = fallbackCoins;
       }
@@ -1870,6 +2174,10 @@
         const snapshot = cleanSnapshotForSaving(runtime.lastSnapshot);
         const periodId = sanitizeKey(snapshot.periodId || getSettings().periodId);
         await sdk.set(sdk.ref(db, `stats/cashbox/periods/${periodId}`), snapshot);
+        const periodConfig = runtime.periodConfigs[periodId] || makePeriodConfig(periodId, snapshot.filters?.startDate || '', snapshot.filters?.endDate || '', snapshot.config?.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS);
+        await sdk.set(sdk.ref(db, `stats/cashbox/periodConfigs/${periodId}`), { ...periodConfig, updatedAt: new Date().toISOString(), updatedBy: 'strafkasse.html' });
+        runtime.periodConfigs[periodId] = periodConfig;
+        renderPeriodSelect(periodId);
         setStatus('gespeichert', `Snapshot unter stats/cashbox/periods/${periodId} gespeichert.`, true);
         log(`Snapshot gespeichert: stats/cashbox/periods/${periodId}`);
       } catch (error) {
@@ -1894,6 +2202,13 @@
           return;
         }
         runtime.lastSnapshot = value;
+        if (value && value.periodId) {
+          const loadedId = sanitizeKey(value.periodId);
+          runtime.periodConfigs[loadedId] = makePeriodConfig(loadedId, value.filters?.startDate || '', value.filters?.endDate || '', value.config?.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS);
+          renderPeriodSelect(loadedId);
+          applyPeriodConfigToAdminFields(loadedId);
+          saveSettings();
+        }
         renderSnapshot(value);
         setStatus('Snapshot geladen', `Snapshot ${periodId} geladen.`, true);
       } catch (error) {
@@ -1947,10 +2262,18 @@
       if (el.copyJsonBtn) el.copyJsonBtn.disabled = true;
     }
 
+    function showPeriodActionFeedback(message, mode = '') {
+      if (!el.periodActionFeedback) return;
+      el.periodActionFeedback.classList.toggle('success', mode === 'success');
+      el.periodActionFeedback.classList.toggle('error', mode === 'error');
+      el.periodActionFeedback.textContent = message || 'Bereit.';
+    }
+
     function setBusy(isBusy, text = '') {
-      [el.loadArchivesBtn, el.loadStatsBtn, el.saveStatsBtn, el.downloadJsonBtn, el.copyJsonBtn].forEach((button) => {
+      [el.loadArchivesBtn, el.loadStatsBtn, el.saveStatsBtn, el.downloadJsonBtn, el.copyJsonBtn, el.savePeriodBtn, el.refreshPeriodIdsBtn].forEach((button) => {
         if (button) button.disabled = isBusy;
       });
+      if (!isBusy) renderConfigLockState();
       if (text) log(text);
     }
 
@@ -2034,4 +2357,3 @@
   </script>
 </body>
 </html>
-
