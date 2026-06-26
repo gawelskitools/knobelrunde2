@@ -129,6 +129,33 @@
       background: rgba(255,255,255,.05);
       font-weight: 900;
     }
+    .header-link-btn {
+      width: 34px;
+      min-width: 34px;
+      height: 34px;
+      min-height: 34px;
+      border-radius: 999px;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+      box-shadow: none;
+      border: 1px solid rgba(255,255,255,.14);
+      font-weight: 900;
+      text-decoration: none;
+      color: inherit;
+      line-height: 1;
+    }
+    .header-link-btn.gold {
+      background: linear-gradient(180deg, rgba(245,158,11,.96), rgba(217,119,6,.96));
+      border-color: rgba(251,191,36,.55);
+      color: #1f1300;
+    }
+    .header-link-btn.gold:hover,
+    .header-link-btn.gold:focus-visible {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+      outline: none;
+    }
     h1, h2, h3, p { margin: 0; }
     h1 { font-size: 1.24rem; line-height: 1.1; }
     .section-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 6px; }
@@ -1007,6 +1034,8 @@
               <h1>Knobelclubrunde 1.0 – Live</h1>
               <button id="helpBtn" class="help-btn" aria-label="Hilfe öffnen">?</button>
               <button id="agbBtn" class="help-btn" aria-label="AGB öffnen">§</button>
+              <a class="header-link-btn gold" href="https://gawelskitools.github.io/knobelrunde2/strafkasse.html" target="_blank" rel="noopener noreferrer" aria-label="Strafkassen- und Fairness-Rangliste öffnen" title="Strafkassen- & Fairness-Rangliste öffnen">€</a>
+              <a class="header-link-btn gold" href="https://www.hsv.de/" target="_blank" rel="noopener noreferrer" aria-label="Ewige Tabelle öffnen" title="Ewige Tabelle öffnen">🏆</a>
             </div>
             <p class="section-subtitle">Live-Mitspieleransicht für die Knobelrunde.</p>
           </div>
