@@ -523,9 +523,9 @@
             <h3>Auswertungszeitraum</h3>
             <ul>
               <li><strong>Dropdown:</strong> Hier wird ein vorhandener Auswertungszeitraum ausgewählt, zum Beispiel <code>knobelclub-2026</code>.</li>
-              <li><strong>Verfügbare IDs:</strong> Die Liste wird aus gespeicherten Datenbank-Snapshots, Datenbank-Perioden-Konfigurationen und lokal gespeicherten Admin-Einträgen gebildet.</li>
+              <li><strong>Verfügbare IDs:</strong> Die öffentliche Dropdown-Liste wird ausschließlich aus gespeicherten Datenbank-Snapshots und Datenbank-Perioden-Konfigurationen gebildet. Alte lokale Browser-Einträge werden nicht mehr übernommen.</li>
               <li><strong>Neue IDs:</strong> Neue Auswertungszeiträume mit Startdatum, Enddatum und Mindestspielen können nur im Adminbereich angelegt oder geändert werden.</li>
-              <li><strong>Rückmeldung im Adminbereich:</strong> Beim Speichern erscheint sofort „Lokal gespeichert, Datenbank-Abgleich läuft …“. Danach folgt entweder „Datenbank-Abgleich abgeschlossen“ oder eine Fehlermeldung.</li>
+              <li><strong>Rückmeldung im Adminbereich:</strong> Beim Speichern erscheint sofort „Datenbank-Abgleich läuft …“. Danach folgt entweder „Datenbank-Abgleich abgeschlossen“ oder eine Fehlermeldung. Nur erfolgreich in der Datenbank gespeicherte IDs erscheinen im Dropdown.</li>
               <li><strong>Kopfanzeige:</strong> Zeitraum und Mindestspiele werden im Kopfbereich als dezente Textzeilen unter der Beschreibung angezeigt.</li>
             </ul>
           </div>
@@ -641,8 +641,8 @@
         <button id="savePeriodBtn" class="primary" type="button">Auswertungszeitraum speichern/übernehmen</button>
         <button id="refreshPeriodIdsBtn" class="info" type="button">Periodenliste aus Datenbank aktualisieren</button>
       </div>
-      <div id="periodActionFeedback" class="note action-feedback" style="margin-top:12px;">Bereit. Änderungen am Auswertungszeitraum werden zuerst lokal übernommen und anschließend mit der Datenbank abgeglichen.</div>
-      <div class="note" style="margin-top:12px;">Beim Speichern wird die Perioden-Konfiguration zusätzlich unter <code>stats/cashbox/periodConfigs/{periodId}</code> abgelegt. So kann die Dropdown-Liste später wieder aus der Datenbank aufgebaut werden.</div>
+      <div id="periodActionFeedback" class="note action-feedback" style="margin-top:12px;">Bereit. Die öffentliche Dropdown-Liste wird aus der Datenbank aufgebaut. Alte lokale Browser-Einträge werden ignoriert.</div>
+      <div class="note" style="margin-top:12px;">Beim Speichern wird die Perioden-Konfiguration unter <code>stats/cashbox/periodConfigs/{periodId}</code> abgelegt. Nur dort oder unter <code>stats/cashbox/periods</code> vorhandene IDs erscheinen im öffentlichen Dropdown.</div>
     </section>
 
     <section id="penaltyConfigSection" class="card soft locked-panel admin-only hidden">
@@ -987,11 +987,10 @@
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         const settings = raw ? JSON.parse(raw) : {};
-        runtime.periodConfigs = normalizePeriodConfigs(settings.periodConfigs || settings.periods || {}, settings);
+        // Auswertungszeiträume im öffentlichen Dropdown sollen nicht mehr aus altem localStorage kommen.
+        // Die Liste wird nach dem Start ausschließlich aus der Datenbank neu aufgebaut.
+        runtime.periodConfigs = {};
         const selectedPeriodId = sanitizeKey(settings.periodId || DEFAULT_PERIOD_ID);
-        if (!runtime.periodConfigs[selectedPeriodId]) {
-          runtime.periodConfigs[selectedPeriodId] = makePeriodConfig(selectedPeriodId, settings.startDate || '', settings.endDate || '', settings.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS);
-        }
         renderPeriodSelect(selectedPeriodId);
         applyPeriodConfigToAdminFields(selectedPeriodId);
         const penaltySettings = settings.penalties || {};
@@ -1012,7 +1011,7 @@
         });
       } catch (error) {
         log(`Einstellungen konnten nicht geladen werden: ${error.message}`);
-        runtime.periodConfigs = normalizePeriodConfigs({}, { periodId: DEFAULT_PERIOD_ID });
+        runtime.periodConfigs = {};
         renderPeriodSelect(DEFAULT_PERIOD_ID);
         applyPeriodConfigToAdminFields(DEFAULT_PERIOD_ID);
       }
@@ -1167,13 +1166,8 @@
         Number(el.minGamesInput?.value || DEFAULT_MIN_GAMES_FOR_BONUS)
       );
 
-      setBusy(true, 'Auswertungszeitraum wird lokal gespeichert. Datenbank-Abgleich läuft …');
-      showPeriodActionFeedback('Lokal gespeichert, Datenbank-Abgleich läuft …');
-
-      runtime.periodConfigs[id] = config;
-      renderPeriodSelect(id);
-      selectPeriod(id, { recalculate: true });
-      saveSettings();
+      setBusy(true, 'Auswertungszeitraum wird in der Datenbank gespeichert …');
+      showPeriodActionFeedback('Datenbank-Abgleich läuft …');
 
       try {
         const db = await initFirebase();
@@ -1183,13 +1177,17 @@
           updatedAt: new Date().toISOString(),
           updatedBy: 'strafkasse.html'
         });
-        const message = `Auswertungszeitraum „${id}“ lokal gespeichert. Datenbank-Abgleich abgeschlossen.`;
+        runtime.periodConfigs[id] = config;
+        renderPeriodSelect(id);
+        selectPeriod(id, { recalculate: true });
+        saveSettings();
+        const message = `Auswertungszeitraum „${id}“ in der Datenbank gespeichert und übernommen.`;
         setStatus('Zeitraum gespeichert', message, true);
         showPeriodActionFeedback(message, 'success');
         log(message);
       } catch (error) {
-        const message = `Auswertungszeitraum „${id}“ lokal gespeichert. Datenbank-Abgleich fehlgeschlagen: ${error.message || error}`;
-        setStatus('lokal gespeichert', message, false, true);
+        const message = `Auswertungszeitraum „${id}“ konnte nicht in der Datenbank gespeichert werden. Die öffentliche Auswahl bleibt unverändert: ${error.message || error}`;
+        setStatus('Zeitraum nicht gespeichert', message, false, true);
         showPeriodActionFeedback(message, 'error');
         log(message);
       } finally {
@@ -1212,35 +1210,51 @@
         ]);
         const periods = periodsSnapshot.val() || {};
         const configs = configsSnapshot.val() || {};
+        const freshPeriodConfigs = {};
+
         Object.entries(periods || {}).forEach(([key, value]) => {
           const id = sanitizeKey(key);
-          if (!runtime.periodConfigs[id]) {
-            runtime.periodConfigs[id] = makePeriodConfig(
-              id,
-              value && value.filters && value.filters.startDate || '',
-              value && value.filters && value.filters.endDate || '',
-              (value && value.config && value.config.minGamesForBonus) ?? DEFAULT_MIN_GAMES_FOR_BONUS
-            );
-          }
-        });
-        Object.entries(configs || {}).forEach(([key, value]) => {
-          const id = sanitizeKey((value && value.periodId) || key);
-          runtime.periodConfigs[id] = makePeriodConfig(
+          if (!id) return;
+          freshPeriodConfigs[id] = makePeriodConfig(
             id,
-            value && value.startDate || runtime.periodConfigs[id]?.startDate || '',
-            value && value.endDate || runtime.periodConfigs[id]?.endDate || '',
-            (value && value.minGamesForBonus) ?? runtime.periodConfigs[id]?.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS
+            value && value.filters && value.filters.startDate || '',
+            value && value.filters && value.filters.endDate || '',
+            (value && value.config && value.config.minGamesForBonus) ?? DEFAULT_MIN_GAMES_FOR_BONUS
           );
         });
+
+        Object.entries(configs || {}).forEach(([key, value]) => {
+          const id = sanitizeKey((value && value.periodId) || key);
+          if (!id) return;
+          freshPeriodConfigs[id] = makePeriodConfig(
+            id,
+            value && value.startDate || freshPeriodConfigs[id]?.startDate || '',
+            value && value.endDate || freshPeriodConfigs[id]?.endDate || '',
+            (value && value.minGamesForBonus) ?? freshPeriodConfigs[id]?.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS
+          );
+        });
+
+        // Wichtig: nicht mehr mit altem localStorage mischen.
+        // Dadurch verschwinden alte Test-IDs wie „test“ oder „ausfahrt-2026“, wenn sie nicht in der Datenbank stehen.
+        runtime.periodConfigs = freshPeriodConfigs;
         runtime.periodIdsLoadedFromFirebase = true;
-        const current = sanitizeKey(el.periodSelect?.value || DEFAULT_PERIOD_ID);
+
+        const availableIds = Object.keys(runtime.periodConfigs || {});
+        const previous = sanitizeKey(el.periodSelect?.value || '');
+        const current = runtime.periodConfigs[previous]
+          ? previous
+          : (runtime.periodConfigs[DEFAULT_PERIOD_ID] ? DEFAULT_PERIOD_ID : (availableIds[0] || DEFAULT_PERIOD_ID));
+
         renderPeriodSelect(current);
         applyPeriodConfigToAdminFields(el.periodSelect?.value || current);
         saveSettings();
-        const message = `${Object.keys(runtime.periodConfigs).length} Auswertungszeiträume aus der Datenbank geladen.`;
+
+        const message = availableIds.length
+          ? `${availableIds.length} Auswertungszeitraum${availableIds.length === 1 ? '' : 'e'} aus der Datenbank geladen.`
+          : 'Keine Auswertungszeiträume in der Datenbank gefunden. Alte lokale Browser-Einträge wurden ignoriert.';
         if (manual) {
           setStatus('Periodenliste geladen', message, true);
-          showPeriodActionFeedback(message, 'success');
+          showPeriodActionFeedback(message, availableIds.length ? 'success' : 'error');
         }
         log(message);
       } catch (error) {
