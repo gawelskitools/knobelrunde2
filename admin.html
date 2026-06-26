@@ -129,6 +129,25 @@
       background: rgba(255,255,255,.05);
       font-weight: 900;
     }
+    .header-link-btn {
+      text-decoration: none;
+      color: inherit;
+    }
+    .help-btn.gold-link,
+    .header-link-btn.gold-link {
+      background: linear-gradient(180deg, rgba(245,158,11,.98), rgba(180,83,9,.96));
+      border-color: rgba(253,224,71,.70);
+      color: #241500;
+      box-shadow: 0 8px 18px rgba(245,158,11,.18);
+      font-weight: 1000;
+    }
+    .help-btn.gold-link:hover,
+    .help-btn.gold-link:focus-visible,
+    .header-link-btn.gold-link:hover,
+    .header-link-btn.gold-link:focus-visible {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+    }
     h1, h2, h3, p { margin: 0; }
     h1 { font-size: 1.24rem; line-height: 1.1; }
     .section-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 6px; }
@@ -1116,6 +1135,8 @@
               <h1>Knobelclubrunde 1.0</h1>
               <button id="helpBtn" class="help-btn" aria-label="Hilfe öffnen">?</button>
               <button id="agbBtn" class="help-btn" aria-label="AGB öffnen">§</button>
+              <a class="help-btn header-link-btn gold-link" href="https://gawelskitools.github.io/knobelrunde2/strafkasse.html" target="_blank" rel="noopener noreferrer" aria-label="Strafkassen- und Fairness-Rangliste öffnen" title="Strafkassen- & Fairness-Rangliste öffnen">€</a>
+              <a class="help-btn header-link-btn gold-link" href="https://www.hsv.de/" target="_blank" rel="noopener noreferrer" aria-label="Ewige Tabelle öffnen" title="Ewige Tabelle öffnen">🏆</a>
             </div>
             <p class="section-subtitle">Eine Partie mit bis zu 3 Spielrunden à 5 oder 10 Durchgänge und maximal 12 Spielern.</p>
           </div>
@@ -3120,7 +3141,7 @@
           title: 'Verlorene Runde eintragen',
           message: `Wirklich eintragen, dass ${player.name} die Runde verloren hat?`,
           actions: [
-            { label: 'Ja, eintragen', value: 'yes', className: 'danger' },
+            { label: 'Ja, eintragen', value: 'yes', className: 'danger', delaySeconds: 5 },
             { label: 'Abbrechen', value: 'no' }
           ]
         });
@@ -3140,7 +3161,7 @@
           title: 'Lustknobeln eintragen',
           message: `Wirklich eintragen, dass ${player.name} Lustknobeln gemacht hat? Alle anderen aktiven Mitspieler bekommen dadurch 1 Freibier. Lustknobeln zählt wieder normal als Durchgang und geht nicht in die Strafkasse.`,
           actions: [
-            { label: 'Ja, eintragen', value: 'yes', className: 'violet' },
+            { label: 'Ja, eintragen', value: 'yes', className: 'violet', delaySeconds: 5 },
             { label: 'Abbrechen', value: 'no' }
           ]
         });
@@ -3160,7 +3181,7 @@
           title: 'Ausstieg eintragen',
           message: `Wirklich eintragen, dass ${player.name} aussteigen möchte?`,
           actions: [
-            { label: 'Ja, aussteigen', value: 'yes', className: 'warn' },
+            { label: 'Ja, aussteigen', value: 'yes', className: 'warn', delaySeconds: 5 },
             { label: 'Abbrechen', value: 'no' }
           ]
         });
@@ -3178,7 +3199,7 @@
           title: 'Strafkasse eintragen',
           message: `Wirklich ein Spiel-Vergehen Nr. ${violationNo} für ${player.name} eintragen? ${penaltyText} Es zählt nicht als Durchgang.`,
           actions: [
-            { label: 'Ja, eintragen', value: 'yes', className: 'warn' },
+            { label: 'Ja, eintragen', value: 'yes', className: 'warn', delaySeconds: 5 },
             { label: 'Abbrechen', value: 'no' }
           ]
         });
@@ -3905,7 +3926,7 @@
           title: 'Eintrag rückgängig machen',
           message: 'Dieser Eintrag wird zurückgenommen. Wirklich rückgängig machen?',
           actions: [
-            { label: 'Ja, rückgängig', value: 'yes', className: 'warn' },
+            { label: 'Ja, rückgängig', value: 'yes', className: 'warn', delaySeconds: 5 },
             { label: 'Abbrechen', value: 'no' }
           ]
         });
@@ -3916,7 +3937,7 @@
           title: 'Eintrag wiederherstellen',
           message: 'Dieser Eintrag wird wiederhergestellt. Wirklich fortsetzen?',
           actions: [
-            { label: 'Ja, wiederherstellen', value: 'yes', className: 'primary' },
+            { label: 'Ja, wiederherstellen', value: 'yes', className: 'primary', delaySeconds: 5 },
             { label: 'Abbrechen', value: 'no' }
           ]
         });
@@ -5489,22 +5510,54 @@ ${playerText}`;
       }, 180);
     }
 
+    function renderDialogActions(actions, resolve) {
+      el.modalActions.innerHTML = '';
+      let resolved = false;
+      actions.forEach((action) => {
+        const button = document.createElement('button');
+        const baseLabel = action.label;
+        button.textContent = baseLabel;
+        if (action.className) button.className = action.className;
+        button.addEventListener('click', () => {
+          if (resolved) return;
+          const delaySeconds = Number(action.delaySeconds || 0);
+          if (delaySeconds > 0) {
+            resolved = true;
+            const buttons = Array.from(el.modalActions.querySelectorAll('button'));
+            buttons.forEach((item) => { item.disabled = true; });
+            let remaining = Math.ceil(delaySeconds);
+            button.textContent = `Ausgeführt – schließt in ${remaining}`;
+
+            // Wichtig: Die bestätigte Aktion wird sofort an den Aufrufer zurückgegeben.
+            // Das Popup bleibt danach nur noch stehen, damit Online-/Fan-Updates im Hintergrund
+            // etwas Zeit bekommen. Abbrechen-Aktionen haben kein delaySeconds und schließen sofort.
+            resolve(action.value);
+
+            const timer = window.setInterval(() => {
+              remaining -= 1;
+              if (remaining > 0) {
+                button.textContent = `Ausgeführt – schließt in ${remaining}`;
+                return;
+              }
+              window.clearInterval(timer);
+              hideDialog();
+            }, 1000);
+            return;
+          }
+          resolved = true;
+          hideDialog();
+          resolve(action.value);
+        });
+        el.modalActions.appendChild(button);
+      });
+    }
+
     function showDialog({ title, message, actions }) {
       return new Promise((resolve) => {
         el.modalTitle.textContent = title;
         el.modalMessage.textContent = message;
         el.modalBody.innerHTML = '';
-        el.modalActions.innerHTML = '';
-        actions.forEach((action) => {
-          const button = document.createElement('button');
-          button.textContent = action.label;
-          if (action.className) button.className = action.className;
-          button.addEventListener('click', () => {
-            hideDialog();
-            resolve(action.value);
-          });
-          el.modalActions.appendChild(button);
-        });
+        renderDialogActions(actions, resolve);
         el.modalBackdrop.classList.remove('hidden');
         el.modalWrap.classList.remove('hidden');
       });
@@ -5515,17 +5568,7 @@ ${playerText}`;
         el.modalTitle.textContent = title;
         el.modalMessage.textContent = message;
         el.modalBody.innerHTML = bodyHtml || '';
-        el.modalActions.innerHTML = '';
-        actions.forEach((action) => {
-          const button = document.createElement('button');
-          button.textContent = action.label;
-          if (action.className) button.className = action.className;
-          button.addEventListener('click', () => {
-            hideDialog();
-            resolve(action.value);
-          });
-          el.modalActions.appendChild(button);
-        });
+        renderDialogActions(actions, resolve);
         el.modalBackdrop.classList.remove('hidden');
         el.modalWrap.classList.remove('hidden');
       });
