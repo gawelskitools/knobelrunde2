@@ -3,660 +3,50 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Knobelclub – Strafkassen- & Fairness-Rangliste</title>
+  <title>Knobelclub - Statistik</title>
   <style>
-    :root {
-      --bg: #0b1220;
-      --panel: #111827;
-      --panel-2: #172033;
-      --panel-3: #0f172a;
-      --text: #f3f4f6;
-      --muted: #9ca3af;
-      --line: rgba(255,255,255,.10);
-      --green: #22c55e;
-      --green-soft: rgba(34,197,94,.22);
-      --blue: #38bdf8;
-      --blue-soft: rgba(56,189,248,.16);
-      --red: #ef4444;
-      --red-soft: rgba(239,68,68,.16);
-      --amber: #f59e0b;
-      --amber-soft: rgba(245,158,11,.16);
-      --violet: #a855f7;
-      --violet-soft: rgba(168,85,247,.18);
-      --shadow: 0 18px 40px rgba(0,0,0,.28);
-      --radius: 18px;
+    :root{
+      --bg:#0b1220;--panel:#111827;--panel2:#172033;--text:#f3f4f6;--muted:#9ca3af;--line:rgba(255,255,255,.10);
+      --green:#22c55e;--blue:#38bdf8;--amber:#f59e0b;--red:#ef4444;--violet:#a855f7;--shadow:0 18px 40px rgba(0,0,0,.28);--radius:18px;
     }
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      padding: 0;
-      min-height: 100vh;
-      background: radial-gradient(circle at top, #111a2e 0%, var(--bg) 45%);
-      color: var(--text);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    button, input, select {
-      font: inherit;
-      border-radius: 14px;
-      border: 1px solid var(--line);
-      padding: 12px 14px;
-    }
-    input, select {
-      width: 100%;
-      background: rgba(8, 13, 23, .88);
-      color: var(--text);
-    }
-    button {
-      background: var(--panel-2);
-      color: var(--text);
-      cursor: pointer;
-      box-shadow: var(--shadow);
-      width: 100%;
-      min-height: 48px;
-    }
-    button:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
-    button.primary { background: var(--green); color: #06210e; border: none; font-weight: 900; }
-    button.info { background: var(--blue); color: #042637; border: none; font-weight: 900; }
-    button.warn { background: var(--amber); color: #331f03; border: none; font-weight: 900; }
-    button.ghost { background: transparent; box-shadow: none; }
-    .page {
-      max-width: 1240px;
-      margin: 0 auto;
-      padding: 14px 12px 40px;
-      display: grid;
-      gap: 14px;
-    }
-    .card {
-      background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: var(--radius);
-      padding: 14px;
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(8px);
-    }
-    .soft { background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)); }
-    .header { display: grid; gap: 12px; align-items: start; }
-    h1, h2, h3, p { margin: 0; }
-    h1 { font-size: 1.26rem; line-height: 1.1; }
-    .section-title { font-size: 1.05rem; font-weight: 900; margin-bottom: 6px; }
-    .section-subtitle, .muted { color: var(--muted); }
-    .section-subtitle { font-size: .92rem; line-height: 1.45; }
-    .tiny { font-size: .82rem; }
-    .small { font-size: .93rem; }
-    .grid { display: grid; gap: 10px; }
-    .grid-2, .grid-3, .grid-4 { display: grid; gap: 10px; }
-    .line { height: 1px; background: rgba(255,255,255,.08); margin: 10px 0; }
-    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
-    .pill {
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.09);
-      background: rgba(8,13,23,.75);
-      font-size: .84rem;
-      display: inline-flex;
-      gap: 6px;
-      align-items: center;
-    }
-    .pill.green { background: var(--green-soft); border-color: rgba(34,197,94,.40); }
-    .pill.blue { background: var(--blue-soft); border-color: rgba(56,189,248,.35); }
-    .pill.amber { background: var(--amber-soft); border-color: rgba(245,158,11,.35); }
-    .pill.violet { background: var(--violet-soft); border-color: rgba(168,85,247,.40); }
-    .pill.red { background: var(--red-soft); border-color: rgba(239,68,68,.35); }
-    .status-box {
-      display: grid;
-      gap: 8px;
-      border-radius: 16px;
-      background: rgba(8,13,23,.45);
-      border: 1px solid rgba(255,255,255,.08);
-      padding: 10px 12px;
-    }
-    .status-box.connected { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.28); }
-    .status-box.error { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.28); }
-    .kpi-grid { display: grid; gap: 10px; }
-    .kpi {
-      border-radius: 16px;
-      padding: 12px;
-      background: rgba(8,13,23,.50);
-      border: 1px solid rgba(255,255,255,.08);
-      display: grid;
-      gap: 6px;
-      min-width: 0;
-    }
-    .kpi .label { color: var(--muted); font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
-    .kpi .value { font-size: 1.45rem; font-weight: 1000; line-height: 1.05; overflow-wrap: anywhere; }
-    .table-wrap {
-      width: 100%;
-      overflow-x: auto;
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 16px;
-      background: rgba(8,13,23,.35);
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 980px;
-    }
-    th, td {
-      padding: 10px 11px;
-      border-bottom: 1px solid rgba(255,255,255,.07);
-      text-align: left;
-      vertical-align: top;
-      white-space: nowrap;
-    }
-    th {
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      background: #111827;
-      color: #d6f4ff;
-      font-size: .78rem;
-      letter-spacing: .03em;
-      text-transform: uppercase;
-    }
-    td.num, th.num { text-align: right; }
-    tr:last-child td { border-bottom: 0; }
-    .rank { font-weight: 1000; color: #fef3c7; }
-    .player { font-weight: 900; }
-    .sub { display: block; color: var(--muted); font-size: .78rem; margin-top: 2px; }
-    .bar-cell { min-width: 160px; }
-    .bar {
-      height: 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.08);
-      overflow: hidden;
-      margin-top: 5px;
-    }
-    .bar > span {
-      display: block;
-      height: 100%;
-      width: 0;
-      border-radius: inherit;
-      background: linear-gradient(90deg, rgba(245,158,11,.96), rgba(34,197,94,.90));
-    }
-    .note {
-      padding: 10px 12px;
-      border-radius: 14px;
-      background: rgba(56,189,248,.10);
-      border: 1px solid rgba(56,189,248,.18);
-      color: var(--muted);
-      line-height: 1.45;
-    }
-    .warn-note { background: rgba(245,158,11,.11); border-color: rgba(245,158,11,.24); color: #fde68a; }
-    .action-feedback { color: #d1d5db; }
-    .action-feedback.success { background: rgba(34,197,94,.10); border-color: rgba(34,197,94,.24); color: #dcfce7; }
-    .action-feedback.error { background: rgba(239,68,68,.10); border-color: rgba(239,68,68,.24); color: #fee2e2; }
-    .hidden { display: none !important; }
-    .admin-lock-grid { display: grid; gap: 10px; }
-    .admin-login-actions { display: grid; gap: 8px; }
-    .locked-panel { opacity: .72; }
-    input:disabled, select:disabled, button:disabled { opacity: .55; cursor: not-allowed; }
-    .table-wrap { -webkit-overflow-scrolling: touch; }
-    .mobile-hint { display: none; color: var(--muted); font-size: .78rem; margin-top: 8px; }
-    .log {
-      max-height: 180px;
-      overflow: auto;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      font-size: .78rem;
-      color: #cbd5e1;
-      background: rgba(8,13,23,.55);
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 14px;
-      padding: 10px;
-      white-space: pre-wrap;
-    }
-
-    html, body { overflow-x: hidden; }
-    .page, .card, section, .status-box, .table-wrap { min-width: 0; max-width: 100%; }
-    code { overflow-wrap: anywhere; }
-    details.config-details,
-    details.fold-table,
-    details.admin-details {
-      border-radius: var(--radius);
-    }
-    details.fold-table > summary,
-    details.admin-details > summary {
-      cursor: pointer;
-      list-style: none;
-      display: grid;
-      gap: 4px;
-    }
-    details.fold-table > summary::-webkit-details-marker,
-    details.admin-details > summary::-webkit-details-marker { display: none; }
-    details.fold-table > summary::after,
-    details.admin-details > summary::after {
-      content: 'aufklappen';
-      color: var(--muted);
-      font-size: .78rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-      justify-self: start;
-      padding: 3px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.04);
-      margin-top: 3px;
-    }
-    details.fold-table[open] > summary::after,
-    details.admin-details[open] > summary::after { content: 'zuklappen'; }
-    .field-with-help { display: grid; gap: 6px; }
-    .field-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .inline-help { position: relative; display: inline-grid; justify-items: end; }
-    .inline-help > summary {
-      cursor: pointer;
-      list-style: none;
-      width: 22px;
-      height: 22px;
-      border-radius: 999px;
-      display: grid;
-      place-items: center;
-      border: 1px solid rgba(56,189,248,.35);
-      background: rgba(56,189,248,.14);
-      color: #d6f4ff;
-      font-weight: 1000;
-      font-size: .78rem;
-      user-select: none;
-    }
-    .inline-help > summary::-webkit-details-marker { display:none; }
-    .inline-help > div {
-      margin-top: 6px;
-      max-width: min(72vw, 320px);
-      border-radius: 12px;
-      padding: 8px 10px;
-      background: rgba(8,13,23,.94);
-      border: 1px solid rgba(56,189,248,.22);
-      color: var(--muted);
-      font-size: .78rem;
-      line-height: 1.35;
-      box-shadow: 0 10px 24px rgba(0,0,0,.22);
-      text-align: left;
-    }
-    .admin-only.hidden { display: none !important; }
-    .table-card-title { display: none; }
-    #profitSection { order: 5; }
-    #cashSection { order: 6; }
-    #bonusSection { order: 7; }
-    #actionsSection { order: 8; }
-    #logSection { order: 9; }
-
-
-    .title-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .title-info-btn {
-      width: 34px;
-      min-height: 34px;
-      height: 34px;
-      padding: 0;
-      border-radius: 999px;
-      display: inline-grid;
-      place-items: center;
-      background: rgba(56,189,248,.14);
-      border: 1px solid rgba(56,189,248,.38);
-      color: #d6f4ff;
-      font-weight: 1000;
-      box-shadow: none;
-      flex: 0 0 auto;
-    }
-
-    .header-metrics {
-      display: block;
-      width: 100%;
-      margin-top: 12px;
-      border-top: 1px solid rgba(255,255,255,.08);
-    }
-    .metric-card {
-      min-width: 0;
-      border: 0;
-      border-radius: 0;
-      background: transparent;
-      padding: 7px 0;
-      display: grid;
-      grid-template-columns: minmax(160px, 260px) minmax(0, 1fr);
-      gap: 10px;
-      align-items: start;
-      line-height: 1.35;
-      border-bottom: 1px solid rgba(255,255,255,.06);
-    }
-    .metric-label {
-      color: var(--muted);
-      font-size: .76rem;
-      font-weight: 900;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-    }
-    .metric-value {
-      color: var(--text);
-      font-size: .9rem;
-      font-weight: 650;
-      overflow-wrap: anywhere;
-    }
-    .metric-card.amber,
-    .metric-card.violet,
-    .metric-card.blue,
-    .metric-card.green,
-    .metric-card.connected,
-    .metric-card.error {
-      background: transparent;
-      border-color: rgba(255,255,255,.06);
-    }
-    .metric-card.connected .metric-label,
-    .metric-card.connected .metric-value,
-    .metric-card.error .metric-label,
-    .metric-card.error .metric-value {
-      color: inherit;
-    }
-    .metric-card.connected .metric-label,
-    .metric-card.error .metric-label { color: var(--muted); }
-    .metric-action {
-      width: auto;
-      min-height: 42px;
-      padding: 9px 14px;
-      border-radius: 14px;
-      box-shadow: none;
-      border: 0;
-      background: var(--green);
-      color: #06210e;
-      font-size: .9rem;
-      font-weight: 1000;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      text-decoration: none;
-      justify-self: start;
-      margin-top: 8px;
-    }
-    .metric-action:disabled { opacity: .55; }
-
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      z-index: 1000;
-      background: rgba(2,6,23,.76);
-      display: grid;
-      place-items: center;
-      padding: 14px;
-    }
-    .info-modal {
-      width: min(960px, 100%);
-      max-height: min(88vh, 860px);
-      overflow: auto;
-      border-radius: 22px;
-      background: linear-gradient(180deg, rgba(17,24,39,.98), rgba(8,13,23,.98));
-      border: 1px solid rgba(255,255,255,.12);
-      box-shadow: 0 28px 80px rgba(0,0,0,.55);
-      padding: 16px;
-    }
-    .info-modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-      padding-bottom: 12px;
-      margin-bottom: 12px;
-    }
-    .modal-close-btn {
-      width: auto;
-      min-height: 36px;
-      padding: 8px 12px;
-      border-radius: 999px;
-      box-shadow: none;
-      background: rgba(255,255,255,.06);
-      flex: 0 0 auto;
-    }
-    .info-blocks {
-      display: grid;
-      gap: 10px;
-    }
-    .info-block {
-      border-radius: 16px;
-      padding: 12px;
-      background: rgba(255,255,255,.035);
-      border: 1px solid rgba(255,255,255,.08);
-    }
-    .info-block h3 {
-      margin: 0 0 6px;
-      font-size: .98rem;
-    }
-    .info-block ul {
-      margin: 0;
-      padding-left: 18px;
-      color: var(--muted);
-      line-height: 1.45;
-      font-size: .9rem;
-    }
-    .info-block li + li { margin-top: 3px; }
-
-    @media (max-width: 759px) {
-
-      .title-row { align-items: flex-start; }
-      .header-metrics { margin-top: 10px; }
-      .metric-card { grid-template-columns: 1fr; gap: 2px; padding: 8px 0; }
-      .metric-card { padding: 9px 10px; }
-      .metric-action { min-height: 44px; }
-      .title-info-btn { width: 32px; height: 32px; min-height: 32px; }
-      .modal-backdrop { padding: 8px; align-items: start; }
-      .info-modal { max-height: calc(100vh - 16px); border-radius: 18px; padding: 12px; }
-      .info-modal-header { align-items: flex-start; }
-
-      .page { padding: 10px 8px 28px; }
-      .card { padding: 12px; border-radius: 16px; }
-      .table-wrap { overflow-x: visible; border: 0; background: transparent; }
-      table { min-width: 0; width: 100%; display: block; font-size: .9rem; }
-      thead { display: none; }
-      tbody { display: grid; gap: 10px; }
-      tr { display: grid; gap: 0; border: 1px solid rgba(255,255,255,.08); border-radius: 16px; background: rgba(8,13,23,.45); overflow: hidden; }
-      td { display: grid; grid-template-columns: minmax(118px, .9fr) minmax(0, 1fr); gap: 10px; padding: 9px 10px; white-space: normal; overflow-wrap: anywhere; align-items: start; }
-      td::before { content: attr(data-label); color: var(--muted); font-size: .74rem; text-transform: uppercase; letter-spacing: .03em; font-weight: 900; }
-      td.num { text-align: left; }
-      td.num::before { text-align: left; }
-      .bar-cell { min-width: 0; }
-      .table-card-title { display: block; font-weight: 1000; }
-      .mobile-hint { display: block; }
-      .kpi .value { font-size: 1.18rem; }
-      .pill-row { gap: 6px; }
-    }
-    @media (min-width: 760px) {
-      .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .status-box { grid-template-columns: 1fr minmax(220px, 340px); align-items: center; }
-    }
-  
+    *{box-sizing:border-box}html,body{margin:0;padding:0;min-height:100vh;background:radial-gradient(circle at top,#111a2e 0%,var(--bg) 45%);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overflow-x:hidden}
+    button,input,select,textarea{font:inherit;border-radius:14px;border:1px solid var(--line);padding:12px 14px}input,select,textarea{width:100%;background:rgba(8,13,23,.88);color:var(--text)}textarea{min-height:96px;resize:vertical}button{background:var(--panel2);color:var(--text);cursor:pointer;box-shadow:var(--shadow);width:100%;min-height:48px;font-weight:850}button:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}.primary{background:var(--green);color:#06210e;border:none}.info{background:var(--blue);color:#042637;border:none}.warn{background:var(--amber);color:#331f03;border:none}.ghost{background:transparent;box-shadow:none}.danger{background:var(--red);color:white;border:none}
+    .page{max-width:1240px;margin:0 auto;padding:14px 12px 42px;display:grid;gap:14px}.card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);backdrop-filter:blur(8px)}.soft{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015))}.hidden{display:none!important}
+    .header{display:grid;gap:9px}.title-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.title-row h1{margin:0;font-size:1.18rem;line-height:1.12}.section-title{font-size:1.05rem;font-weight:950;margin:0 0 6px}.section-subtitle,.muted{color:var(--muted)}.section-subtitle{font-size:.92rem;line-height:1.45;margin:0}.tiny{font-size:.8rem}.small{font-size:.92rem}.grid{display:grid;gap:10px}.grid-2,.grid-3,.grid-4{display:grid;gap:10px}.line{height:1px;background:rgba(255,255,255,.08);margin:10px 0}
+    .icon-btn{width:34px;min-width:34px;height:34px;min-height:34px;border-radius:999px;padding:0;display:inline-grid;place-items:center;box-shadow:none;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);font-weight:1000}.gold{background:linear-gradient(180deg,rgba(251,191,36,.96),rgba(217,119,6,.96));color:#1f1300;border-color:rgba(253,224,71,.75)}
+    .head-info{display:grid;gap:7px;border-top:1px solid rgba(255,255,255,.08);padding-top:9px}.head-bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}.head-field{display:grid;gap:4px}.head-label{color:var(--muted);font-size:.68rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em}.head-select{min-height:38px;padding:8px 10px;border-radius:12px;font-size:.9rem}.status-pill{display:inline-flex;align-items:center;min-height:38px;padding:8px 11px;border-radius:999px;background:rgba(34,197,94,.13);border:1px solid rgba(34,197,94,.26);color:#dcfce7;font-size:.82rem;font-weight:850;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.status-pill.error{background:rgba(239,68,68,.13);border-color:rgba(239,68,68,.26);color:#fee2e2}.head-actions{display:flex;gap:8px;flex-wrap:wrap}.head-actions button{width:100%;min-height:38px;padding:8px 12px;border-radius:12px;box-shadow:none}
+    .pill-row{display:flex;gap:8px;flex-wrap:wrap}.pill{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.09);background:rgba(8,13,23,.75);font-size:.84rem}.pill.green{background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.36)}.pill.blue{background:rgba(56,189,248,.14);border-color:rgba(56,189,248,.30)}.pill.amber{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.32)}.pill.violet{background:rgba(168,85,247,.14);border-color:rgba(168,85,247,.32)}.pill.red{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.32)}
+    .kpi-grid{display:grid;gap:10px}.kpi{border-radius:16px;padding:12px;background:rgba(8,13,23,.50);border:1px solid rgba(255,255,255,.08);display:grid;gap:6px;min-width:0}.kpi .label{color:var(--muted);font-size:.72rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase}.kpi .value{font-size:1.42rem;font-weight:1000;line-height:1.05;overflow-wrap:anywhere}.note{padding:10px 12px;border-radius:14px;background:rgba(56,189,248,.10);border:1px solid rgba(56,189,248,.18);color:var(--muted);line-height:1.45}.warn-note{background:rgba(245,158,11,.11);border-color:rgba(245,158,11,.24);color:#fde68a}
+    details.admin-details>summary,details.fold>summary{cursor:pointer;list-style:none;display:grid;gap:4px}details.admin-details>summary::-webkit-details-marker,details.fold>summary::-webkit-details-marker{display:none}details.admin-details>summary::after,details.fold>summary::after{content:'aufklappen';color:var(--muted);font-size:.68rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;justify-self:start;padding:2px 7px;border-radius:999px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);margin-top:1px}details.admin-details[open]>summary::after,details.fold[open]>summary::after{content:'zuklappen'}#adminLoginSection{padding:9px 10px;box-shadow:none}.admin-compact-title{font-size:.9rem;font-weight:900}.admin-login-grid{display:grid;gap:8px;margin-top:10px}.admin-login-grid input{min-height:38px;padding:8px 10px;border-radius:10px}.admin-login-grid button{min-height:38px;padding:8px 10px;border-radius:10px}.admin-login-grid .note{padding:7px 9px;border-radius:10px;font-size:.78rem}
+    .field-with-help{display:grid;gap:6px}.field-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px}.inline-help{position:relative;display:inline-grid;justify-items:end}.inline-help>summary{cursor:pointer;list-style:none;width:22px;height:22px;border-radius:999px;display:grid;place-items:center;border:1px solid rgba(56,189,248,.35);background:rgba(56,189,248,.14);color:#d6f4ff;font-weight:1000;font-size:.78rem}.inline-help>summary::-webkit-details-marker{display:none}.inline-help>div{margin-top:6px;max-width:min(72vw,320px);border-radius:12px;padding:8px 10px;background:rgba(8,13,23,.96);border:1px solid rgba(56,189,248,.22);color:var(--muted);font-size:.78rem;line-height:1.35;box-shadow:0 10px 24px rgba(0,0,0,.22);text-align:left;z-index:3}
+    .table-wrap{width:100%;overflow-x:auto;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(8,13,23,.35);-webkit-overflow-scrolling:touch}table{width:100%;border-collapse:collapse;min-width:680px;font-size:.88rem}th,td{padding:7px 7px;border-bottom:1px solid rgba(255,255,255,.07);text-align:left;vertical-align:middle;white-space:nowrap}th{position:sticky;top:0;z-index:1;background:#111827;color:#d6f4ff;font-size:.68rem;letter-spacing:.03em;text-transform:uppercase}td.num,th.num{text-align:right}tr:last-child td{border-bottom:0}.main-table col:nth-child(1){width:5%}.main-table col:nth-child(2){width:19%}.main-table col:nth-child(3){width:11%}.main-table col:nth-child(4){width:7%}.main-table col:nth-child(5),.main-table col:nth-child(6){width:10%}.main-table col:nth-child(7){width:11%}.main-table col:nth-child(8),.main-table col:nth-child(9){width:13%}.rank{font-weight:1000;color:#fef3c7}.player{font-weight:950}.player-link{cursor:pointer;text-decoration:underline;text-decoration-color:rgba(56,189,248,.35);text-underline-offset:2px}.share-badge{display:inline-flex;margin-left:5px;padding:1px 5px;border-radius:999px;background:rgba(251,191,36,.14);border:1px solid rgba(251,191,36,.30);color:#fef3c7;font-size:.62rem;font-weight:1000;vertical-align:1px}.sub{display:block;color:var(--muted);font-size:.7rem;margin-top:1px}.positive{color:#bbf7d0;font-weight:900}.negative{color:#fecaca;font-weight:900}.log{max-height:220px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;font-size:.78rem;color:#cbd5e1;background:rgba(8,13,23,.55);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:10px;white-space:pre-wrap}.mobile-hint{display:none;color:var(--muted);font-size:.74rem;margin-top:8px}
+    .admin-only.hidden{display:none!important}
+    .modal-backdrop{position:fixed;inset:0;z-index:1000;background:rgba(2,6,23,.76);display:grid;place-items:center;padding:14px}.modal-panel{width:min(760px,100%);max-height:min(88vh,760px);overflow:auto;border-radius:18px;background:linear-gradient(180deg,rgba(17,24,39,.98),rgba(8,13,23,.98));border:1px solid rgba(255,255,255,.12);box-shadow:0 28px 80px rgba(0,0,0,.55);padding:14px}.modal-head{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:10px;margin-bottom:12px}.detail-grid{display:grid;gap:8px}.detail-card{border-radius:12px;padding:10px;background:rgba(8,13,23,.50);border:1px solid rgba(255,255,255,.08);display:grid;gap:4px}.detail-card .label{color:var(--muted);font-size:.68rem;text-transform:uppercase;font-weight:900}.detail-card .value{font-size:1.12rem;font-weight:1000}.detail-card .subline{color:var(--muted);font-size:.78rem;line-height:1.35}.detail-total{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.28)}
+    .page,.card,section,.grid,.grid-2,.grid-3,.grid-4,.kpi-grid,.table-wrap,tbody,tr,td{min-width:0;max-width:100%}
+    .status-pill,.pill,.note{overflow-wrap:anywhere;word-break:break-word}
+    @media(min-width:960px){.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}.kpi-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.detail-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+    @media(max-width:959px){.page{padding:8px 6px 24px;gap:10px}.card{padding:10px;border-radius:14px}.section-title{font-size:1rem}.section-subtitle{font-size:.86rem}.head-info{gap:5px}.head-bar{grid-template-columns:1fr}.grid-2,.grid-3,.grid-4,.kpi-grid{grid-template-columns:1fr!important}.kpi{padding:10px;border-radius:12px}.pill{padding:5px 8px;font-size:.78rem}.table-wrap{overflow-x:auto;border-radius:10px;margin-left:-4px;margin-right:-4px;width:calc(100% + 8px)}table{min-width:560px;font-size:.7rem}th,td{padding:4px 4px}th{font-size:.54rem}.sub{font-size:.58rem}.mobile-hint{display:block}.kpi .value{font-size:1.08rem}}
+    @media(max-width:520px){.table-wrap{overflow-x:hidden}table{min-width:0;width:100%;table-layout:fixed;font-size:.62rem}th,td{padding:3px 2px;overflow:hidden;text-overflow:clip}th{font-size:.45rem;white-space:normal;line-height:1.05}.player{font-size:.64rem}.sub{font-size:.52rem}.main-table col:nth-child(1){width:6%}.main-table col:nth-child(2){width:20%}.main-table col:nth-child(3){width:12%}.main-table col:nth-child(4){width:7%}.main-table col:nth-child(5),.main-table col:nth-child(6){width:10%}.main-table col:nth-child(7){width:11%}.main-table col:nth-child(8),.main-table col:nth-child(9){width:12%}}
+    @media(max-width:420px){table{font-size:.58rem}th,td{padding:2px 1px}th{font-size:.42rem}.title-row h1{font-size:1.14rem}.section-subtitle{font-size:.84rem}.player{font-size:.6rem}.share-badge{font-size:.5rem;margin-left:2px;padding:1px 3px}.sub{font-size:.48rem}}
   </style>
 </head>
-
 <body>
   <main class="page">
     <section class="card">
       <div class="header">
         <div>
           <div class="title-row">
-            <h1>Knobelclub – Strafkassen- & Fairness-Rangliste</h1>
-            <button id="infoOpenBtn" class="title-info-btn" type="button" aria-label="Erklärung zur Rangliste öffnen">?</button>
-          </div>
-          <p class="section-subtitle">Eigene Statistikseite für Strafgeld-Könige, Knobel-Engel und finale Profiteure aus Datenbank-Archiven. Begriffe: Ein Spiel hat bis zu 3 Durchgänge; ein Durchgang hat bis zu 10 Spielrunden.</p>
-          <div class="header-metrics" aria-label="Aktuelle Einstellungen und Status">
-            <div class="metric-card">
-              <span class="metric-label">Bonus</span>
-              <span id="bonusPill" class="metric-value">–</span>
-            </div>
-            <div class="metric-card">
-              <span class="metric-label">Malus</span>
-              <span id="malusPill" class="metric-value">–</span>
-            </div>
-            <div class="metric-card">
-              <span class="metric-label">Zeitraum</span>
-              <span id="periodRangePill" class="metric-value">alle Archive</span>
-            </div>
-            <div class="metric-card">
-              <span class="metric-label">Mindestspiele für Bonuswertung</span>
-              <span id="periodMinGamesPill" class="metric-value">0</span>
-            </div>
-            <div id="statusBox" class="metric-card">
-              <span id="statusTitle" class="metric-label">Status: nicht verbunden</span>
-              <span id="statusMeta" class="metric-value">Noch keine Archive geladen.</span>
-            </div>
-            <button id="loadArchivesBtn" class="metric-action" type="button">Archive laden & berechnen</button>
+            <h1>Knobelclub - Statistik</h1>
+            <button id="infoOpenBtn" class="icon-btn" type="button" aria-label="Erklärung öffnen">?</button>
           </div>
         </div>
-      </div>
-    </section>
-
-    <div id="infoModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle">
-      <div class="info-modal" role="document">
-        <div class="info-modal-header">
-          <div>
-            <h2 id="infoModalTitle" class="section-title">Erklärung der Strafkassen- & Fairness-Rangliste</h2>
-            <p class="section-subtitle">Diese Übersicht erklärt blockweise, welche Felder wofür da sind und wie sie in die Wertung einfließen.</p>
+        <div class="head-info">
+          <div class="head-bar">
+            <label class="head-field"><span class="head-label">Auswertung</span><select id="tournamentSelect" class="head-select"></select></label>
+            <span id="statusText" class="status-pill">bereit</span>
           </div>
-          <button id="infoCloseBtn" class="modal-close-btn" type="button">Schließen</button>
+          <div class="head-actions"><button id="loadArchivesBtn" class="primary" type="button">Archive laden & berechnen</button></div>
         </div>
-        <div class="info-blocks">
-          <div class="info-block">
-            <h3>Auswertungszeitraum</h3>
-            <ul>
-              <li><strong>Dropdown:</strong> Hier wird ein vorhandener Auswertungszeitraum ausgewählt, zum Beispiel <code>knobelclub-2026</code>.</li>
-              <li><strong>Verfügbare IDs:</strong> Die öffentliche Dropdown-Liste wird ausschließlich aus gespeicherten Datenbank-Snapshots und Datenbank-Perioden-Konfigurationen gebildet. Alte lokale Browser-Einträge werden nicht mehr übernommen.</li>
-              <li><strong>Neue IDs:</strong> Neue Auswertungszeiträume mit Startdatum, Enddatum und Mindestspielen können nur im Adminbereich angelegt oder geändert werden.</li>
-              <li><strong>Rückmeldung im Adminbereich:</strong> Beim Speichern erscheint sofort „Datenbank-Abgleich läuft …“. Danach folgt entweder „Datenbank-Abgleich abgeschlossen“ oder eine Fehlermeldung. Nur erfolgreich in der Datenbank gespeicherte IDs erscheinen im Dropdown.</li>
-              <li><strong>Kopfanzeige:</strong> Zeitraum und Mindestspiele werden im Kopfbereich als dezente Textzeilen unter der Beschreibung angezeigt.</li>
-            </ul>
-          </div>
-          <div class="info-block">
-            <h3>Kopfbereich</h3>
-            <ul>
-              <li>Direkt unter der Seitenbeschreibung steht eine dezente Textansicht ohne farbige Kacheln.</li>
-              <li><strong>Bonus:</strong> zeigt die aktuell eingestellten Bonuswerte für saubere Durchgänge, saubere Spielrunden und komplett saubere Spiele.</li>
-              <li><strong>Malus:</strong> zeigt die aktuell eingestellten Maluswerte je Strafart, zum Beispiel Strafkasse und Lustknobeln.</li>
-              <li><strong>Zeitraum:</strong> zeigt, ob alle Archive oder nur ein Start-/Endzeitraum ausgewertet werden.</li>
-              <li><strong>Mindestspiele für Bonuswertung:</strong> zeigt die Hürde, ab der Spieler offiziell in Bonus-/Profiteurwertung zählen.</li>
-              <li><strong>Status:</strong> zeigt Verbindung und Ladezustand. Der grüne Button „Archive laden & berechnen“ liest die beendeten Spiele aus <code>games/{code}/archive</code> und berechnet die Tabellen neu.</li>
-            </ul>
-          </div>
-          <div class="info-block">
-            <h3>Archive laden & Statistik-Snapshot</h3>
-            <ul>
-              <li><strong>Archive laden & berechnen:</strong> sitzt oben im Kopfbereich unter der Beschreibung als grüner Button und berechnet die Rangliste aus den Datenbank-Archiven neu.</li>
-              <li><strong>Gespeicherten Statistik-Snapshot laden:</strong> sitzt im Admin-Bereich „Speichern und Export“ und lädt eine zuvor gespeicherte Auswertung aus <code>stats/cashbox/periods/{periodId}</code>.</li>
-            </ul>
-          </div>
-          <div class="info-block">
-            <h3>Strafen modular konfigurieren</h3>
-            <ul>
-              <li><strong>Coin-Wert in Cent:</strong> Geldwert eines Coins für diese Strafart. Daraus entsteht der Euro-Wert im Strafgeldtopf.</li>
-              <li><strong>Malus je gewertetem Coin:</strong> Abzug in der Profiteurwertung. Beispiel: <code>0,10</code> bedeutet: 1 Straf-Coin erzeugt 0,10 Malus-Coins.</li>
-              <li><strong>Coins je Ereignis ohne gespeicherten Coinwert:</strong> reiner Ersatzwert. Er wird nur genutzt, wenn die Datenbank ein Ereignis ohne gespeicherten Coin-/Cent-Wert liefert. Ist in der Datenbank ein Wert gespeichert, zählt der Datenbank-Wert; ein bewusst gespeicherter Wert <code>0</code> bleibt <code>0</code>.</li>
-            </ul>
-          </div>
-          <div class="info-block">
-            <h3>Bonus-/Fairnesswertung</h3>
-            <ul>
-              <li><strong>Bonus je sauberem Durchgang:</strong> Bonus-Coins für jeden Durchgang, in dem der Spieler keine gewertete Strafe hatte.</li>
-              <li><strong>Bonus je sauberer Spielrunde:</strong> Bonus-Coins für saubere Spielrunden innerhalb der Durchgänge. Ohne exakten Zeitstempel wird eine bezahlte Strafe näherungsweise als eine verschmutzte Spielrunde gewertet.</li>
-              <li><strong>Bonus je komplett sauberem Spiel:</strong> Zusatzbonus, wenn ein Spieler in der ganzen Partie keine gewertete konfigurierte Strafe hatte.</li>
-            </ul>
-          </div>
-          <div class="info-block">
-            <h3>Profiteure</h3>
-            <ul>
-              <li>Der wichtigste finale Block. Er berechnet den fairen Anteil am Strafgeldtopf.</li>
-              <li><strong>Formel:</strong> Bonus gesamt minus Malus aus Strafkasse und Lustknobeln ergibt den Profiteur-Score.</li>
-              <li>Nur positive Profiteur-Scores werden auf den Topf verteilt. Daraus entstehen finaler Topf-Anteil und rechnerischer Topfwert.</li>
-            </ul>
-          </div>
-          <div class="info-block">
-            <h3>Strafgeld-Könige</h3>
-            <ul>
-              <li>Zeigt, wer den Strafgeldtopf finanziert hat.</li>
-              <li>Gezählt werden nur tatsächlich gewertete/bezahlte Coins. Straffreie Ereignisse ohne Wert bleiben draußen.</li>
-              <li>Strafkasse und Lustknobeln werden getrennt ausgewiesen, danach als Gesamtwert zusammengeführt.</li>
-            </ul>
-          </div>
-          <div class="info-block">
-            <h3>Knobel-Engel</h3>
-            <ul>
-              <li>Zeigt sauberes Spielen: saubere Durchgänge, saubere Spielrunden und komplett saubere Spiele.</li>
-              <li>Die eingestellten Bonuswerte erzeugen Bonus-Coins. Diese Bonus-Coins fließen in den Profiteur-Score ein.</li>
-            </ul>
-          </div>
-          <div class="info-block">
-            <h3>Speichern, Export und Protokoll</h3>
-            <ul>
-              <li><strong>Speichern:</strong> legt die berechnete Statistik als Snapshot in der Datenbank ab, ohne Spielarchive zu verändern.</li>
-              <li><strong>JSON herunterladen/kopieren:</strong> exportiert die aktuelle Berechnung zur Kontrolle oder Sicherung.</li>
-              <li><strong>Protokoll:</strong> steht ganz unten, ist initial eingeklappt und zeigt technische Lade- und Berechnungshinweise. Button-Aktionen wie Speichern und Periodenliste laden werden zusätzlich direkt im Adminblock bestätigt.</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <section class="card soft" id="periodPublicSection">
-      <div class="section-title">Auswertungszeitraum</div>
-      <p class="section-subtitle">Hier kannst du einen verfügbaren Auswertungszeitraum auswählen. Neue Auswertungszeiträume, Start-/Enddatum und Mindestspiele werden geschützt im Adminbereich gepflegt.</p>
-      <div class="grid" style="margin-top:12px;">
-        <label class="grid small field-with-help">
-          <span class="field-title-row"><strong>Verfügbarer Auswertungszeitraum</strong></span>
-          <select id="periodSelect"></select>
-        </label>
-      </div>
-    </section>
-
-
-    <section class="card soft" id="adminLoginSection">
-      <details id="adminLoginDetails" class="admin-details">
-        <summary>
-          <span class="section-title">Admin-Anmeldung für Konfiguration</span>
-          <span class="section-subtitle">Ohne Anmeldung bleiben Auswertungszeiträume, Strafen, Bonuswerte, Speichern/Export und Protokoll verborgen. Lesen und Rangliste berechnen bleibt möglich.</span>
-        </summary>
-        <div class="grid-3" style="margin-top:12px;">
-          <label class="grid small field-with-help"><span class="field-title-row"><strong>Benutzer</strong><details class="inline-help"><summary>?</summary><div>Admin-Benutzer für die Konfiguration. Standard im Code ist bewusst einfach gehalten und nur als Oberflächen-Sperre gedacht.</div></details></span><input id="adminUserInput" type="text" autocomplete="username" /></label>
-          <label class="grid small field-with-help"><span class="field-title-row"><strong>Passwort</strong><details class="inline-help"><summary>?</summary><div>Passwort für die Konfiguration. Diese HTML-Sperre schützt vor versehentlichem Ändern, ersetzt aber keine echte Datenbank-Authentifizierung.</div></details></span><input id="adminPasswordInput" type="password" autocomplete="current-password" /></label>
-          <div class="admin-login-actions">
-            <button id="adminLoginBtn" class="primary" type="button">Konfiguration entsperren</button>
-            <button id="adminLogoutBtn" class="ghost hidden" type="button">Konfiguration sperren</button>
-          </div>
-        </div>
-        <div id="adminLoginStatus" class="note" style="margin-top:12px;">Konfiguration gesperrt.</div>
-      </details>
-    </section>
-
-    <section id="periodAdminSection" class="card soft locked-panel admin-only hidden">
-      <div class="section-title">Auswertungszeitraum konfigurieren</div>
-      <p class="section-subtitle">Neue Perioden-IDs sowie Startdatum, Enddatum und Mindestspiele werden nur hier im Adminbereich gepflegt. Die Auswahl im öffentlichen Block bleibt ein reines Dropdown.</p>
-      <div class="grid-4" style="margin-top:12px;">
-        <label class="grid small field-with-help"><span class="field-title-row"><strong>Perioden-ID</strong><details class="inline-help"><summary>?</summary><div>Name des Auswertungszeitraums, z. B. knobelclub-2026. Beim Speichern wird diese ID in die Dropdown-Liste übernommen.</div></details></span><input id="periodIdInput" type="text" value="knobelclub-2026" /></label>
-        <label class="grid small field-with-help"><span class="field-title-row"><strong>Startdatum</strong><details class="inline-help"><summary>?</summary><div>Optionaler Filter: Nur Archive ab diesem Datum werden in die Berechnung aufgenommen.</div></details></span><input id="startDateInput" type="date" /></label>
-        <label class="grid small field-with-help"><span class="field-title-row"><strong>Enddatum</strong><details class="inline-help"><summary>?</summary><div>Optionaler Filter: Nur Archive bis einschließlich diesem Datum werden in die Berechnung aufgenommen.</div></details></span><input id="endDateInput" type="date" /></label>
-        <label class="grid small field-with-help"><span class="field-title-row"><strong>Mindestspiele für Bonuswertung</strong><details class="inline-help"><summary>?</summary><div>Ab dieser Anzahl Spiele wird ein Spieler in der Profiteur-/Bonuswertung offiziell berücksichtigt. 0 bedeutet: alle zählen.</div></details></span><input id="minGamesInput" type="number" min="0" step="1" value="0" /></label>
-      </div>
-      <div class="grid-2" style="margin-top:12px;">
-        <button id="savePeriodBtn" class="primary" type="button">Auswertungszeitraum speichern/übernehmen</button>
-        <button id="refreshPeriodIdsBtn" class="info" type="button">Periodenliste aus Datenbank aktualisieren</button>
-      </div>
-      <div id="periodActionFeedback" class="note action-feedback" style="margin-top:12px;">Bereit. Die öffentliche Dropdown-Liste wird aus der Datenbank aufgebaut. Alte lokale Browser-Einträge werden ignoriert.</div>
-      <div class="note" style="margin-top:12px;">Beim Speichern wird die Perioden-Konfiguration unter <code>stats/cashbox/periodConfigs/{periodId}</code> abgelegt. Nur dort oder unter <code>stats/cashbox/periods</code> vorhandene IDs erscheinen im öffentlichen Dropdown.</div>
-    </section>
-
-    <section id="penaltyConfigSection" class="card soft locked-panel admin-only hidden">
-      <div class="section-title">Strafen modular konfigurieren</div>
-      <p class="section-subtitle">Jede Strafart hat eigene erkannte Datenbank-Typen, eigenen Coin-Wert und eigenen Malus. Neue Strafarten können später oben im Code in <code>PENALTY_DEFINITIONS</code> ergänzt werden.</p>
-      <div id="penaltySettingsGrid" class="grid-2" style="margin-top:12px;"></div>
-    </section>
-
-    <section id="bonusConfigSection" class="card soft locked-panel admin-only hidden">
-      <div class="section-title">Bonus-/Fairnesswertung konfigurieren</div>
-      <p class="section-subtitle">Bonus-Coins sind Wertungspunkte für die Profiteur-Tabelle. Konfigurierbar sind Bonus je sauberem Durchgang, je sauberer Spielrunde und je komplett sauberem Spiel.</p>
-      <div id="bonusSettingsGrid" class="grid-3" style="margin-top:12px;"></div>
-      <div class="note warn-note" style="margin-top:12px;">
-        <strong>Definition:</strong> Gewertet werden nur tatsächlich bezahlte/gewertete Strafen mit Coins &gt; 0. Ein sauberer Durchgang hat keine bezahlte konfigurierte Strafe. Eine saubere Spielrunde wird näherungsweise aus abgeschlossenen Spielrunden minus bezahlten Strafen im Durchgang berechnet. Ein komplett sauberes Spiel hat für den Spieler keine bezahlte konfigurierte Strafe in der Partie.
       </div>
     </section>
 
@@ -664,1710 +54,283 @@
       <div class="section-title">Zusammenfassung</div>
       <div class="kpi-grid" style="margin-top:10px;">
         <div class="kpi"><span class="label">Partien</span><span id="kpiGames" class="value">0</span></div>
-        <div class="kpi"><span class="label">Straf-Coins gesamt</span><span id="kpiPenaltyCoins" class="value">0</span></div>
-        <div class="kpi"><span class="label">Strafgeldtopf</span><span id="kpiPenaltyValue" class="value">0,00 €</span></div>
-        <div class="kpi"><span class="label">Bonus gesamt</span><span id="kpiBonus" class="value">0</span></div>
-        <div class="kpi"><span class="label">Profiteur-Score</span><span id="kpiProfit" class="value">0</span></div>
+        <div class="kpi"><span class="label">Spielrunden</span><span id="kpiRounds" class="value">0</span></div>
+        <div class="kpi"><span class="label">Zahlpfl. Strafe</span><span id="kpiCashCount" class="value">0</span></div>
+        <div class="kpi"><span class="label">Strafkasse</span><span id="kpiCashValue" class="value">0,00 €</span></div>
+        <div class="kpi"><span class="label">Lust</span><span id="kpiLustCount" class="value">0</span></div>
       </div>
-      <div class="pill-row" style="margin-top:10px;">
-        <span id="kpiArchiveCount" class="pill blue">0 Archive ausgewertet</span>
-        <span id="kpiPlayerCount" class="pill green">0 Preset-Spieler</span>
-        <span id="kpiPeriod" class="pill violet">Zeitraum: alle Archive</span>
-      </div>
+      <div class="pill-row" style="margin-top:10px;"><span id="kpiOfficial" class="pill green">0 offiziell gewertet</span><span id="kpiCashWarnings" class="pill amber">0 freie Warnungen</span><span id="kpiIds" class="pill blue">IDs: alle</span><span id="kpiPeriod" class="pill violet">Zeitraum: alle Archive</span></div>
     </section>
 
-    <section id="cashSection" class="card hidden">
-      <details id="cashDetails" class="fold-table">
-        <summary>
-          <span class="section-title">Strafgeld-Könige</span>
-          <span class="section-subtitle">Zeigt, wer den Strafgeldtopf finanziert hat. Straffreie Vergehen mit 0 Coins werden ignoriert. Strafkasse und Lustknobeln werden getrennt ausgewiesen.</span>
-        </summary>
-        <div class="mobile-hint">Auf kleinen Displays werden Tabellen als Karten dargestellt.</div>
-        <div class="table-wrap" style="margin-top:12px;">
-          <table>
-            <thead id="cashTableHead"></thead>
-            <tbody id="cashTableBody"></tbody>
-          </table>
-        </div>
+    <section id="tableSection" class="card hidden">
+      <div class="section-title">Rangliste</div>
+      <p class="section-subtitle">Sortiert nach Punkten. Der Prozentwert hinter dem Namen zeigt den rechnerischen Anteil am Strafgeldtopf.</p>
+      <div class="mobile-hint">Auf kleinen Displays ist die Tabelle besonders kompakt gesetzt.</div>
+      <div class="table-wrap" style="margin-top:12px;"><table class="main-table"><colgroup><col><col><col><col><col><col><col><col></colgroup><thead id="mainHead"></thead><tbody id="mainBody"></tbody></table></div>
+    </section>
+
+    <section id="unofficialSection" class="card hidden">
+      <details class="fold">
+        <summary><span class="section-title">Noch nicht offiziell gewertet</span><span class="section-subtitle">Spieler unterhalb der Mindest-Spielrunden. Sie können in der Filteransicht trotzdem angezeigt werden.</span></summary>
+        <div class="table-wrap" style="margin-top:12px;"><table class="compact-table"><thead id="unofficialHead"></thead><tbody id="unofficialBody"></tbody></table></div>
       </details>
     </section>
 
-    <section id="bonusSection" class="card hidden">
-      <details id="bonusDetails" class="fold-table">
-        <summary>
-          <span class="section-title">Knobel-Engel</span>
-          <span class="section-subtitle">Bonus-/Fairnesswertung für saubere Durchgänge, saubere Spielrunden und komplett saubere Spiele.</span>
-        </summary>
-        <div class="mobile-hint">Auf kleinen Displays werden Tabellen als Karten dargestellt.</div>
-        <div class="table-wrap" style="margin-top:12px;">
-          <table>
-            <thead id="bonusTableHead"></thead>
-            <tbody id="bonusTableBody"></tbody>
-          </table>
+
+
+    <!-- Admin-Bereich: bewusst am Seitenende platziert -->
+    <section class="card soft" id="adminLoginSection">
+      <details id="adminDetails" class="admin-details">
+        <summary><span class="admin-compact-title">Admin</span></summary>
+        <div class="admin-login-grid">
+          <label class="grid small field-with-help"><span class="field-title-row"><strong>Benutzer</strong><details class="inline-help"><summary>?</summary><div>Admin-Benutzer zum Entsperren der Konfiguration. Die Anmeldung schützt vor versehentlichem Ändern in der Oberfläche.</div></details></span><input id="adminUser" type="text" autocomplete="username" /></label>
+          <label class="grid small field-with-help"><span class="field-title-row"><strong>Passwort</strong><details class="inline-help"><summary>?</summary><div>Passwort zum Entsperren des Adminbereichs. Für echte Zugriffssicherheit wären zusätzlich Datenbank-Regeln oder Authentifizierung nötig.</div></details></span><input id="adminPass" type="password" autocomplete="current-password" /></label>
+          <div class="grid"><button id="adminLoginBtn" class="primary" type="button">Konfiguration entsperren</button><button id="adminLogoutBtn" class="ghost hidden" type="button">Konfiguration sperren</button></div>
+          <div id="adminStatus" class="note warn-note">Konfiguration gesperrt.</div>
         </div>
       </details>
     </section>
-
-    <section id="profitSection" class="card hidden">
-      <div class="section-title">Profiteure</div>
-      <p class="section-subtitle">Finaler fairer Anteil am Strafgeldtopf: Bonus-Coins minus separate Malus-Werte je Strafart. Nur positive Profiteur-Scores werden auf den Topf verteilt.</p>
-      <div class="mobile-hint">Auf kleinen Displays werden Tabellen als Karten dargestellt.</div>
-      <div class="table-wrap" style="margin-top:12px;">
-        <table>
-          <thead id="profitTableHead"></thead>
-          <tbody id="profitTableBody"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="actionsSection" class="card hidden admin-only">
-      <div class="section-title">Speichern und Export</div>
-      <p class="section-subtitle">Der Snapshot wird separat unter <code>stats/cashbox/periods/{periodId}</code> abgelegt und verändert keine Spielarchive.</p>
+    <section class="card soft admin-only hidden">
+      <div class="section-title">Tabelle filtern und sortieren</div>
+      <p class="section-subtitle">Diese Filter verändern nur die Ansicht, nicht die gespeicherte Wertung.</p>
       <div class="grid-4" style="margin-top:12px;">
-        <button id="loadStatsBtn" class="info" type="button">Gespeicherten Statistik-Snapshot laden</button>
-        <button id="saveStatsBtn" class="warn" type="button">Berechneten Snapshot in der Datenbank speichern</button>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Spieler suchen</strong><details class="inline-help"><summary>?</summary><div>Filtert die Tabelle nach Spielername oder Kürzel. Die Berechnung selbst wird dadurch nicht verändert.</div></details></span><input id="searchInput" type="search" placeholder="Name oder Kürzel" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Wertung anzeigen</strong><details class="inline-help"><summary>?</summary><div>Schaltet zwischen offizieller Wertung, allen Spielern und noch nicht offiziell gewerteten Spielern um. Grundlage ist die eingestellte Mindest-Spielrunden-Regel.</div></details></span><select id="eligibilityFilter"><option value="official">Offizielle Wertung</option><option value="all">Alle Spieler</option><option value="unofficial">Noch nicht offiziell</option></select></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Sortieren nach</strong><details class="inline-help"><summary>?</summary><div>Bestimmt, nach welchem Tabellenwert die angezeigte Rangliste sortiert wird. Die Grundberechnung bleibt unverändert.</div></details></span><select id="sortSelect"><option value="points">Punkte</option><option value="potSharePercent">Topf-Anteil</option><option value="roundsPlayed">Spielrunden</option><option value="beerReceived">+ Bier</option><option value="beerDebt">- Bier</option><option value="cashPenaltyCount">Strafe</option><option value="lustCount">Lust</option></select></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Reihenfolge</strong><details class="inline-help"><summary>?</summary><div>Legt fest, ob der gewählte Sortierwert absteigend oder aufsteigend angezeigt wird.</div></details></span><select id="sortDirSelect"><option value="desc">absteigend</option><option value="asc">aufsteigend</option></select></label>
+      </div>
+    </section>
+    <section id="tournamentAdminSection" class="card soft admin-only hidden">
+      <div class="section-title">Turnier / Auswertung konfigurieren</div>
+      <p class="section-subtitle">Hier werden alle Filter gepflegt, die beeinflussen, welche Knobelrunden in die Auswertung einfließen.</p>
+      <div class="grid-3" style="margin-top:12px;">
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Auswertungs-ID</strong><details class="inline-help"><summary>?</summary><div>Name dieser Auswertung, z. B. bierpunkte, ausfahrt-2026 oder turnier-sommer.</div></details></span><input id="configIdInput" type="text" value="bierpunkte" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Anzeigename</strong><details class="inline-help"><summary>?</summary><div>Lesbarer Titel für Dropdown und Kopfbereich.</div></details></span><input id="configTitleInput" type="text" value="" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Mindest-Spielrunden offizielle Wertung</strong><details class="inline-help"><summary>?</summary><div>Spieler unter dieser Anzahl ausgewerteter Spielrunden werden als „noch nicht offiziell“ geführt.</div></details></span><input id="minGamesInput" type="number" min="0" step="1" value="0" /></label>
+      </div>
+      <div class="grid-3" style="margin-top:12px;">
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Startdatum</strong><details class="inline-help"><summary>?</summary><div>Optionaler Filter: Nur Archive ab diesem Datum werden in diese Auswertung aufgenommen.</div></details></span><input id="startDateInput" type="date" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Enddatum</strong><details class="inline-help"><summary>?</summary><div>Optionaler Filter: Nur Archive bis einschließlich diesem Datum werden in diese Auswertung aufgenommen.</div></details></span><input id="endDateInput" type="date" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Einzelne Knobel-ID</strong><details class="inline-help"><summary>?</summary><div>Optional: eine einzelne Runden-ID auswerten, z. B. knobeln-20260626-1930. Wird zusätzlich zur Mehrfachliste berücksichtigt.</div></details></span><input id="singleGameIdInput" type="text" placeholder="knobeln-YYYYMMDD-HHMM" /></label>
+      </div>
+      <div class="grid-3" style="margin-top:12px;">
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Euro je Strafe</strong><details class="inline-help"><summary>?</summary><div>Geldwert pro Strafgeldpunkt für den Strafkassentopf. Standard: 2,00 €.</div></details></span><input id="cashPenaltyEuroInput" type="number" min="0" step="0.01" value="2" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Euro je Lust</strong><details class="inline-help"><summary>?</summary><div>Optionaler Geldwert pro Lustknobeln. Standard: 0,00 €, also straffrei.</div></details></span><input id="lustEuroInput" type="number" min="0" step="0.01" value="0" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>Freie Straf-Warnungen</strong><details class="inline-help"><summary>?</summary><div>Anzahl straffreier Strafgeld-Einträge je Spieler und Spiel. Standard: 1. Erst danach werden Strafgeldpunkte zahlpflichtig.</div></details></span><input id="freeCashWarningsInput" type="number" min="0" step="1" value="1" /></label>
+      </div>
+      <div class="grid-3" style="margin-top:12px;">
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>% Teilnahme</strong><details class="inline-help"><summary>?</summary><div>Anteil am Geldtopf, der nach echten Spielrunden verteilt wird. Wer mehr dabei war, bekommt hier mehr Anteil.</div></details></span><input id="participationWeightInput" type="number" min="0" max="100" step="1" value="30" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>% Leistung</strong><details class="inline-help"><summary>?</summary><div>Anteil am Geldtopf, der nach positiver Punktzahl verteilt wird. Nur offiziell gewertete Spieler zählen hier mit.</div></details></span><input id="performanceWeightInput" type="number" min="0" max="100" step="1" value="50" /></label>
+        <label class="grid small field-with-help"><span class="field-title-row"><strong>% Einzahlung</strong><details class="inline-help"><summary>?</summary><div>Anteil am Geldtopf, der nach dem eigenen Einzahlungsanteil zurückläuft. Das hält Vielspieler fair im Spiel.</div></details></span><input id="contributionWeightInput" type="number" min="0" max="100" step="1" value="20" /></label>
+      </div>
+      <label class="grid small field-with-help" style="margin-top:12px;"><span class="field-title-row"><strong>Mehrere Knobelrunden-IDs</strong><details class="inline-help"><summary>?</summary><div>Optional: mehrere Runden-IDs per Zeile, Komma oder Leerzeichen. Wenn leer, werden alle Archive im Zeitraum genutzt.</div></details></span><textarea id="gameIdsInput" placeholder="knobeln-20260626-1930&#10;knobeln-20260627-2015"></textarea></label>
+      <div class="grid-3" style="margin-top:12px;">
+        <button id="saveConfigBtn" class="primary" type="button">Auswertung speichern/übernehmen</button>
+        <button id="refreshConfigsBtn" class="info" type="button">Auswertungen aus Datenbank laden</button>
+        <button id="newConfigBtn" class="ghost" type="button">Neue Auswertung vorbereiten</button>
+        <button id="deleteConfigBtn" class="danger" type="button">Auswertung löschen</button>
+      </div>
+      <div class="note" id="configFeedback" style="margin-top:12px;">Noch keine Änderung.</div>
+    </section>
+    <section class="card soft admin-only hidden">
+      <div class="section-title">Punkte-Logik</div>
+      <p class="section-subtitle">Vorerst bewusst einfach: Bier-Bilanz plus je ein Minuspunkt pro zahlpflichtiger Strafe und Lustknobeln. Freie Straf-Warnungen werden mitgeführt, aber nicht berechnet.</p>
+      <div class="note warn-note" style="margin-top:12px;"><strong>Aktuelle Formel:</strong> Pkt. = +Bier - -Bier - zahlpflichtige Strafe - Lust.</div>
+      <div class="note" style="margin-top:12px;"><strong>Topf-Anteil:</strong> Teilnahme, Leistung und Einzahlung werden prozentual gewichtet. Weichen die drei Werte zusammen von 100 % ab, skaliert die Berechnung sie automatisch auf 100 %.</div>
+    </section>
+    <section id="exportSection" class="card hidden admin-only">
+      <div class="section-title">Speichern und Export</div>
+      <p class="section-subtitle">Der Snapshot wird separat gespeichert und verändert keine Spielarchive. Dieser Bereich gehört zum Adminbereich.</p>
+      <div class="grid-4" style="margin-top:12px;">
+        <button id="saveSnapshotBtn" class="warn" type="button">Berechneten Snapshot in Datenbank speichern</button>
+        <button id="loadSnapshotBtn" class="info" type="button">Gespeicherten Snapshot laden</button>
         <button id="downloadJsonBtn" class="info" type="button">JSON herunterladen</button>
         <button id="copyJsonBtn" class="ghost" type="button">JSON kopieren</button>
       </div>
     </section>
-
-    <section id="logSection" class="card soft admin-only hidden">
-      <details id="logDetails" class="admin-details">
-        <summary>
-          <span class="section-title">Protokoll</span>
-          <span class="section-subtitle">Technische Lade- und Berechnungshinweise. Initial eingeklappt und nur nach Admin-Anmeldung sichtbar.</span>
-        </summary>
-        <div id="logBox" class="log" style="margin-top:12px;">Bereit.</div>
-      </details>
+    <section id="logSection" class="card soft hidden admin-only">
+      <details class="fold"><summary><span class="section-title">Protokoll</span><span class="section-subtitle">Lade-, Speicher- und Berechnungsmeldungen.</span></summary><div id="logBox" class="log" style="margin-top:12px;">Bereit.</div></details>
     </section>
+
   </main>
 
-  <script>
+  <div id="infoModal" class="hidden" style="position:fixed;inset:0;z-index:1000;background:rgba(2,6,23,.76);display:grid;place-items:center;padding:14px;">
+    <div style="width:min(920px,100%);max-height:min(88vh,860px);overflow:auto;border-radius:22px;background:linear-gradient(180deg,rgba(17,24,39,.98),rgba(8,13,23,.98));border:1px solid rgba(255,255,255,.12);box-shadow:0 28px 80px rgba(0,0,0,.55);padding:16px;">
+      <div style="display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:12px;margin-bottom:12px;"><div><div class="section-title">Erklärung der Bierpunkte-Tabelle</div><p class="section-subtitle">Die Seite wertet abgeschlossene Knobelarchive aus und erstellt daraus eine kompakte Rangliste.</p></div><button id="infoCloseBtn" class="ghost" style="width:auto;min-height:36px;border-radius:999px;">Schließen</button></div>
+      <div class="grid">
+        <div class="note"><strong>Kopfbereich:</strong> Direkt unter dem Titel stehen Auswertung, aktive Filter, aktuelle Wertung und Status kompakt zusammen. Die Schaltfläche „Archive laden & berechnen“ startet die Neuberechnung.</div>
+        <div class="note"><strong>Punkte:</strong> Aktuell gilt: Pkt. = +Bier - -Bier - zahlpflichtige Strafe - Lust. Die Spalte Pkt. bleibt erhalten, damit später eine neue Zusatzlogik sauber ergänzt werden kann.</div>
+        <div class="note"><strong>Strafe & Lust:</strong> Strafgeld-Warnungen können je Spieler und Spiel straffrei sein. Nur zahlpflichtige Strafgeldpunkte gehen in Punkte und Geldtopf ein. Lust wird separat gezählt.</div>
+        <div class="note"><strong>Topf-Anteil:</strong> Der Prozentwert hinter dem Namen zeigt den rechnerischen Anteil am Geldtopf. Per Doppelklick auf den Namen öffnen sich Teilnahme, Leistung, Einzahlung und Auszahlung.</div>
+        <div class="note"><strong>Mindest-Spielrunden:</strong> Spieler unterhalb der eingestellten Anzahl Spielrunden erscheinen als „noch nicht offiziell gewertet“.</div>
+        <div class="note"><strong>Auswertung & Filter:</strong> Auswahl, Suche und Sortierung liegen im Adminbereich. Sie verändern nur die Ansicht beziehungsweise die aktive Auswertung.</div>
+        <div class="note"><strong>Adminbereich:</strong> Am Seitenende können Auswertungen, Runden-IDs, Zeiträume, Mindest-Spielrunden sowie Speichern und Export nach Anmeldung gepflegt werden.</div>
+      </div>
+    </div>
+  </div>
 
-    /**********************************************************************
-     * ZENTRALE EINSTELLUNGEN
-     * Modularer Aufbau: Neue Strafarten können in PENALTY_DEFINITIONS
-     * ergänzt werden, ohne die Berechnungslogik umzubauen.
-     **********************************************************************/
-    const DEFAULT_PERIOD_ID = 'knobelclub-2026';
-    const DEFAULT_MIN_GAMES_FOR_BONUS = 0;
-    const STORAGE_KEY = 'knobelklub-penalty-stats-settings-v3';
-    const ADMIN_SESSION_KEY = 'knobelklub-penalty-stats-admin-unlocked-v1';
-    const CONFIG_ADMIN_USER = 'admin';
-    const CONFIG_ADMIN_PASSWORD = 'admin';
-
-    const FIREBASE_CONFIG = {
-      apiKey: "AIzaSyAho0XYtG4P5nfwQVcgY9Gb3k_aUwF_1mA",
-      authDomain: "knobelklub.firebaseapp.com",
-      databaseURL: "https://knobelklub-default-rtdb.europe-west1.firebasedatabase.app/",
-      projectId: "knobelklub",
-      storageBucket: "knobelklub.firebasestorage.app",
-      messagingSenderId: "429666869030",
-      appId: "1:429666869030:web:cee5bc7cf01af7976c6be7",
-      measurementId: "G-317V3N4SHZ"
-    };
-
-    const PRESET_PLAYERS = [
-      { name: 'Alex', code: 'A' },
-      { name: 'Buri', code: 'B' },
-      { name: 'Dennis', code: 'D' },
-      { name: 'Klappi', code: 'K' },
-      { name: 'Niko', code: 'N' },
-      { name: 'Raik', code: 'R' },
-      { name: 'Sascha', code: 'S' },
-      { name: 'Thomas', code: 'TÜV' },
-      { name: 'Timo', code: 'T' }
-    ];
-
-    const PENALTY_DEFINITIONS = [
-      {
-        id: 'cashfault',
-        label: 'Strafkasse',
-        shortLabel: 'Strafkasse',
-        matchTypes: ['cashfault', 'mattenflucht', 'wuerfelflucht', 'neuwuerfeln'],
-        defaultCoinValueCents: 100,
-        defaultMalusFactor: 0.10,
-        defaultCoinsPerEvent: 0,
-        countEventsWithoutAmount: false
-      },
-      {
-        id: 'lust',
-        label: 'Lustknobeln',
-        shortLabel: 'Lust',
-        matchTypes: ['lust', 'lustknobeln', 'lust-knobeln', 'lustKnobeln', 'lust_knobeln', 'lustknobeln-event'],
-        defaultCoinValueCents: 100,
-        defaultMalusFactor: 0.10,
-        defaultCoinsPerEvent: 1,
-        countEventsWithoutAmount: true
-      }
-    ];
-
-    const BONUS_DEFINITIONS = [
-      {
-        id: 'cleanRound',
-        label: 'Bonus je sauberem Durchgang',
-        shortLabel: 'sauberer Durchgang',
-        metricKey: 'cleanRounds',
-        defaultCoins: 0.02
-      },
-      {
-        id: 'cleanTurn',
-        label: 'Bonus je sauberer Spielrunde',
-        shortLabel: 'saubere Spielrunde',
-        metricKey: 'cleanTurns',
-        defaultCoins: 0.00
-      },
-      {
-        id: 'cleanGame',
-        label: 'Bonus je komplett sauberem Spiel',
-        shortLabel: 'sauberes Spiel',
-        metricKey: 'cleanGames',
-        defaultCoins: 0.00
-      }
-    ];
-
-    const el = {
-      infoOpenBtn: document.getElementById('infoOpenBtn'),
-      infoCloseBtn: document.getElementById('infoCloseBtn'),
-      infoModal: document.getElementById('infoModal'),
-      statusBox: document.getElementById('statusBox'),
-      statusTitle: document.getElementById('statusTitle'),
-      statusMeta: document.getElementById('statusMeta'),
-      loadArchivesBtn: document.getElementById('loadArchivesBtn'),
-      loadStatsBtn: document.getElementById('loadStatsBtn'),
-      periodSelect: document.getElementById('periodSelect'),
-      periodInfoBox: document.getElementById('periodInfoBox'),
-      periodActionFeedback: document.getElementById('periodActionFeedback'),
-      periodRangePill: document.getElementById('periodRangePill'),
-      periodMinGamesPill: document.getElementById('periodMinGamesPill'),
-      periodAdminSection: document.getElementById('periodAdminSection'),
-      savePeriodBtn: document.getElementById('savePeriodBtn'),
-      refreshPeriodIdsBtn: document.getElementById('refreshPeriodIdsBtn'),
-      periodIdInput: document.getElementById('periodIdInput'),
-      startDateInput: document.getElementById('startDateInput'),
-      endDateInput: document.getElementById('endDateInput'),
-      minGamesInput: document.getElementById('minGamesInput'),
-      adminUserInput: document.getElementById('adminUserInput'),
-      adminPasswordInput: document.getElementById('adminPasswordInput'),
-      adminLoginBtn: document.getElementById('adminLoginBtn'),
-      adminLogoutBtn: document.getElementById('adminLogoutBtn'),
-      adminLoginStatus: document.getElementById('adminLoginStatus'),
-      adminLoginDetails: document.getElementById('adminLoginDetails'),
-      penaltyConfigSection: document.getElementById('penaltyConfigSection'),
-      bonusConfigSection: document.getElementById('bonusConfigSection'),
-      penaltySettingsGrid: document.getElementById('penaltySettingsGrid'),
-      bonusSettingsGrid: document.getElementById('bonusSettingsGrid'),
-      bonusPill: document.getElementById('bonusPill'),
-      malusPill: document.getElementById('malusPill'),
-      summarySection: document.getElementById('summarySection'),
-      cashSection: document.getElementById('cashSection'),
-      bonusSection: document.getElementById('bonusSection'),
-      profitSection: document.getElementById('profitSection'),
-      actionsSection: document.getElementById('actionsSection'),
-      logSection: document.getElementById('logSection'),
-      cashDetails: document.getElementById('cashDetails'),
-      bonusDetails: document.getElementById('bonusDetails'),
-      kpiGames: document.getElementById('kpiGames'),
-      kpiPenaltyValue: document.getElementById('kpiPenaltyValue'),
-      kpiPenaltyCoins: document.getElementById('kpiPenaltyCoins'),
-      kpiBonus: document.getElementById('kpiBonus'),
-      kpiProfit: document.getElementById('kpiProfit'),
-      kpiArchiveCount: document.getElementById('kpiArchiveCount'),
-      kpiPlayerCount: document.getElementById('kpiPlayerCount'),
-      kpiPeriod: document.getElementById('kpiPeriod'),
-      cashTableHead: document.getElementById('cashTableHead'),
-      cashTableBody: document.getElementById('cashTableBody'),
-      bonusTableHead: document.getElementById('bonusTableHead'),
-      bonusTableBody: document.getElementById('bonusTableBody'),
-      profitTableHead: document.getElementById('profitTableHead'),
-      profitTableBody: document.getElementById('profitTableBody'),
-      saveStatsBtn: document.getElementById('saveStatsBtn'),
-      downloadJsonBtn: document.getElementById('downloadJsonBtn'),
-      copyJsonBtn: document.getElementById('copyJsonBtn'),
-      logBox: document.getElementById('logBox')
-    };
-
-    const runtime = {
-      sdk: null,
-      app: null,
-      db: null,
-      lastSnapshot: null,
-      periodConfigs: {},
-      periodIdsLoadedFromFirebase: false
-    };
-
-    renderConfigControls();
-    bindEvents();
-    loadSettings();
-    renderConfigLockState();
-    renderEmpty();
-    loadAvailablePeriodIds({ silent: true });
-
-    function renderConfigControls() {
-      const help = (text) => `<details class="inline-help"><summary>?</summary><div>${escapeHtml(text)}</div></details>`;
-      el.penaltySettingsGrid.innerHTML = PENALTY_DEFINITIONS.map((definition) => `
-        <div class="history-zone">
-          <div class="history-zone-title">${escapeHtml(definition.label)}</div>
-          <label class="grid small field-with-help">
-            <span class="field-title-row"><strong>Coin-Wert in Cent</strong>${help('Geldwert eines Coins für diese Strafart. Dieser Wert fließt in den Strafgeldtopf und die Prozentanteile ein.')}</span>
-            <input id="penalty-${escapeHtml(definition.id)}-coinValue" data-config-input="1" type="number" min="0" step="1" value="${Number(definition.defaultCoinValueCents || 0)}" />
-          </label>
-          <label class="grid small field-with-help">
-            <span class="field-title-row"><strong>Malus je gewertetem Coin</strong>${help('Dieser Faktor wird vom Bonus abgezogen. Beispiel: 0,10 bedeutet 1 Straf-Coin erzeugt 0,10 Malus-Coins in der Profiteurwertung.')}</span>
-            <input id="penalty-${escapeHtml(definition.id)}-malus" data-config-input="1" type="number" min="0" step="0.01" value="${Number(definition.defaultMalusFactor || 0)}" />
-          </label>
-          <label class="grid small field-with-help">
-            <span class="field-title-row"><strong>Coins je Ereignis ohne gespeicherten Coinwert</strong>${help('Ersatzwert, falls die Datenbank ein Ereignis ohne gespeicherten Coin-/Cent-Wert liefert. Ist in der Datenbank ein Wert gespeichert, zählt immer der Datenbank-Wert; ein gespeicherter Wert 0 bleibt 0. Für Lustknobeln meist sinnvoll, für straffreie Strafkasse normalerweise 0 lassen.')}</span>
-            <input id="penalty-${escapeHtml(definition.id)}-coinsPerEvent" data-config-input="1" type="number" min="0" step="0.01" value="${Number(definition.defaultCoinsPerEvent || 0)}" />
-          </label>
-          <div class="tiny muted">Erkannte Datenbank-Typen: <code>${escapeHtml((definition.matchTypes || []).join(', '))}</code></div>
+  <div id="playerModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="playerModalTitle">
+    <div class="modal-panel" role="document">
+      <div class="modal-head">
+        <div>
+          <div id="playerModalTitle" class="section-title">Spieler</div>
+          <p id="playerModalSubtitle" class="section-subtitle">Topf-Anteil</p>
         </div>
-      `).join('');
-
-      el.bonusSettingsGrid.innerHTML = BONUS_DEFINITIONS.map((definition) => `
-        <label class="grid small field-with-help">
-          <span class="field-title-row"><strong>${escapeHtml(definition.label)}</strong>${help(getBonusHelpText(definition.id))}</span>
-          <input id="bonus-${escapeHtml(definition.id)}-coins" data-config-input="1" type="number" min="0" step="0.01" value="${Number(definition.defaultCoins || 0)}" />
-        </label>
-      `).join('');
-    }
-
-    function getBonusHelpText(id) {
-      if (id === 'cleanRound') return 'Bonus für jeden sauberen Durchgang eines Spiels. Ein Spiel hat maximal 3 Durchgänge.';
-      if (id === 'cleanTurn') return 'Bonus für jede saubere Spielrunde innerhalb eines Durchgangs. Ein Durchgang hat bis zu 10 Spielrunden.';
-      if (id === 'cleanGame') return 'Bonus, wenn ein Spieler in einer kompletten Partie keine gewertete konfigurierte Strafe hatte.';
-      return 'Bonuswert für diese Fairness-Kategorie.';
-    }
-
-    function bindEvents() {
-      el.loadArchivesBtn.addEventListener('click', () => loadArchivesAndCalculate());
-      el.loadStatsBtn.addEventListener('click', () => loadSavedStatsSnapshot());
-      el.saveStatsBtn.addEventListener('click', () => saveStatsSnapshot());
-      el.downloadJsonBtn.addEventListener('click', () => downloadCurrentSnapshot());
-      el.copyJsonBtn.addEventListener('click', () => copyCurrentSnapshot());
-      if (el.periodSelect) el.periodSelect.addEventListener('change', () => selectPeriod(el.periodSelect.value, { recalculate: true }));
-      if (el.savePeriodBtn) el.savePeriodBtn.addEventListener('click', () => saveCurrentPeriodConfig());
-      if (el.refreshPeriodIdsBtn) el.refreshPeriodIdsBtn.addEventListener('click', () => loadAvailablePeriodIds({ silent: false }));
-      if (el.adminLoginBtn) el.adminLoginBtn.addEventListener('click', () => handleAdminLogin());
-      if (el.adminLogoutBtn) el.adminLogoutBtn.addEventListener('click', () => handleAdminLogout());
-      if (el.adminPasswordInput) {
-        el.adminPasswordInput.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter') handleAdminLogin();
-        });
-      }
-      if (el.infoOpenBtn) el.infoOpenBtn.addEventListener('click', () => openInfoModal());
-      if (el.infoCloseBtn) el.infoCloseBtn.addEventListener('click', () => closeInfoModal());
-      if (el.infoModal) {
-        el.infoModal.addEventListener('click', (event) => {
-          if (event.target === el.infoModal) closeInfoModal();
-        });
-      }
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && el.infoModal && !el.infoModal.classList.contains('hidden')) closeInfoModal();
-      });
-      getConfigInputs().forEach((input) => {
-        input.addEventListener('change', () => {
-          saveSettings();
-          updateConfigPills();
-          if (runtime.lastSnapshot && runtime.lastSnapshot.archivesRaw) {
-            calculateAndRender(runtime.lastSnapshot.archivesRaw);
-          } else if (runtime.lastSnapshot) {
-            renderSnapshot(runtime.lastSnapshot);
-          }
-        });
-      });
-    }
-
-    function getConfigInputs() {
-      return Array.from(document.querySelectorAll('[data-config-input="1"]'))
-        .filter(Boolean);
-    }
-
-    function loadSettings() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        const settings = raw ? JSON.parse(raw) : {};
-        // Auswertungszeiträume im öffentlichen Dropdown sollen nicht mehr aus altem localStorage kommen.
-        // Die Liste wird nach dem Start ausschließlich aus der Datenbank neu aufgebaut.
-        runtime.periodConfigs = {};
-        const selectedPeriodId = sanitizeKey(settings.periodId || DEFAULT_PERIOD_ID);
-        renderPeriodSelect(selectedPeriodId);
-        applyPeriodConfigToAdminFields(selectedPeriodId);
-        const penaltySettings = settings.penalties || {};
-        PENALTY_DEFINITIONS.forEach((definition) => {
-          const stored = penaltySettings[definition.id] || {};
-          const coinInput = document.getElementById(`penalty-${definition.id}-coinValue`);
-          const malusInput = document.getElementById(`penalty-${definition.id}-malus`);
-          const coinsPerEventInput = document.getElementById(`penalty-${definition.id}-coinsPerEvent`);
-          if (coinInput) coinInput.value = stored.coinValueCents ?? definition.defaultCoinValueCents;
-          if (malusInput) malusInput.value = stored.malusFactor ?? definition.defaultMalusFactor;
-          if (coinsPerEventInput) coinsPerEventInput.value = stored.coinsPerEvent ?? definition.defaultCoinsPerEvent ?? 0;
-        });
-
-        const bonusSettings = settings.bonuses || {};
-        BONUS_DEFINITIONS.forEach((definition) => {
-          const input = document.getElementById(`bonus-${definition.id}-coins`);
-          if (input) input.value = bonusSettings[definition.id]?.coins ?? definition.defaultCoins;
-        });
-      } catch (error) {
-        log(`Einstellungen konnten nicht geladen werden: ${error.message}`);
-        runtime.periodConfigs = {};
-        renderPeriodSelect(DEFAULT_PERIOD_ID);
-        applyPeriodConfigToAdminFields(DEFAULT_PERIOD_ID);
-      }
-      updateConfigPills();
-    }
-
-    function saveSettings() {
-      const settings = getSettings();
-      settings.periodConfigs = deepClone(runtime.periodConfigs || {});
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    }
-
-    function getSettings() {
-      const selectedPeriodId = sanitizeKey(el.periodSelect?.value || DEFAULT_PERIOD_ID);
-      if (!runtime.periodConfigs || !Object.keys(runtime.periodConfigs).length) {
-        runtime.periodConfigs = normalizePeriodConfigs({}, { periodId: selectedPeriodId });
-      }
-      const selectedPeriod = runtime.periodConfigs[selectedPeriodId] || makePeriodConfig(selectedPeriodId, '', '', DEFAULT_MIN_GAMES_FOR_BONUS);
-      const penalties = {};
-      PENALTY_DEFINITIONS.forEach((definition) => {
-        const coinInput = document.getElementById(`penalty-${definition.id}-coinValue`);
-        const malusInput = document.getElementById(`penalty-${definition.id}-malus`);
-        const coinsPerEventInput = document.getElementById(`penalty-${definition.id}-coinsPerEvent`);
-        penalties[definition.id] = {
-          coinValueCents: Number(coinInput?.value || definition.defaultCoinValueCents || 0),
-          malusFactor: Number(malusInput?.value || definition.defaultMalusFactor || 0),
-          coinsPerEvent: Number(coinsPerEventInput?.value || definition.defaultCoinsPerEvent || 0)
-        };
-      });
-
-      const bonuses = {};
-      BONUS_DEFINITIONS.forEach((definition) => {
-        const input = document.getElementById(`bonus-${definition.id}-coins`);
-        bonuses[definition.id] = {
-          coins: Number(input?.value || definition.defaultCoins || 0)
-        };
-      });
-
-      return {
-        periodId: selectedPeriodId,
-        startDate: selectedPeriod.startDate || '',
-        endDate: selectedPeriod.endDate || '',
-        minGamesForBonus: Number(selectedPeriod.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS),
-        sortMode: 'profitScore',
-        penalties,
-        bonuses
-      };
-    }
-
-    function makePeriodConfig(periodId, startDate = '', endDate = '', minGamesForBonus = DEFAULT_MIN_GAMES_FOR_BONUS) {
-      const id = sanitizeKey(periodId || DEFAULT_PERIOD_ID);
-      return {
-        periodId: id,
-        label: id,
-        startDate: startDate || '',
-        endDate: endDate || '',
-        minGamesForBonus: Number(minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS)
-      };
-    }
-
-    function normalizePeriodConfigs(configs, fallbackSettings = {}) {
-      const normalized = {};
-      Object.entries(configs || {}).forEach(([key, value]) => {
-        const id = sanitizeKey((value && value.periodId) || key);
-        normalized[id] = makePeriodConfig(
-          id,
-          value && value.startDate || '',
-          value && value.endDate || '',
-          (value && value.minGamesForBonus) ?? DEFAULT_MIN_GAMES_FOR_BONUS
-        );
-      });
-      const fallbackId = sanitizeKey(fallbackSettings.periodId || DEFAULT_PERIOD_ID);
-      if (!normalized[fallbackId]) {
-        normalized[fallbackId] = makePeriodConfig(
-          fallbackId,
-          fallbackSettings.startDate || '',
-          fallbackSettings.endDate || '',
-          fallbackSettings.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS
-        );
-      }
-      if (!normalized[DEFAULT_PERIOD_ID]) {
-        normalized[DEFAULT_PERIOD_ID] = makePeriodConfig(DEFAULT_PERIOD_ID, '', '', DEFAULT_MIN_GAMES_FOR_BONUS);
-      }
-      return normalized;
-    }
-
-    function getPeriodSortKey(id) {
-      if (id === DEFAULT_PERIOD_ID) return `0-${id}`;
-      return `1-${id}`;
-    }
-
-    function renderPeriodSelect(selectedId = '') {
-      if (!el.periodSelect) return;
-      const current = sanitizeKey(selectedId || el.periodSelect.value || DEFAULT_PERIOD_ID);
-      const ids = Object.keys(runtime.periodConfigs || {}).sort((a, b) => getPeriodSortKey(a).localeCompare(getPeriodSortKey(b), 'de'));
-      const finalIds = ids.length ? ids : [DEFAULT_PERIOD_ID];
-      el.periodSelect.innerHTML = finalIds
-        .map((id) => `<option value="${escapeHtml(id)}">${escapeHtml(runtime.periodConfigs[id]?.label || id)}</option>`)
-        .join('');
-      el.periodSelect.value = runtime.periodConfigs[current] ? current : finalIds[0];
-      updatePeriodInfoBox();
-    }
-
-    function applyPeriodConfigToAdminFields(periodId) {
-      const id = sanitizeKey(periodId || el.periodSelect?.value || DEFAULT_PERIOD_ID);
-      const config = runtime.periodConfigs[id] || makePeriodConfig(id, '', '', DEFAULT_MIN_GAMES_FOR_BONUS);
-      if (el.periodIdInput) el.periodIdInput.value = config.periodId;
-      if (el.startDateInput) el.startDateInput.value = config.startDate || '';
-      if (el.endDateInput) el.endDateInput.value = config.endDate || '';
-      if (el.minGamesInput) el.minGamesInput.value = config.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS;
-      updatePeriodInfoBox();
-    }
-
-    function updatePeriodInfoBox() {
-      const settings = getSettings();
-      const periodText = buildPeriodLabel(settings);
-      const minGames = Number(settings.minGamesForBonus || 0);
-      const periodShortText = String(periodText || '').replace(/^Zeitraum:\s*/i, '');
-      if (el.periodRangePill) el.periodRangePill.textContent = periodShortText || 'alle Archive';
-      if (el.periodMinGamesPill) el.periodMinGamesPill.textContent = formatInt(minGames);
-      if (el.periodInfoBox) {
-        el.periodInfoBox.innerHTML = `${escapeHtml(periodText)}<br>Mindestspiele für Bonuswertung: <strong>${formatInt(minGames)}</strong>`;
-      }
-    }
-
-    function selectPeriod(periodId, options = {}) {
-      const id = sanitizeKey(periodId || DEFAULT_PERIOD_ID);
-      if (!runtime.periodConfigs[id]) runtime.periodConfigs[id] = makePeriodConfig(id, '', '', DEFAULT_MIN_GAMES_FOR_BONUS);
-      if (el.periodSelect) el.periodSelect.value = id;
-      applyPeriodConfigToAdminFields(id);
-      saveSettings();
-      updateConfigPills();
-      if (options.recalculate) {
-        if (runtime.lastSnapshot && runtime.lastSnapshot.archivesRaw) {
-          calculateAndRender(runtime.lastSnapshot.archivesRaw);
-        } else if (runtime.lastSnapshot) {
-          renderSnapshot(runtime.lastSnapshot);
-        }
-      }
-    }
-
-    async function saveCurrentPeriodConfig() {
-      if (!isAdminUnlocked()) {
-        showPeriodActionFeedback('Bitte zuerst die Admin-Konfiguration entsperren.', 'error');
-        return;
-      }
-      const id = sanitizeKey(el.periodIdInput?.value || DEFAULT_PERIOD_ID);
-      const config = makePeriodConfig(
-        id,
-        el.startDateInput?.value || '',
-        el.endDateInput?.value || '',
-        Number(el.minGamesInput?.value || DEFAULT_MIN_GAMES_FOR_BONUS)
-      );
-
-      setBusy(true, 'Auswertungszeitraum wird in der Datenbank gespeichert …');
-      showPeriodActionFeedback('Datenbank-Abgleich läuft …');
-
-      try {
-        const db = await initFirebase();
-        const sdk = runtime.sdk;
-        await sdk.set(sdk.ref(db, `stats/cashbox/periodConfigs/${id}`), {
-          ...config,
-          updatedAt: new Date().toISOString(),
-          updatedBy: 'strafkasse.html'
-        });
-        runtime.periodConfigs[id] = config;
-        renderPeriodSelect(id);
-        selectPeriod(id, { recalculate: true });
-        saveSettings();
-        const message = `Auswertungszeitraum „${id}“ in der Datenbank gespeichert und übernommen.`;
-        setStatus('Zeitraum gespeichert', message, true);
-        showPeriodActionFeedback(message, 'success');
-        log(message);
-      } catch (error) {
-        const message = `Auswertungszeitraum „${id}“ konnte nicht in der Datenbank gespeichert werden. Die öffentliche Auswahl bleibt unverändert: ${error.message || error}`;
-        setStatus('Zeitraum nicht gespeichert', message, false, true);
-        showPeriodActionFeedback(message, 'error');
-        log(message);
-      } finally {
-        setBusy(false);
-      }
-    }
-
-    async function loadAvailablePeriodIds(options = {}) {
-      const manual = !options.silent;
-      if (manual) {
-        setBusy(true, 'Periodenliste wird aus der Datenbank geladen …');
-        showPeriodActionFeedback('Periodenliste wird aus der Datenbank geladen …');
-      }
-      try {
-        const db = await initFirebase();
-        const sdk = runtime.sdk;
-        const [periodsSnapshot, configsSnapshot] = await Promise.all([
-          sdk.get(sdk.ref(db, 'stats/cashbox/periods')),
-          sdk.get(sdk.ref(db, 'stats/cashbox/periodConfigs'))
-        ]);
-        const periods = periodsSnapshot.val() || {};
-        const configs = configsSnapshot.val() || {};
-        const freshPeriodConfigs = {};
-
-        Object.entries(periods || {}).forEach(([key, value]) => {
-          const id = sanitizeKey(key);
-          if (!id) return;
-          freshPeriodConfigs[id] = makePeriodConfig(
-            id,
-            value && value.filters && value.filters.startDate || '',
-            value && value.filters && value.filters.endDate || '',
-            (value && value.config && value.config.minGamesForBonus) ?? DEFAULT_MIN_GAMES_FOR_BONUS
-          );
-        });
-
-        Object.entries(configs || {}).forEach(([key, value]) => {
-          const id = sanitizeKey((value && value.periodId) || key);
-          if (!id) return;
-          freshPeriodConfigs[id] = makePeriodConfig(
-            id,
-            value && value.startDate || freshPeriodConfigs[id]?.startDate || '',
-            value && value.endDate || freshPeriodConfigs[id]?.endDate || '',
-            (value && value.minGamesForBonus) ?? freshPeriodConfigs[id]?.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS
-          );
-        });
-
-        // Wichtig: nicht mehr mit altem localStorage mischen.
-        // Dadurch verschwinden alte Test-IDs wie „test“ oder „ausfahrt-2026“, wenn sie nicht in der Datenbank stehen.
-        runtime.periodConfigs = freshPeriodConfigs;
-        runtime.periodIdsLoadedFromFirebase = true;
-
-        const availableIds = Object.keys(runtime.periodConfigs || {});
-        const previous = sanitizeKey(el.periodSelect?.value || '');
-        const current = runtime.periodConfigs[previous]
-          ? previous
-          : (runtime.periodConfigs[DEFAULT_PERIOD_ID] ? DEFAULT_PERIOD_ID : (availableIds[0] || DEFAULT_PERIOD_ID));
-
-        renderPeriodSelect(current);
-        applyPeriodConfigToAdminFields(el.periodSelect?.value || current);
-        saveSettings();
-
-        const message = availableIds.length
-          ? `${availableIds.length} Auswertungszeitraum${availableIds.length === 1 ? '' : 'e'} aus der Datenbank geladen.`
-          : 'Keine Auswertungszeiträume in der Datenbank gefunden. Alte lokale Browser-Einträge wurden ignoriert.';
-        if (manual) {
-          setStatus('Periodenliste geladen', message, true);
-          showPeriodActionFeedback(message, availableIds.length ? 'success' : 'error');
-        }
-        log(message);
-      } catch (error) {
-        const message = `Periodenliste konnte nicht aus der Datenbank geladen werden: ${error.message || error}`;
-        if (manual) {
-          setStatus('Periodenliste nicht geladen', message, false, true);
-          showPeriodActionFeedback(message, 'error');
-        }
-        log(message);
-      } finally {
-        if (manual) setBusy(false);
-      }
-    }
-
-    function updateConfigPills() {
-      const settings = getSettings();
-      const bonusParts = BONUS_DEFINITIONS
-        .map((definition) => `${definition.shortLabel}: ${formatDecimal(settings.bonuses[definition.id]?.coins || 0, 2)}`)
-        .join(' · ');
-      const malusParts = PENALTY_DEFINITIONS
-        .map((definition) => `${definition.shortLabel}: ${formatDecimal(settings.penalties[definition.id]?.malusFactor || 0, 2)}`)
-        .join(' · ');
-      el.bonusPill.textContent = bonusParts;
-      el.malusPill.textContent = malusParts;
-    }
-
-    function isAdminUnlocked() {
-      try {
-        return sessionStorage.getItem(ADMIN_SESSION_KEY) === '1';
-      } catch (error) {
-        return false;
-      }
-    }
-
-    function setAdminUnlocked(value) {
-      try {
-        if (value) sessionStorage.setItem(ADMIN_SESSION_KEY, '1');
-        else sessionStorage.removeItem(ADMIN_SESSION_KEY);
-      } catch (error) {
-        console.error(error);
-      }
-      renderConfigLockState();
-    }
-
-    function renderConfigLockState() {
-      const unlocked = isAdminUnlocked();
-      document.querySelectorAll('[data-config-input="1"]').forEach((input) => {
-        input.disabled = !unlocked;
-      });
-      if (el.periodIdInput) el.periodIdInput.disabled = !unlocked;
-      if (el.startDateInput) el.startDateInput.disabled = !unlocked;
-      if (el.endDateInput) el.endDateInput.disabled = !unlocked;
-      if (el.minGamesInput) el.minGamesInput.disabled = !unlocked;
-      if (el.savePeriodBtn) el.savePeriodBtn.disabled = !unlocked;
-      if (el.refreshPeriodIdsBtn) el.refreshPeriodIdsBtn.disabled = !unlocked;
-      if (el.adminLoginBtn) el.adminLoginBtn.classList.toggle('hidden', unlocked);
-      if (el.adminLogoutBtn) el.adminLogoutBtn.classList.toggle('hidden', !unlocked);
-      if (el.periodAdminSection) {
-        el.periodAdminSection.classList.toggle('locked-panel', !unlocked);
-        el.periodAdminSection.classList.toggle('hidden', !unlocked);
-      }
-      if (el.penaltyConfigSection) {
-        el.penaltyConfigSection.classList.toggle('locked-panel', !unlocked);
-        el.penaltyConfigSection.classList.toggle('hidden', !unlocked);
-      }
-      if (el.bonusConfigSection) {
-        el.bonusConfigSection.classList.toggle('locked-panel', !unlocked);
-        el.bonusConfigSection.classList.toggle('hidden', !unlocked);
-      }
-      if (el.actionsSection) el.actionsSection.classList.toggle('hidden', !unlocked);
-      if (el.saveStatsBtn) el.saveStatsBtn.disabled = !runtime.lastSnapshot;
-      if (el.downloadJsonBtn) el.downloadJsonBtn.disabled = !runtime.lastSnapshot;
-      if (el.copyJsonBtn) el.copyJsonBtn.disabled = !runtime.lastSnapshot;
-      if (el.logSection) el.logSection.classList.toggle('hidden', !unlocked);
-      if (el.adminLoginDetails && unlocked) el.adminLoginDetails.open = true;
-      if (el.adminLoginStatus) {
-        el.adminLoginStatus.classList.toggle('warn-note', !unlocked);
-        el.adminLoginStatus.textContent = unlocked
-          ? 'Konfiguration entsperrt. Auswertungszeiträume, Strafarten, Coin-Werte, Malus- und Bonuswerte können angepasst werden.'
-          : 'Konfiguration gesperrt. Nur angemeldete Admins können Auswertungszeiträume, Strafarten, Coin-Werte, Malus- und Bonuswerte ändern.';
-      }
-    }
-
-    function handleAdminLogin() {
-      const user = String(el.adminUserInput?.value || '').trim();
-      const pass = String(el.adminPasswordInput?.value || '');
-      if (user === CONFIG_ADMIN_USER && pass === CONFIG_ADMIN_PASSWORD) {
-        setAdminUnlocked(true);
-        if (el.adminPasswordInput) el.adminPasswordInput.value = '';
-        log('Konfiguration entsperrt.');
-        return;
-      }
-      setAdminUnlocked(false);
-      if (el.adminLoginStatus) el.adminLoginStatus.textContent = 'Anmeldung fehlgeschlagen. Benutzer/Passwort prüfen.';
-      log('Admin-Anmeldung fehlgeschlagen.');
-    }
-
-    function handleAdminLogout() {
-      setAdminUnlocked(false);
-      log('Konfiguration gesperrt.');
-    }
-
-    function openInfoModal() {
-      if (!el.infoModal) return;
-      el.infoModal.classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
-      if (el.infoCloseBtn) el.infoCloseBtn.focus();
-    }
-
-    function closeInfoModal() {
-      if (!el.infoModal) return;
-      el.infoModal.classList.add('hidden');
-      document.body.style.overflow = '';
-      if (el.infoOpenBtn) el.infoOpenBtn.focus();
-    }
-
-    async function initFirebase() {
-      if (runtime.db) return runtime.db;
-      const [appModule, databaseModule] = await Promise.all([
-        import('https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js'),
-        import('https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js')
-      ]);
-      runtime.sdk = databaseModule;
-      runtime.app = appModule.initializeApp(FIREBASE_CONFIG);
-      runtime.db = databaseModule.getDatabase(runtime.app);
-      return runtime.db;
-    }
-
-    async function loadArchivesAndCalculate() {
-      setBusy(true, 'Archive werden geladen …');
-      try {
-        const db = await initFirebase();
-        const sdk = runtime.sdk;
-        const snapshot = await sdk.get(sdk.ref(db, 'games'));
-        const gamesMap = snapshot.val() || {};
-        const archives = collectArchivesFromGamesMap(gamesMap);
-        log(`${archives.length} Archiv-Einträge aus der Datenbank gelesen.`);
-        calculateAndRender(archives);
-        setStatus('verbunden', `${archives.length} Archiv-Einträge gelesen und ausgewertet.`, true);
-      } catch (error) {
-        console.error(error);
-        setStatus('Fehler beim Laden', error.message || String(error), false, true);
-        log(`Fehler: ${error.message || error}`);
-      } finally {
-        setBusy(false);
-      }
-    }
-
-    function collectArchivesFromGamesMap(gamesMap) {
-      const archives = [];
-      Object.entries(gamesMap || {}).forEach(([code, value]) => {
-        const safeCode = sanitizeKey(code);
-        if (!value || typeof value !== 'object') return;
-
-        if (value.archive && typeof value.archive === 'object') {
-          Object.entries(value.archive).forEach(([archiveKey, item]) => {
-            const archive = item && item.archive ? item.archive : item;
-            if (!archive || typeof archive !== 'object') return;
-            archives.push({
-              source: 'archive',
-              code: safeCode,
-              archiveKey: sanitizeKey(archiveKey),
-              archivedAt: item && item.archivedAt ? item.archivedAt : archive.finishedAt,
-              archive: normalizeArchive(archive, safeCode, archiveKey)
-            });
-          });
-        }
-
-        const publicHistory = value.live && value.live.public && value.live.public.state && Array.isArray(value.live.public.state.gamesHistory)
-          ? value.live.public.state.gamesHistory
-          : [];
-        publicHistory.forEach((archive, index) => {
-          archives.push({
-            source: 'live-public-gamesHistory',
-            code: safeCode,
-            archiveKey: `public-${index}`,
-            archivedAt: archive.finishedAt,
-            archive: normalizeArchive(archive, safeCode, `public-${index}`)
-          });
-        });
-
-        const legacyHistory = value.live && value.live.state && Array.isArray(value.live.state.gamesHistory)
-          ? value.live.state.gamesHistory
-          : [];
-        legacyHistory.forEach((archive, index) => {
-          archives.push({
-            source: 'live-legacy-gamesHistory',
-            code: safeCode,
-            archiveKey: `legacy-${index}`,
-            archivedAt: archive.finishedAt,
-            archive: normalizeArchive(archive, safeCode, `legacy-${index}`)
-          });
-        });
-      });
-      return archives;
-    }
-
-    function calculateAndRender(archivesRaw) {
-      saveSettings();
-      const settings = getSettings();
-      const filtered = filterArchivesByPeriod(archivesRaw, settings);
-      const snapshot = calculateStatsSnapshot(filtered, settings);
-      snapshot.archivesRaw = archivesRaw;
-      runtime.lastSnapshot = snapshot;
-      renderSnapshot(snapshot);
-    }
-
-    function calculateStatsSnapshot(archiveItems, settings) {
-      const presetMap = new Map(PRESET_PLAYERS.map((player) => [normalizeName(player.name), player]));
-      const players = new Map();
-      const processedGames = {};
-      const warnings = [];
-      const penaltyDefinitionsByMatchType = buildPenaltyMatchMap();
-
-      function ensurePlayer(playerLike) {
-        const preset = resolvePresetPlayer(playerLike, presetMap);
-        if (!preset) return null;
-        const key = normalizeName(preset.name);
-        if (!players.has(key)) {
-          const penalties = {};
-          PENALTY_DEFINITIONS.forEach((definition) => {
-            penalties[definition.id] = {
-              count: 0,
-              coins: 0,
-              cents: 0,
-              malusCoins: 0,
-              sharePercent: 0
-            };
-          });
-          const bonuses = {};
-          BONUS_DEFINITIONS.forEach((definition) => {
-            bonuses[definition.id] = {
-              metric: 0,
-              coins: 0,
-              sharePercent: 0
-            };
-          });
-          players.set(key, {
-            playerId: key,
-            name: preset.name,
-            code: preset.code,
-            gamesPlayed: 0,
-            roundCount: 0,
-            turnCount: 0,
-            cleanRounds: 0,
-            cleanTurns: 0,
-            cleanGames: 0,
-            penalties,
-            bonuses,
-            totalPenaltyCount: 0,
-            totalPenaltyCoins: 0,
-            totalPenaltyCents: 0,
-            totalBonusCoins: 0,
-            totalMalusCoins: 0,
-            profitScoreCoins: 0,
-            penaltySharePercent: 0,
-            bonusSharePercent: 0,
-            profitSharePercent: 0,
-            profitValueCents: 0,
-            penaltyValuePerGameCents: 0,
-            bonusEligible: true,
-            gameIds: []
-          });
-        }
-        return players.get(key);
-      }
-
-      archiveItems.forEach((item) => {
-        const archive = normalizeArchive(item.archive, item.code, item.archiveKey);
-        if (!archive) return;
-        const gameId = buildGameId(item, archive);
-        if (processedGames[gameId]) return;
-        processedGames[gameId] = true;
-
-        const archivePlayers = Array.isArray(archive.players) ? archive.players : [];
-        const presetParticipants = archivePlayers
-          .map((player) => resolvePresetPlayer(player, presetMap))
-          .filter(Boolean);
-        if (!presetParticipants.length) return;
-
-        const rounds = extractFinishedRoundSnapshots(archive);
-        if (!rounds.length) warnings.push(`${archive.title || item.code}: keine abgeschlossenen Durchgänge gefunden.`);
-        const totalTurnsInGame = rounds.reduce((sum, round) => sum + Number(round.turnsCompleted || 0), 0);
-
-        const paidPenalties = extractPaidPenalties(archive, settings, presetMap, penaltyDefinitionsByMatchType);
-        const penaltiesByPlayer = groupPaidPenaltiesByPlayer(paidPenalties);
-
-        presetParticipants.forEach((preset) => {
-          const stat = ensurePlayer(preset);
-          if (!stat) return;
-          stat.gamesPlayed += 1;
-          stat.roundCount += rounds.length;
-          stat.turnCount += totalTurnsInGame;
-          stat.gameIds.push(gameId);
-        });
-
-        paidPenalties.forEach((entry) => {
-          const stat = ensurePlayer(entry.preset);
-          if (!stat) return;
-          if (!stat.gameIds.includes(gameId)) {
-            stat.gamesPlayed += 1;
-            stat.roundCount += rounds.length;
-            stat.turnCount += totalTurnsInGame;
-            stat.gameIds.push(gameId);
-          }
-          const bucket = stat.penalties[entry.definition.id];
-          bucket.count += 1;
-          bucket.coins += entry.coins;
-          bucket.cents += entry.cents;
-          stat.totalPenaltyCount += 1;
-          stat.totalPenaltyCoins += entry.coins;
-          stat.totalPenaltyCents += entry.cents;
-        });
-
-        presetParticipants.forEach((preset) => {
-          const stat = ensurePlayer(preset);
-          if (!stat) return;
-          const playerKey = normalizeName(preset.name);
-          const playerPenalties = penaltiesByPlayer.get(playerKey) || [];
-          const penaltiesByRound = new Map();
-          playerPenalties.forEach((entry) => {
-            const roundIndex = Number(entry.roundIndex || 0);
-            if (!penaltiesByRound.has(roundIndex)) penaltiesByRound.set(roundIndex, []);
-            penaltiesByRound.get(roundIndex).push(entry);
-          });
-
-          let gameHadPaidPenalty = playerPenalties.length > 0;
-          rounds.forEach((round) => {
-            const roundIndex = Number(round.index || 0);
-            const roundTurns = Number(round.turnsCompleted || 0);
-            const dirtyPenaltyCount = (penaltiesByRound.get(roundIndex) || []).length;
-            if (!dirtyPenaltyCount) stat.cleanRounds += 1;
-            stat.cleanTurns += Math.max(0, roundTurns - Math.min(roundTurns, dirtyPenaltyCount));
-          });
-          if (!gameHadPaidPenalty && rounds.length) stat.cleanGames += 1;
-        });
-      });
-
-      const playerRows = Array.from(players.values());
-      const summaryPenaltyByType = {};
-      PENALTY_DEFINITIONS.forEach((definition) => {
-        summaryPenaltyByType[definition.id] = { count: 0, coins: 0, cents: 0, malusCoins: 0 };
-      });
-
-      let totalPenaltyCoins = 0;
-      let totalPenaltyCents = 0;
-      playerRows.forEach((item) => {
-        PENALTY_DEFINITIONS.forEach((definition) => {
-          const bucket = item.penalties[definition.id];
-          const penaltySettings = settings.penalties[definition.id] || {};
-          bucket.coins = roundTo(bucket.coins, 4);
-          bucket.cents = Math.round(bucket.cents || 0);
-          bucket.malusCoins = roundTo(bucket.coins * Number(penaltySettings.malusFactor || 0), 4);
-          item.totalMalusCoins += bucket.malusCoins;
-          summaryPenaltyByType[definition.id].count += bucket.count;
-          summaryPenaltyByType[definition.id].coins += bucket.coins;
-          summaryPenaltyByType[definition.id].cents += bucket.cents;
-          summaryPenaltyByType[definition.id].malusCoins += bucket.malusCoins;
-        });
-        item.totalPenaltyCoins = roundTo(item.totalPenaltyCoins, 4);
-        item.totalPenaltyCents = Math.round(item.totalPenaltyCents || 0);
-        item.totalMalusCoins = roundTo(item.totalMalusCoins, 4);
-        item.penaltyValuePerGameCents = item.gamesPlayed ? Math.round(item.totalPenaltyCents / item.gamesPlayed) : 0;
-        totalPenaltyCoins += item.totalPenaltyCoins;
-        totalPenaltyCents += item.totalPenaltyCents;
-      });
-
-      playerRows.forEach((item) => {
-        item.bonusEligible = Number(item.gamesPlayed || 0) >= Number(settings.minGamesForBonus || 0);
-        let totalBonusCoins = 0;
-        BONUS_DEFINITIONS.forEach((definition) => {
-          const metricValue = Number(item[definition.metricKey] || 0);
-          const coins = roundTo(metricValue * Number(settings.bonuses[definition.id]?.coins || 0), 4);
-          item.bonuses[definition.id].metric = metricValue;
-          item.bonuses[definition.id].coins = coins;
-          totalBonusCoins += item.bonusEligible ? coins : 0;
-        });
-        item.totalBonusCoins = roundTo(totalBonusCoins, 4);
-        item.profitScoreCoins = roundTo(Math.max(0, item.totalBonusCoins - item.totalMalusCoins), 4);
-        item.cleanRoundRatePercent = item.roundCount ? roundTo((item.cleanRounds / item.roundCount) * 100, 4) : 0;
-        item.cleanTurnRatePercent = item.turnCount ? roundTo((item.cleanTurns / item.turnCount) * 100, 4) : 0;
-        item.penaltySharePercent = totalPenaltyCents > 0 ? roundTo((item.totalPenaltyCents / totalPenaltyCents) * 100, 4) : 0;
-      });
-
-      PENALTY_DEFINITIONS.forEach((definition) => {
-        const totalTypeCents = summaryPenaltyByType[definition.id].cents || 0;
-        playerRows.forEach((item) => {
-          const bucket = item.penalties[definition.id];
-          bucket.sharePercent = totalTypeCents > 0 ? roundTo((bucket.cents / totalTypeCents) * 100, 4) : 0;
-        });
-      });
-
-      const totalBonusCoins = playerRows.reduce((sum, item) => sum + Number(item.totalBonusCoins || 0), 0);
-      BONUS_DEFINITIONS.forEach((definition) => {
-        const totalBonusForType = playerRows.reduce((sum, item) => sum + Number(item.bonuses[definition.id]?.coins || 0), 0);
-        playerRows.forEach((item) => {
-          item.bonuses[definition.id].sharePercent = totalBonusForType > 0
-            ? roundTo((Number(item.bonuses[definition.id].coins || 0) / totalBonusForType) * 100, 4)
-            : 0;
-        });
-      });
-      playerRows.forEach((item) => {
-        item.bonusSharePercent = totalBonusCoins > 0 ? roundTo((item.totalBonusCoins / totalBonusCoins) * 100, 4) : 0;
-      });
-
-      const totalProfitScoreCoins = playerRows.reduce((sum, item) => sum + Number(item.profitScoreCoins || 0), 0);
-      playerRows.forEach((item) => {
-        item.profitSharePercent = totalProfitScoreCoins > 0 ? roundTo((item.profitScoreCoins / totalProfitScoreCoins) * 100, 4) : 0;
-        item.profitValueCents = Math.round(totalPenaltyCents * (Number(item.profitSharePercent || 0) / 100));
-        item.gameIds = Array.from(new Set(item.gameIds || []));
-      });
-
-      Object.values(summaryPenaltyByType).forEach((bucket) => {
-        bucket.coins = roundTo(bucket.coins, 4);
-        bucket.cents = Math.round(bucket.cents || 0);
-        bucket.malusCoins = roundTo(bucket.malusCoins, 4);
-      });
-
-      return {
-        schemaVersion: 2,
-        type: 'knobelklub-penalty-stats',
-        periodId: settings.periodId,
-        generatedAt: new Date().toISOString(),
-        filters: {
-          startDate: settings.startDate,
-          endDate: settings.endDate
-        },
-        config: {
-          penalties: deepClone(settings.penalties),
-          bonuses: deepClone(settings.bonuses),
-          minGamesForBonus: settings.minGamesForBonus,
-          penaltyDefinitions: PENALTY_DEFINITIONS.map((definition) => ({
-            id: definition.id,
-            label: definition.label,
-            matchTypes: definition.matchTypes,
-            countEventsWithoutAmount: Boolean(definition.countEventsWithoutAmount),
-            defaultCoinsPerEvent: Number(definition.defaultCoinsPerEvent || 0)
-          })),
-          bonusDefinitions: BONUS_DEFINITIONS.map((definition) => ({
-            id: definition.id,
-            label: definition.label,
-            metricKey: definition.metricKey
-          })),
-          cleanRoundDefinition: 'Sauberer Durchgang = keine tatsächlich gewertete/bezahlte konfigurierte Strafe in diesem Durchgang.',
-          cleanTurnDefinition: 'Saubere Spielrunde = abgeschlossene Spielrunden minus tatsächlich gewertete/bezahlte Strafen des Spielers im Durchgang; ohne exakten Spielrunden-Zeitstempel wird jede bezahlte Strafe als eine verschmutzte Spielrunde gewertet.',
-          cleanGameDefinition: 'Komplett sauberes Spiel = Preset-Spieler hatte in der archivierten Partie keine tatsächlich gewertete/bezahlte konfigurierte Strafe.'
-        },
-        summary: {
-          archiveItemsRead: archiveItems.length,
-          gamesProcessed: Object.keys(processedGames).length,
-          playerCount: playerRows.length,
-          totalPenaltyCoins: roundTo(totalPenaltyCoins, 4),
-          totalPenaltyCents: Math.round(totalPenaltyCents),
-          totalBonusCoins: roundTo(totalBonusCoins, 4),
-          totalProfitScoreCoins: roundTo(totalProfitScoreCoins, 4),
-          totalCleanRounds: playerRows.reduce((sum, item) => sum + Number(item.cleanRounds || 0), 0),
-          totalCleanTurns: playerRows.reduce((sum, item) => sum + Number(item.cleanTurns || 0), 0),
-          totalCleanGames: playerRows.reduce((sum, item) => sum + Number(item.cleanGames || 0), 0),
-          penaltyByType: summaryPenaltyByType,
-          warnings
-        },
-        players: sortPlayers(playerRows, settings.sortMode),
-        processedGames
-      };
-    }
-
-    function normalizePenaltyType(value) {
-      const raw = String(value || '').trim();
-      const compact = normalizeName(raw).replace(/[^a-z0-9]/g, '');
-      if (!compact) return '';
-      if (compact.includes('lust')) return 'lust';
-      if (compact.includes('strafkasse')) return 'cashfault';
-      if (compact.includes('cashfault')) return 'cashfault';
-      if (compact.includes('mattenflucht')) return 'mattenflucht';
-      if (compact.includes('wuerfelflucht') || compact.includes('wurfelflucht')) return 'wuerfelflucht';
-      if (compact.includes('neuwuerfeln') || compact.includes('neuwurfeln')) return 'neuwuerfeln';
-      return compact;
-    }
-
-    function getEventPenaltyType(value) {
-      if (!value || typeof value !== 'object') return '';
-      return normalizePenaltyType(value.type || value.kind || value.actionType || value.eventType || value.penaltyType || value.label || value.title || value.message || '');
-    }
-
-    function buildPenaltyMatchMap() {
-      const map = new Map();
-      PENALTY_DEFINITIONS.forEach((definition) => {
-        (definition.matchTypes || []).forEach((type) => map.set(normalizePenaltyType(type), definition));
-      });
-      return map;
-    }
-
-    function extractPaidPenalties(archive, settings, presetMap, penaltyDefinitionsByMatchType) {
-      const result = [];
-      const countedEventIds = new Set();
-      const entries = Array.isArray(archive.cashPenalties) ? archive.cashPenalties : [];
-
-      entries.forEach((penalty) => {
-        const type = getEventPenaltyType(penalty);
-        const definition = penaltyDefinitionsByMatchType.get(type);
-        if (!definition) return;
-        const preset = resolvePresetPlayer(penalty, presetMap);
-        if (!preset) return;
-        const paid = getPaidPenaltyValue(penalty, definition, settings, { fromStoredPenalty: true });
-        if (paid.coins <= 0 && paid.cents <= 0) return;
-        const eventKey = getPenaltyEventKey(penalty, type, Number(penalty.roundIndex || 0));
-        if (eventKey) countedEventIds.add(eventKey);
-        result.push({
-          penalty,
-          definition,
-          preset,
-          roundIndex: Number(penalty.roundIndex || 0),
-          coins: paid.coins,
-          cents: paid.cents
-        });
-      });
-
-      extractPenaltyEventsFromArchive(archive).forEach(({ event, roundIndex }) => {
-        const type = getEventPenaltyType(event);
-        const definition = penaltyDefinitionsByMatchType.get(type);
-        if (!definition || !definition.countEventsWithoutAmount) return;
-        const eventKey = getPenaltyEventKey(event, type, roundIndex);
-        if (eventKey && countedEventIds.has(eventKey)) return;
-        const preset = resolvePresetPlayer(event, presetMap);
-        if (!preset) return;
-        const paid = getPaidPenaltyValue(event, definition, settings, { fromStoredPenalty: false });
-        if (paid.coins <= 0 && paid.cents <= 0) return;
-        if (eventKey) countedEventIds.add(eventKey);
-        result.push({
-          penalty: event,
-          definition,
-          preset,
-          roundIndex: Number(roundIndex || event.roundIndex || 0),
-          coins: paid.coins,
-          cents: paid.cents
-        });
-      });
-
-      return result;
-    }
-
-    function extractPenaltyEventsFromArchive(archive) {
-      const result = [];
-      const seen = new Set();
-      function addEvent(event, roundIndex) {
-        if (!event || typeof event !== 'object') return;
-        const type = getEventPenaltyType(event);
-        if (!type) return;
-        const key = getPenaltyEventKey(event, type, roundIndex);
-        if (key && seen.has(key)) return;
-        if (key) seen.add(key);
-        result.push({ event, roundIndex: Number(roundIndex || event.roundIndex || 0) });
-      }
-      function addEvents(events, roundIndex) {
-        if (!Array.isArray(events)) return;
-        events.forEach((event) => addEvent(event, roundIndex));
-      }
-
-      (archive.finishedRounds || []).forEach((round) => addEvents(round.events, round.index || round.roundIndex));
-      (archive.roundEntries || []).forEach((entry) => {
-        addEvents(entry.events, entry.roundIndex || (entry.currentRound && entry.currentRound.index));
-        if (entry.currentRound) addEvents(entry.currentRound.events, entry.roundIndex || entry.currentRound.index);
-      });
-      if (archive.currentRound) addEvents(archive.currentRound.events, archive.currentRound.index || archive.currentRound.roundIndex);
-
-      // Fallback für alte Archive: Lustknobeln kann in points als kind='lust' stehen.
-      // Pro eventId/fromId/roundIndex/turnNo wird daraus nur ein Ereignis gebildet,
-      // damit nicht jeder Empfängerpunkt separat als Lustknobeln zählt.
-      const pointEvents = new Map();
-      (archive.points || []).forEach((point) => {
-        if (!point || getEventPenaltyType(point) !== 'lust') return;
-        const roundIndex = Number(point.roundIndex || 0);
-        const key = String(point.eventId || `lust-${point.fromId || point.fromName || point.fromCode || ''}-${roundIndex}-${point.turnNo || ''}`);
-        if (!pointEvents.has(key)) {
-          pointEvents.set(key, {
-            id: key,
-            eventId: key,
-            type: 'lust',
-            ts: point.ts,
-            roundIndex,
-            actorId: point.fromId,
-            actorName: point.fromName,
-            actorCode: point.fromCode,
-            playerId: point.fromId,
-            playerName: point.fromName,
-            playerCode: point.fromCode
-          });
-        }
-      });
-      pointEvents.forEach((event) => addEvent(event, event.roundIndex));
-      return result;
-    }
-
-    function getPenaltyEventKey(value, type, roundIndex) {
-      if (!value) return '';
-      return String(value.eventId || value.id || `${type}-${roundIndex || value.roundIndex || 0}-${value.ts || ''}-${value.actorId || value.playerId || value.actorName || value.playerName || ''}`);
-    }
-
-    function getStoredNumber(value, keys) {
-      if (!value || typeof value !== 'object') return { exists: false, value: 0 };
-      for (const key of keys) {
-        if (Object.prototype.hasOwnProperty.call(value, key) && value[key] !== null && value[key] !== undefined && value[key] !== '') {
-          const numberValue = Number(value[key]);
-          return { exists: true, value: Number.isFinite(numberValue) ? numberValue : 0 };
-        }
-      }
-      return { exists: false, value: 0 };
-    }
-
-    function getPaidPenaltyValue(penalty, definition, settings, options = {}) {
-      const storedCoins = getStoredNumber(penalty, ['amountCoins', 'coins', 'coinAmount']);
-      const storedCents = getStoredNumber(penalty, ['amountCents', 'cents', 'centAmount']);
-      const penaltySettings = settings && settings.penalties && settings.penalties[definition.id] ? settings.penalties[definition.id] : {};
-      const coinValueCents = Number(penaltySettings.coinValueCents || definition.defaultCoinValueCents || 100);
-      const fallbackCoins = Number(penaltySettings.coinsPerEvent ?? definition.defaultCoinsPerEvent ?? 0);
-      let coins = 0;
-
-      if (storedCoins.exists) {
-        coins = Math.max(0, storedCoins.value);
-      } else if (storedCents.exists && coinValueCents > 0) {
-        coins = Math.max(0, storedCents.value) / coinValueCents;
-      } else if (definition.countEventsWithoutAmount && fallbackCoins > 0) {
-        // Reiner Ersatzwert: nur verwenden, wenn die Datenbank GAR KEINEN Coin-/Cent-Wert gespeichert hat.
-        // Ein bewusst gespeicherter Wert 0 bleibt 0 und wird nicht durch den Ersatzwert überschrieben.
-        coins = fallbackCoins;
-      }
-
-      const cents = coins > 0 ? coins * coinValueCents : 0;
-      return {
-        coins: roundTo(coins, 4),
-        cents: Math.round(cents)
-      };
-    }
-
-    function groupPaidPenaltiesByPlayer(paidPenalties) {
-      const map = new Map();
-      paidPenalties.forEach((entry) => {
-        const key = normalizeName(entry.preset && entry.preset.name);
-        if (!map.has(key)) map.set(key, []);
-        map.get(key).push(entry);
-      });
-      return map;
-    }
-
-    function filterArchivesByPeriod(archiveItems, settings) {
-      const startTime = settings.startDate ? new Date(`${settings.startDate}T00:00:00`).getTime() : 0;
-      const endTime = settings.endDate ? new Date(`${settings.endDate}T23:59:59`).getTime() : 0;
-      return archiveItems.filter((item) => {
-        const archive = item.archive || {};
-        const ts = parseDateToTime(archive.finishedAt || item.archivedAt || archive.createdAt);
-        if (!ts) return true;
-        if (startTime && ts < startTime) return false;
-        if (endTime && ts > endTime) return false;
-        return true;
-      });
-    }
-
-    function normalizeArchive(archive, code, archiveKey) {
-      if (!archive || typeof archive !== 'object') return null;
-      return {
-        ...archive,
-        id: archive.id || archiveKey || archive.sessionId || code,
-        sessionId: archive.sessionId || archive.id || archiveKey || code,
-        title: archive.title || archive.sessionTitle || code || 'Knobelpartie',
-        players: Array.isArray(archive.players) ? archive.players : [],
-        cashPenalties: Array.isArray(archive.cashPenalties) ? archive.cashPenalties : [],
-        finishedRounds: Array.isArray(archive.finishedRounds) ? archive.finishedRounds : [],
-        roundEntries: Array.isArray(archive.roundEntries) ? archive.roundEntries : [],
-        points: Array.isArray(archive.points) ? archive.points : []
-      };
-    }
-
-    function buildGameId(item, archive) {
-      return sanitizeKey(`${item.code || 'game'}__${archive.sessionId || archive.id || item.archiveKey || archive.finishedAt || 'archive'}`);
-    }
-
-    function extractFinishedRoundSnapshots(archive) {
-      const byIndex = new Map();
-      function addRound(roundLike) {
-        if (!roundLike || typeof roundLike !== 'object') return;
-        const index = Number(roundLike.index || roundLike.roundIndex || 0);
-        if (!index) return;
-        const events = Array.isArray(roundLike.events) ? roundLike.events : [];
-        const turnEvents = events.filter((entry) => entry && (entry.type === 'loss' || entry.type === 'lust'));
-        const fromEvents = turnEvents.length;
-        const fromTurnNo = Math.max(0, ...((archive.points || [])
-          .filter((point) => Number(point.roundIndex || 0) === index)
-          .map((point) => Number(point.turnNo || 0))));
-        const turnsCompleted = Math.max(
-          Number(roundLike.turnsCompleted || 0),
-          fromEvents,
-          fromTurnNo
-        );
-        const existing = byIndex.get(index) || { index, turnsCompleted: 0, events: [] };
-        existing.turnsCompleted = Math.max(existing.turnsCompleted, turnsCompleted);
-        if (events.length > existing.events.length) existing.events = events;
-        byIndex.set(index, existing);
-      }
-
-      (archive.finishedRounds || []).forEach(addRound);
-      (archive.roundEntries || []).forEach((entry) => addRound(entry.currentRound || entry));
-
-      (archive.cashPenalties || []).forEach((entry) => {
-        const index = Number(entry && entry.roundIndex || 0);
-        if (!index || byIndex.has(index)) return;
-        byIndex.set(index, { index, turnsCompleted: 0, events: [] });
-      });
-      (archive.points || []).forEach((entry) => {
-        const index = Number(entry && entry.roundIndex || 0);
-        if (!index) return;
-        const existing = byIndex.get(index) || { index, turnsCompleted: 0, events: [] };
-        existing.turnsCompleted = Math.max(existing.turnsCompleted, Number(entry.turnNo || 0));
-        byIndex.set(index, existing);
-      });
-
-      return Array.from(byIndex.values()).sort((a, b) => Number(a.index || 0) - Number(b.index || 0));
-    }
-
-    function resolvePresetPlayer(value, presetMap) {
-      const name = value && (value.name || value.playerName || value.actorName || value.fromName || value.toName) || '';
-      const code = value && (value.code || value.playerCode || value.actorCode || value.fromCode || value.toCode) || '';
-      const byName = presetMap.get(normalizeName(name));
-      if (byName) return byName;
-      const byCode = PRESET_PLAYERS.find((player) => normalizeName(player.code) === normalizeName(code));
-      return byCode || null;
-    }
-
-    function getPenaltyBucket(row, id) {
-      return row && row.penalties && row.penalties[id]
-        ? row.penalties[id]
-        : { count: 0, coins: 0, cents: 0, malusCoins: 0, sharePercent: 0 };
-    }
-
-    function sortPlayers(rows, sortMode) {
-      const list = rows.slice();
-      list.sort((a, b) => {
-        if (sortMode === 'cashCoins') {
-          return Number(getPenaltyBucket(b, 'cashfault').coins || 0) - Number(getPenaltyBucket(a, 'cashfault').coins || 0) || Number(b.totalPenaltyCents || 0) - Number(a.totalPenaltyCents || 0) || compareName(a, b);
-        }
-        if (sortMode === 'lustCoins') {
-          return Number(getPenaltyBucket(b, 'lust').coins || 0) - Number(getPenaltyBucket(a, 'lust').coins || 0) || Number(b.totalPenaltyCents || 0) - Number(a.totalPenaltyCents || 0) || compareName(a, b);
-        }
-        if (sortMode === 'penaltyValue') {
-          return Number(b.totalPenaltyCents || 0) - Number(a.totalPenaltyCents || 0) || Number(b.totalPenaltyCoins || 0) - Number(a.totalPenaltyCoins || 0) || compareName(a, b);
-        }
-        if (sortMode === 'bonusCoins') {
-          return Number(b.totalBonusCoins || 0) - Number(a.totalBonusCoins || 0) || Number(b.cleanRounds || 0) - Number(a.cleanRounds || 0) || Number(b.cleanTurns || 0) - Number(a.cleanTurns || 0) || compareName(a, b);
-        }
-        if (sortMode === 'cleanTurns') {
-          return Number(b.cleanTurns || 0) - Number(a.cleanTurns || 0) || Number(b.cleanRounds || 0) - Number(a.cleanRounds || 0) || Number(b.gamesPlayed || 0) - Number(a.gamesPlayed || 0) || compareName(a, b);
-        }
-        if (sortMode === 'cleanGames') {
-          return Number(b.cleanGames || 0) - Number(a.cleanGames || 0) || Number(b.cleanRounds || 0) - Number(a.cleanRounds || 0) || compareName(a, b);
-        }
-        return Number(b.profitScoreCoins || 0) - Number(a.profitScoreCoins || 0) || Number(b.profitSharePercent || 0) - Number(a.profitSharePercent || 0) || Number(b.totalBonusCoins || 0) - Number(a.totalBonusCoins || 0) || compareName(a, b);
-      });
-      return list;
-    }
-
-    function compareName(a, b) {
-      return String(a.name || '').localeCompare(String(b.name || ''), 'de');
-    }
-
-    function renderSnapshot(snapshot) {
-      runtime.lastSnapshot = snapshot;
-      const settings = getSettings();
-      const rows = sortPlayers(snapshot.players || [], settings.sortMode);
-      snapshot.players = rows;
-      el.summarySection.classList.remove('hidden');
-      el.cashSection.classList.remove('hidden');
-      el.bonusSection.classList.remove('hidden');
-      el.profitSection.classList.remove('hidden');
-      el.actionsSection.classList.toggle('hidden', !isAdminUnlocked());
-      if (el.saveStatsBtn) el.saveStatsBtn.disabled = false;
-      if (el.downloadJsonBtn) el.downloadJsonBtn.disabled = false;
-      if (el.copyJsonBtn) el.copyJsonBtn.disabled = false;
-      if (el.cashDetails) el.cashDetails.open = false;
-      if (el.bonusDetails) el.bonusDetails.open = false;
-
-      el.kpiGames.textContent = String(snapshot.summary.gamesProcessed || 0);
-      el.kpiPenaltyCoins.textContent = formatCoins(snapshot.summary.totalPenaltyCoins || 0, 2);
-      el.kpiPenaltyValue.textContent = formatCents(snapshot.summary.totalPenaltyCents || 0);
-      el.kpiBonus.textContent = formatCoins(snapshot.summary.totalBonusCoins || 0, 2);
-      el.kpiProfit.textContent = formatCoins(snapshot.summary.totalProfitScoreCoins || 0, 2);
-      el.kpiArchiveCount.textContent = `${snapshot.summary.archiveItemsRead || 0} Archive ausgewertet`;
-      el.kpiPlayerCount.textContent = `${snapshot.summary.playerCount || 0} Preset-Spieler`;
-      el.kpiPeriod.textContent = buildPeriodLabel(snapshot.filters || {});
-
-      renderPenaltyKingsTable(rows, snapshot.summary.totalPenaltyCents || 0);
-      renderAngelsTable(rows, snapshot.summary.totalBonusCoins || 0);
-      renderProfitTable(rows, snapshot.summary.totalProfitScoreCoins || 0, snapshot.summary.totalPenaltyCents || 0);
-      if (snapshot.summary.warnings && snapshot.summary.warnings.length) {
-        log(`Hinweise:\n- ${snapshot.summary.warnings.slice(0, 8).join('\n- ')}${snapshot.summary.warnings.length > 8 ? '\n…' : ''}`);
-      }
-    }
-
-    function renderPenaltyKingsTable(rows, totalPenaltyCents) {
-      const labels = [
-        '#', 'Spieler', 'Spiele',
-        ...PENALTY_DEFINITIONS.flatMap((definition) => [
-          `${definition.shortLabel} gewertet`,
-          `${definition.shortLabel} Coins`,
-          `${definition.shortLabel} Wert`
-        ]),
-        'Gesamt-Coins', 'Gesamtwert', 'Ø Wert/Spiel', 'Anteil am Strafgeldtopf'
-      ];
-      el.cashTableHead.innerHTML = `
-        <tr>
-          <th class="num">#</th>
-          <th>Spieler</th>
-          <th class="num">Spiele</th>
-          ${PENALTY_DEFINITIONS.map((definition) => `<th class="num">${escapeHtml(definition.shortLabel)} gewertet</th><th class="num">${escapeHtml(definition.shortLabel)} Coins</th><th class="num">${escapeHtml(definition.shortLabel)} Wert</th>`).join('')}
-          <th class="num">Gesamt-Coins</th>
-          <th class="num">Gesamtwert</th>
-          <th class="num">Ø Wert/Spiel</th>
-          <th>Anteil am Strafgeldtopf</th>
-        </tr>
-      `;
-      const filtered = rows.filter((row) => row.gamesPlayed || row.totalPenaltyCoins || row.totalPenaltyCount);
-      if (!filtered.length) {
-        el.cashTableBody.innerHTML = `<tr><td data-label="Hinweis" colspan="${labels.length}" class="muted">Keine gewerteten Straf-Coins gefunden.</td></tr>`;
-        return;
-      }
-      const sorted = filtered.slice().sort((a, b) => b.totalPenaltyCents - a.totalPenaltyCents || b.totalPenaltyCoins - a.totalPenaltyCoins || compareName(a, b));
-      el.cashTableBody.innerHTML = sorted.map((row, index) => {
-        const penaltyCells = PENALTY_DEFINITIONS.map((definition) => {
-          const bucket = getPenaltyBucket(row, definition.id);
-          return `<td data-label="${escapeHtml(definition.shortLabel)} gewertet" class="num">${formatInt(bucket.count)}</td><td data-label="${escapeHtml(definition.shortLabel)} Coins" class="num"><strong>${formatCoins(bucket.coins, 2)}</strong></td><td data-label="${escapeHtml(definition.shortLabel)} Wert" class="num">${formatCents(bucket.cents)}</td>`;
-        }).join('');
-        return `
-          <tr>
-            <td data-label="#" class="num rank">${index + 1}</td>
-            <td data-label="Spieler"><span class="player">${escapeHtml(row.name)} (${escapeHtml(row.code)})</span><span class="sub">${escapeHtml(row.playerId)}</span></td>
-            <td data-label="Spiele" class="num">${formatInt(row.gamesPlayed)}</td>
-            ${penaltyCells}
-            <td data-label="Gesamt-Coins" class="num"><strong>${formatCoins(row.totalPenaltyCoins, 2)}</strong></td>
-            <td data-label="Gesamtwert" class="num"><strong>${formatCents(row.totalPenaltyCents)}</strong></td>
-            <td data-label="Ø Wert/Spiel" class="num">${formatCents(row.penaltyValuePerGameCents)}</td>
-            <td data-label="Anteil am Strafgeldtopf" class="bar-cell"><strong>${formatPercent(row.penaltySharePercent)}</strong><div class="bar"><span style="width:${clampPercent(row.penaltySharePercent)}%"></span></div></td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    function renderAngelsTable(rows, totalBonusCoins) {
-      el.bonusTableHead.innerHTML = `
-        <tr>
-          <th class="num">#</th>
-          <th>Spieler</th>
-          <th class="num">Spiele</th>
-          <th class="num">Durchgänge</th>
-          <th class="num">saubere Durchgänge</th>
-          <th class="num">Spielrunden</th>
-          <th class="num">saubere Spielrunden</th>
-          <th class="num">saubere Spiele</th>
-          ${BONUS_DEFINITIONS.map((definition) => `<th class="num">${escapeHtml(definition.shortLabel)}</th>`).join('')}
-          <th class="num">Bonus gesamt</th>
-          <th>Bonus-Anteil</th>
-        </tr>
-      `;
-      const filtered = rows.filter((row) => row.gamesPlayed || row.totalBonusCoins || row.cleanRounds || row.cleanTurns || row.cleanGames);
-      if (!filtered.length) {
-        el.bonusTableBody.innerHTML = `<tr><td data-label="Hinweis" colspan="${10 + BONUS_DEFINITIONS.length}" class="muted">Keine Bonusdaten gefunden.</td></tr>`;
-        return;
-      }
-      const sorted = filtered.slice().sort((a, b) => b.totalBonusCoins - a.totalBonusCoins || b.cleanRounds - a.cleanRounds || b.cleanTurns - a.cleanTurns || b.cleanGames - a.cleanGames || compareName(a, b));
-      el.bonusTableBody.innerHTML = sorted.map((row, index) => {
-        const bonusCells = BONUS_DEFINITIONS.map((definition) => `<td data-label="${escapeHtml(definition.shortLabel)}" class="num">${formatCoins(row.bonuses[definition.id]?.coins || 0, 2)}</td>`).join('');
-        return `
-          <tr>
-            <td data-label="#" class="num rank">${index + 1}</td>
-            <td data-label="Spieler"><span class="player">${escapeHtml(row.name)} (${escapeHtml(row.code)})</span>${row.bonusEligible ? '' : '<span class="sub">noch nicht bonusberechtigt</span>'}</td>
-            <td data-label="Spiele" class="num">${formatInt(row.gamesPlayed)}</td>
-            <td data-label="Durchgänge" class="num">${formatInt(row.roundCount)}</td>
-            <td data-label="saubere Durchgänge" class="num"><strong>${formatInt(row.cleanRounds)}</strong><div class="sub">${formatPercent(row.cleanRoundRatePercent)}</div></td>
-            <td data-label="Spielrunden" class="num">${formatInt(row.turnCount)}</td>
-            <td data-label="saubere Spielrunden" class="num"><strong>${formatInt(row.cleanTurns)}</strong><div class="sub">${formatPercent(row.cleanTurnRatePercent)}</div></td>
-            <td data-label="saubere Spiele" class="num"><strong>${formatInt(row.cleanGames)}</strong></td>
-            ${bonusCells}
-            <td data-label="Bonus gesamt" class="num"><strong>${formatCoins(row.totalBonusCoins, 2)}</strong></td>
-            <td data-label="Bonus-Anteil" class="bar-cell"><strong>${formatPercent(row.bonusSharePercent)}</strong><div class="bar"><span style="width:${clampPercent(row.bonusSharePercent)}%"></span></div></td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    function renderProfitTable(rows, totalProfitScoreCoins, totalPenaltyCents) {
-      el.profitTableHead.innerHTML = `
-        <tr>
-          <th class="num">#</th>
-          <th>Spieler</th>
-          <th class="num">Spiele</th>
-          <th class="num">Bonus gesamt</th>
-          ${PENALTY_DEFINITIONS.map((definition) => `<th class="num">${escapeHtml(definition.shortLabel)}-Malus</th>`).join('')}
-          <th class="num">Malus gesamt</th>
-          <th class="num">Profiteur-Score</th>
-          <th>Finaler Topf-Anteil</th>
-          <th class="num">rechnerischer Topfwert</th>
-        </tr>
-      `;
-      const filtered = rows.filter((row) => row.gamesPlayed || row.totalBonusCoins || row.totalPenaltyCoins || row.profitScoreCoins);
-      if (!filtered.length) {
-        el.profitTableBody.innerHTML = `<tr><td data-label="Hinweis" colspan="${7 + PENALTY_DEFINITIONS.length}" class="muted">Keine Profiteur-Daten gefunden.</td></tr>`;
-        return;
-      }
-      const sorted = filtered.slice().sort((a, b) => b.profitScoreCoins - a.profitScoreCoins || b.profitSharePercent - a.profitSharePercent || b.totalBonusCoins - a.totalBonusCoins || compareName(a, b));
-      el.profitTableBody.innerHTML = sorted.map((row, index) => {
-        const malusCells = PENALTY_DEFINITIONS.map((definition) => `<td data-label="${escapeHtml(definition.shortLabel)}-Malus" class="num">-${formatCoins(getPenaltyBucket(row, definition.id).malusCoins || 0, 2)}</td>`).join('');
-        return `
-          <tr>
-            <td data-label="#" class="num rank">${index + 1}</td>
-            <td data-label="Spieler"><span class="player">${escapeHtml(row.name)} (${escapeHtml(row.code)})</span>${row.bonusEligible ? '' : '<span class="sub">noch nicht bonusberechtigt</span>'}</td>
-            <td data-label="Spiele" class="num">${formatInt(row.gamesPlayed)}</td>
-            <td data-label="Bonus gesamt" class="num"><strong>${formatCoins(row.totalBonusCoins, 2)}</strong></td>
-            ${malusCells}
-            <td data-label="Malus gesamt" class="num">-${formatCoins(row.totalMalusCoins, 2)}</td>
-            <td data-label="Profiteur-Score" class="num"><strong>${formatCoins(row.profitScoreCoins, 2)}</strong></td>
-            <td data-label="Finaler Topf-Anteil" class="bar-cell"><strong>${formatPercent(row.profitSharePercent)}</strong><div class="bar"><span style="width:${clampPercent(row.profitSharePercent)}%"></span></div></td>
-            <td data-label="rechnerischer Topfwert" class="num">${formatCents(row.profitValueCents)}</td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    async function saveStatsSnapshot() {
-      if (!runtime.lastSnapshot) return;
-      setBusy(true, 'Statistik-Snapshot wird gespeichert …');
-      try {
-        const db = await initFirebase();
-        const sdk = runtime.sdk;
-        const snapshot = cleanSnapshotForSaving(runtime.lastSnapshot);
-        const periodId = sanitizeKey(snapshot.periodId || getSettings().periodId);
-        await sdk.set(sdk.ref(db, `stats/cashbox/periods/${periodId}`), snapshot);
-        const periodConfig = runtime.periodConfigs[periodId] || makePeriodConfig(periodId, snapshot.filters?.startDate || '', snapshot.filters?.endDate || '', snapshot.config?.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS);
-        await sdk.set(sdk.ref(db, `stats/cashbox/periodConfigs/${periodId}`), { ...periodConfig, updatedAt: new Date().toISOString(), updatedBy: 'strafkasse.html' });
-        runtime.periodConfigs[periodId] = periodConfig;
-        renderPeriodSelect(periodId);
-        setStatus('gespeichert', `Snapshot unter stats/cashbox/periods/${periodId} gespeichert.`, true);
-        log(`Snapshot gespeichert: stats/cashbox/periods/${periodId}`);
-      } catch (error) {
-        console.error(error);
-        setStatus('Fehler beim Speichern', error.message || String(error), false, true);
-      } finally {
-        setBusy(false);
-      }
-    }
-
-    async function loadSavedStatsSnapshot() {
-      const settings = getSettings();
-      const periodId = sanitizeKey(settings.periodId || DEFAULT_PERIOD_ID);
-      setBusy(true, 'Gespeicherter Snapshot wird geladen …');
-      try {
-        const db = await initFirebase();
-        const sdk = runtime.sdk;
-        const snapshot = await sdk.get(sdk.ref(db, `stats/cashbox/periods/${periodId}`));
-        const value = snapshot.val();
-        if (!value) {
-          setStatus('kein Snapshot', `Unter stats/cashbox/periods/${periodId} wurde noch nichts gespeichert.`, false);
-          return;
-        }
-        runtime.lastSnapshot = value;
-        if (value && value.periodId) {
-          const loadedId = sanitizeKey(value.periodId);
-          runtime.periodConfigs[loadedId] = makePeriodConfig(loadedId, value.filters?.startDate || '', value.filters?.endDate || '', value.config?.minGamesForBonus ?? DEFAULT_MIN_GAMES_FOR_BONUS);
-          renderPeriodSelect(loadedId);
-          applyPeriodConfigToAdminFields(loadedId);
-          saveSettings();
-        }
-        renderSnapshot(value);
-        setStatus('Snapshot geladen', `Snapshot ${periodId} geladen.`, true);
-      } catch (error) {
-        console.error(error);
-        setStatus('Fehler beim Laden', error.message || String(error), false, true);
-      } finally {
-        setBusy(false);
-      }
-    }
-
-    function cleanSnapshotForSaving(snapshot) {
-      const copy = JSON.parse(JSON.stringify(snapshot));
-      delete copy.archivesRaw;
-      copy.savedAt = new Date().toISOString();
-      copy.savedBy = 'strafkasse.html';
-      return copy;
-    }
-
-    function downloadCurrentSnapshot() {
-      if (!runtime.lastSnapshot) return;
-      const snapshot = cleanSnapshotForSaving(runtime.lastSnapshot);
-      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `knobel-strafen-${sanitizeKey(snapshot.periodId || 'snapshot')}.json`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    }
-
-    async function copyCurrentSnapshot() {
-      if (!runtime.lastSnapshot) return;
-      try {
-        await navigator.clipboard.writeText(JSON.stringify(cleanSnapshotForSaving(runtime.lastSnapshot), null, 2));
-        log('Snapshot als JSON in die Zwischenablage kopiert.');
-      } catch (error) {
-        log(`Kopieren nicht möglich: ${error.message || error}`);
-      }
-    }
-
-    function renderEmpty() {
-      el.summarySection.classList.add('hidden');
-      el.cashSection.classList.add('hidden');
-      el.bonusSection.classList.add('hidden');
-      el.profitSection.classList.add('hidden');
-      el.actionsSection.classList.toggle('hidden', !isAdminUnlocked());
-      if (el.saveStatsBtn) el.saveStatsBtn.disabled = true;
-      if (el.downloadJsonBtn) el.downloadJsonBtn.disabled = true;
-      if (el.copyJsonBtn) el.copyJsonBtn.disabled = true;
-    }
-
-    function showPeriodActionFeedback(message, mode = '') {
-      if (!el.periodActionFeedback) return;
-      el.periodActionFeedback.classList.toggle('success', mode === 'success');
-      el.periodActionFeedback.classList.toggle('error', mode === 'error');
-      el.periodActionFeedback.textContent = message || 'Bereit.';
-    }
-
-    function setBusy(isBusy, text = '') {
-      [el.loadArchivesBtn, el.loadStatsBtn, el.saveStatsBtn, el.downloadJsonBtn, el.copyJsonBtn, el.savePeriodBtn, el.refreshPeriodIdsBtn].forEach((button) => {
-        if (button) button.disabled = isBusy;
-      });
-      if (!isBusy) renderConfigLockState();
-      if (text) log(text);
-    }
-
-    function setStatus(title, meta, connected = false, error = false) {
-      el.statusTitle.textContent = `Status: ${title}`;
-      el.statusMeta.textContent = meta || '';
-      el.statusBox.classList.toggle('connected', Boolean(connected));
-      el.statusBox.classList.toggle('error', Boolean(error));
-    }
-
-    function log(message) {
-      const ts = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      el.logBox.textContent = `[${ts}] ${message}\n` + (el.logBox.textContent || '');
-    }
-
-    function buildPeriodLabel(filters) {
-      if (filters.startDate && filters.endDate) return `Zeitraum: ${filters.startDate} bis ${filters.endDate}`;
-      if (filters.startDate) return `Zeitraum: ab ${filters.startDate}`;
-      if (filters.endDate) return `Zeitraum: bis ${filters.endDate}`;
-      return 'Zeitraum: alle Archive';
-    }
-
-    function sanitizeKey(value) {
-      return String(value || '')
-        .trim()
-        .replace(/[.#$\[\]\/]/g, '-')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .slice(0, 100) || 'default';
-    }
-
-    function normalizeName(value) {
-      return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    }
-
-    function parseDateToTime(value) {
-      if (!value) return 0;
-      const time = new Date(value).getTime();
-      return Number.isFinite(time) ? time : 0;
-    }
-
-    function roundTo(value, places = 2) {
-      const factor = 10 ** places;
-      return Math.round((Number(value || 0) + Number.EPSILON) * factor) / factor;
-    }
-
-    function formatInt(value) {
-      return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(Number(value || 0));
-    }
-
-    function formatDecimal(value, digits = 2) {
-      return new Intl.NumberFormat('de-DE', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(Number(value || 0));
-    }
-
-    function formatCoins(value, digits = 0) {
-      const number = Number(value || 0);
-      const fractionDigits = digits;
-      return `${new Intl.NumberFormat('de-DE', { minimumFractionDigits: fractionDigits, maximumFractionDigits: fractionDigits }).format(number)} Coin${number === 1 ? '' : 's'}`;
-    }
-
-    function formatCents(value) {
-      return `${new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0) / 100)} €`;
-    }
-
-    function formatPercent(value) {
-      return `${new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0))} %`;
-    }
-
-    function clampPercent(value) {
-      return Math.max(0, Math.min(100, Number(value || 0)));
-    }
-
-    function deepClone(value) {
-      return JSON.parse(JSON.stringify(value));
-    }
-
-    function escapeHtml(value) {
-      return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-    }
-
-  </script>
+        <button id="playerModalCloseBtn" class="ghost" style="width:auto;min-height:36px;border-radius:999px;" type="button">Schließen</button>
+      </div>
+      <div id="playerModalGrid" class="detail-grid"></div>
+    </div>
+  </div>
+
+<script>
+const DEFAULT_CONFIG_ID = 'bierpunkte';
+const STORAGE_KEY = 'knobelklub-bierpunkte-strafkasse-settings-v1';
+const ADMIN_SESSION_KEY = 'knobelklub-bierpunkte-strafkasse-admin-v1';
+const CONFIG_ADMIN_USER = 'admin';
+const CONFIG_ADMIN_PASSWORD = 'admin';
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAho0XYtG4P5nfwQVcgY9Gb3k_aUwF_1mA",
+  authDomain: "knobelklub.firebaseapp.com",
+  databaseURL: "https://knobelklub-default-rtdb.europe-west1.firebasedatabase.app/",
+  projectId: "knobelklub",
+  storageBucket: "knobelklub.firebasestorage.app",
+  messagingSenderId: "429666869030",
+  appId: "1:429666869030:web:cee5bc7cf01af7976c6be7",
+  measurementId: "G-317V3N4SHZ"
+};
+const PRESET_PLAYERS = [
+  { name:'Alex', code:'A' },{ name:'Buri', code:'B' },{ name:'Dennis', code:'D' },{ name:'Klappi', code:'K' },{ name:'Niko', code:'N' },{ name:'Raik', code:'R' },{ name:'Sascha', code:'S' },{ name:'Thomas', code:'TÜV' },{ name:'Timo', code:'T' }
+];
+const DEFAULT_CONFIG = {
+  id: DEFAULT_CONFIG_ID,
+  title: '',
+  startDate: '',
+  endDate: '',
+  singleGameId: '',
+  gameIds: [],
+  minGamesOfficial: 0,
+  cashPenaltyEuro: 2,
+  lustEuro: 0,
+  freeCashWarningsPerGame: 1,
+  distributionWeights: {
+    participation: 30,
+    performance: 50,
+    contribution: 20
+  }
+};
+const el = {
+  tournamentSelect: q('tournamentSelect'), selectedInfo:q('selectedInfo'), loadArchivesBtn:q('loadArchivesBtn'), statusText:q('statusText'),
+  searchInput:q('searchInput'), eligibilityFilter:q('eligibilityFilter'), sortSelect:q('sortSelect'), sortDirSelect:q('sortDirSelect'),
+  adminDetails:q('adminDetails'), adminUser:q('adminUser'), adminPass:q('adminPass'), adminLoginBtn:q('adminLoginBtn'), adminLogoutBtn:q('adminLogoutBtn'), adminStatus:q('adminStatus'),
+  tournamentAdminSection:q('tournamentAdminSection'), exportSection:q('exportSection'), logSection:q('logSection'),
+  configIdInput:q('configIdInput'), configTitleInput:q('configTitleInput'), minGamesInput:q('minGamesInput'), startDateInput:q('startDateInput'), endDateInput:q('endDateInput'), singleGameIdInput:q('singleGameIdInput'), cashPenaltyEuroInput:q('cashPenaltyEuroInput'), lustEuroInput:q('lustEuroInput'), freeCashWarningsInput:q('freeCashWarningsInput'), participationWeightInput:q('participationWeightInput'), performanceWeightInput:q('performanceWeightInput'), contributionWeightInput:q('contributionWeightInput'), gameIdsInput:q('gameIdsInput'),
+  saveConfigBtn:q('saveConfigBtn'), refreshConfigsBtn:q('refreshConfigsBtn'), newConfigBtn:q('newConfigBtn'), deleteConfigBtn:q('deleteConfigBtn'), configFeedback:q('configFeedback'), saveSnapshotBtn:q('saveSnapshotBtn'), loadSnapshotBtn:q('loadSnapshotBtn'), downloadJsonBtn:q('downloadJsonBtn'), copyJsonBtn:q('copyJsonBtn'),
+  summarySection:q('summarySection'), tableSection:q('tableSection'), unofficialSection:q('unofficialSection'),
+  kpiGames:q('kpiGames'), kpiRounds:q('kpiRounds'), kpiCashCount:q('kpiCashCount'), kpiCashValue:q('kpiCashValue'), kpiLustCount:q('kpiLustCount'), kpiOfficial:q('kpiOfficial'), kpiCashWarnings:q('kpiCashWarnings'), kpiIds:q('kpiIds'), kpiPeriod:q('kpiPeriod'),
+  mainHead:q('mainHead'), mainBody:q('mainBody'), unofficialHead:q('unofficialHead'), unofficialBody:q('unofficialBody'), logBox:q('logBox'),
+  infoOpenBtn:q('infoOpenBtn'), infoCloseBtn:q('infoCloseBtn'), infoModal:q('infoModal'), playerModal:q('playerModal'), playerModalTitle:q('playerModalTitle'), playerModalSubtitle:q('playerModalSubtitle'), playerModalGrid:q('playerModalGrid'), playerModalCloseBtn:q('playerModalCloseBtn')
+};
+const runtime = { sdk:null, app:null, db:null, configs:{}, lastSnapshot:null, lastArchivesRaw:null };
+init();
+function q(id){return document.getElementById(id)}
+function init(){ loadLocalSettings(); bindEvents(); renderAdminLock(); renderConfigSelect(); applyConfigToFields(getCurrentConfigId()); updateHeader(); renderEmpty(); loadConfigsFromDatabase({silent:true}); }
+function bindEvents(){
+  el.loadArchivesBtn.addEventListener('click', loadArchivesAndCalculate);
+  el.tournamentSelect.addEventListener('change',()=>{applyConfigToFields(el.tournamentSelect.value); saveLocalSettings(); updateHeader(); recalculateIfPossible();});
+  [el.searchInput,el.eligibilityFilter,el.sortSelect,el.sortDirSelect].forEach(x=>x.addEventListener('input',()=>runtime.lastSnapshot&&renderSnapshot(runtime.lastSnapshot)));
+  el.adminLoginBtn.addEventListener('click', handleAdminLogin); el.adminLogoutBtn.addEventListener('click', handleAdminLogout); el.adminPass.addEventListener('keydown',e=>{if(e.key==='Enter')handleAdminLogin()});
+  el.saveConfigBtn.addEventListener('click', saveCurrentConfig); el.refreshConfigsBtn.addEventListener('click',()=>loadConfigsFromDatabase({silent:false})); el.newConfigBtn.addEventListener('click', prepareNewConfig); el.deleteConfigBtn.addEventListener('click', deleteCurrentConfig);
+  [el.configIdInput,el.configTitleInput,el.minGamesInput,el.startDateInput,el.endDateInput,el.singleGameIdInput,el.cashPenaltyEuroInput,el.lustEuroInput,el.freeCashWarningsInput,el.participationWeightInput,el.performanceWeightInput,el.contributionWeightInput,el.gameIdsInput].forEach(x=>x.addEventListener('change',()=>{updateWorkingConfigFromFields(); saveLocalSettings(); updateHeader(); recalculateIfPossible();}));
+  el.saveSnapshotBtn.addEventListener('click', saveSnapshot); el.loadSnapshotBtn.addEventListener('click', loadSnapshot); el.downloadJsonBtn.addEventListener('click', downloadJson); el.copyJsonBtn.addEventListener('click', copyJson);
+  el.infoOpenBtn.addEventListener('click',()=>{el.infoModal.classList.remove('hidden');document.body.style.overflow='hidden'}); el.infoCloseBtn.addEventListener('click',closeInfo); el.infoModal.addEventListener('click',e=>{if(e.target===el.infoModal)closeInfo()}); document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeInfo();closePlayerModal();}});
+  el.mainBody.addEventListener('dblclick',handlePlayerDblClick); el.unofficialBody.addEventListener('dblclick',handlePlayerDblClick); el.playerModalCloseBtn.addEventListener('click',closePlayerModal); el.playerModal.addEventListener('click',e=>{if(e.target===el.playerModal)closePlayerModal()});
+}
+function closeInfo(){el.infoModal.classList.add('hidden');document.body.style.overflow=''}
+function closePlayerModal(){el.playerModal.classList.add('hidden');document.body.style.overflow=''}
+async function initDb(){ if(runtime.db)return runtime.db; const [appModule,dbModule]=await Promise.all([import('https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js'),import('https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js')]); runtime.sdk=dbModule; runtime.app=appModule.initializeApp(FIREBASE_CONFIG); runtime.db=dbModule.getDatabase(runtime.app); return runtime.db; }
+function loadLocalSettings(){ try{const raw=localStorage.getItem(STORAGE_KEY); const saved=raw?JSON.parse(raw):{}; runtime.configs=saved.configs||{}; removeLegacyDummyConfig(); const savedId=sanitizeKey(saved.selectedConfigId||''); runtime.selectedConfigId=runtime.configs[savedId]?savedId:(Object.keys(runtime.configs)[0]||DEFAULT_CONFIG_ID);}catch(e){runtime.configs={};runtime.selectedConfigId=DEFAULT_CONFIG_ID; log('Einstellungen konnten nicht geladen werden: '+e.message)} }
+function saveLocalSettings(){localStorage.setItem(STORAGE_KEY,JSON.stringify({selectedConfigId:getCurrentConfigId(),configs:runtime.configs}))}
+function removeLegacyDummyConfig(){const c=runtime.configs&&runtime.configs[DEFAULT_CONFIG_ID]; if(!c)return; const legacyTitle=['Bierpunkte','&','Strafkasse'].join(' '); const isUntouched=String(c.title||'')===legacyTitle&&!c.startDate&&!c.endDate&&!c.singleGameId&&!(c.gameIds||[]).length&&Number(c.minGamesOfficial||0)===0; if(isUntouched)delete runtime.configs[DEFAULT_CONFIG_ID];}
+function getCurrentConfigId(){return sanitizeKey(el.tournamentSelect?.value||runtime.selectedConfigId||DEFAULT_CONFIG_ID)}
+function getCurrentConfig(){const id=getCurrentConfigId(); return runtime.configs[id]||{...deepClone(DEFAULT_CONFIG),id};}
+function renderConfigSelect(){const current=getCurrentConfigId(); const ids=Object.keys(runtime.configs).sort((a,b)=>a.localeCompare(b,'de')); if(!ids.length){el.tournamentSelect.innerHTML=`<option value="${escapeHtml(DEFAULT_CONFIG_ID)}">Keine Auswertung gespeichert</option>`; el.tournamentSelect.value=DEFAULT_CONFIG_ID; updateSelectedInfo(); return;} el.tournamentSelect.innerHTML=ids.map(id=>`<option value="${escapeHtml(id)}">${escapeHtml(runtime.configs[id].title||id)}</option>`).join(''); el.tournamentSelect.value=runtime.configs[current]?current:ids[0]; runtime.selectedConfigId=el.tournamentSelect.value; updateSelectedInfo();}
+function updateSelectedInfo(){if(!el.selectedInfo)return; const c=getCurrentConfig(); const ids=getConfigGameIds(c); const period=buildPeriodLabel(c); el.selectedInfo.innerHTML=`<strong>${escapeHtml(c.title||c.id)}</strong><br>${escapeHtml(period)}<br>Runden-IDs: <strong>${ids.length?formatInt(ids.length):'alle'}</strong><br>Mindest-Spielrunden offiziell: <strong>${formatInt(c.minGamesOfficial||0)}</strong>`;}
+function applyConfigToFields(id){const c={...deepClone(DEFAULT_CONFIG),...(runtime.configs[sanitizeKey(id)]||{})}; const weights=normalizeDistributionWeights(c.distributionWeights); el.configIdInput.value=c.id||DEFAULT_CONFIG_ID; el.configTitleInput.value=c.title||''; el.minGamesInput.value=c.minGamesOfficial??0; el.startDateInput.value=c.startDate||''; el.endDateInput.value=c.endDate||''; el.singleGameIdInput.value=c.singleGameId||''; el.cashPenaltyEuroInput.value=normalizeEuroConfig(c.cashPenaltyEuro,2); el.lustEuroInput.value=normalizeEuroConfig(c.lustEuro,0); el.freeCashWarningsInput.value=normalizeIntegerConfig(c.freeCashWarningsPerGame,1); el.participationWeightInput.value=weights.raw.participation; el.performanceWeightInput.value=weights.raw.performance; el.contributionWeightInput.value=weights.raw.contribution; el.gameIdsInput.value=(c.gameIds||[]).join('\n'); updateSelectedInfo();}
+function updateWorkingConfigFromFields(){const oldId=getCurrentConfigId(); const id=sanitizeKey(el.configIdInput.value||oldId||DEFAULT_CONFIG_ID); const config={id,title:el.configTitleInput.value.trim()||id,startDate:el.startDateInput.value||'',endDate:el.endDateInput.value||'',singleGameId:sanitizeKey(el.singleGameIdInput.value||''),gameIds:splitIds(el.gameIdsInput.value||''),minGamesOfficial:Number(el.minGamesInput.value||0),cashPenaltyEuro:normalizeEuroConfig(el.cashPenaltyEuroInput.value,2),lustEuro:normalizeEuroConfig(el.lustEuroInput.value,0),freeCashWarningsPerGame:normalizeIntegerConfig(el.freeCashWarningsInput.value,1),distributionWeights:{participation:normalizePercentConfig(el.participationWeightInput.value,30),performance:normalizePercentConfig(el.performanceWeightInput.value,50),contribution:normalizePercentConfig(el.contributionWeightInput.value,20)}}; if(oldId!==id) delete runtime.configs[oldId]; runtime.configs[id]=config; runtime.selectedConfigId=id; renderConfigSelect(); el.tournamentSelect.value=id; updateSelectedInfo(); return config;}
+function updateHeader(){updateSelectedInfo();}
+function setStatus(title,meta='',ok=false,error=false){el.statusText.textContent=`${title}${meta?' · '+meta:''}`; el.statusText.className='status-pill '+(error?'error':'')}
+function setBusy(value,text){el.loadArchivesBtn.disabled=Boolean(value); if(value) setStatus('lädt',text||'bitte warten')}
+async function loadArchivesAndCalculate(){setBusy(true,'Archive werden aus der Datenbank geladen …'); try{const db=await initDb(); const sdk=runtime.sdk; const snap=await sdk.get(sdk.ref(db,'games')); const archives=collectArchives(snap.val()||{}); runtime.lastArchivesRaw=archives; calculateAndRender(archives); setStatus('verbunden',`${archives.length} Archiv-Einträge gelesen.`,true); log(`${archives.length} Archiv-Einträge aus der Datenbank gelesen.`)}catch(e){console.error(e);setStatus('Fehler beim Laden',e.message||String(e),false,true);log('Fehler: '+(e.message||e))}finally{setBusy(false)}}
+function collectArchives(gamesMap){const out=[]; Object.entries(gamesMap||{}).forEach(([code,value])=>{const safeCode=sanitizeKey(code); if(!value||typeof value!=='object')return; if(value.archive&&typeof value.archive==='object'){Object.entries(value.archive).forEach(([archiveKey,item])=>{const archive=item&&item.archive?item.archive:item; if(archive&&typeof archive==='object') out.push({source:'archive',code:safeCode,archiveKey:sanitizeKey(archiveKey),archivedAt:item&&item.archivedAt?item.archivedAt:archive.finishedAt,archive:normalizeArchive(archive,safeCode,archiveKey)})})} const histories=[value.live&&value.live.public&&value.live.public.state&&value.live.public.state.gamesHistory,value.live&&value.live.state&&value.live.state.gamesHistory].filter(Array.isArray); histories.forEach((list,li)=>list.forEach((archive,index)=>out.push({source:li?'live-legacy':'live-public',code:safeCode,archiveKey:`live-${li}-${index}`,archivedAt:archive.finishedAt,archive:normalizeArchive(archive,safeCode,`live-${li}-${index}`)}))) }); return out.filter(x=>x.archive)}
+function normalizeArchive(archive,code,key){return {...archive,id:archive.id||key||archive.sessionId||code,sessionId:archive.sessionId||archive.id||key||code,title:archive.title||archive.sessionTitle||code||'Knobelpartie',players:Array.isArray(archive.players)?archive.players:[],points:Array.isArray(archive.points)?archive.points:[],settlements:Array.isArray(archive.settlements)?archive.settlements:[],cashPenalties:Array.isArray(archive.cashPenalties)?archive.cashPenalties:[],finishedRounds:Array.isArray(archive.finishedRounds)?archive.finishedRounds:[],roundEntries:Array.isArray(archive.roundEntries)?archive.roundEntries:[]}}
+function calculateAndRender(archivesRaw){const c=getCurrentConfig(); const filtered=filterArchives(archivesRaw,c); const snapshot=calculateStats(filtered,c,archivesRaw.length); snapshot.archivesRaw=archivesRaw; runtime.lastSnapshot=snapshot; renderSnapshot(snapshot); renderAdminLock();}
+function filterArchives(items,c){const ids=getConfigGameIds(c); const idSet=new Set(ids.map(sanitizeKey)); const start=c.startDate?new Date(c.startDate+'T00:00:00').getTime():0; const end=c.endDate?new Date(c.endDate+'T23:59:59').getTime():0; return (items||[]).filter(item=>{const a=item.archive||{}; const ts=parseDate(a.finishedAt||item.archivedAt||a.createdAt); if(start&&ts&&ts<start)return false; if(end&&ts&&ts>end)return false; if(idSet.size){const candidates=[item.code,item.archiveKey,a.sessionId,a.id,a.title].map(sanitizeKey); if(!candidates.some(x=>idSet.has(x)))return false;} return true;})}
+function getConfigGameIds(c){return Array.from(new Set([...(c.gameIds||[]),c.singleGameId||''].map(sanitizeKey).filter(Boolean)))}
+function calculateStats(items,c,totalRead){const presetMap=new Map(PRESET_PLAYERS.map(p=>[normalizeName(p.name),p])); const codeMap=new Map(PRESET_PLAYERS.map(p=>[normalizeName(p.code),p])); const players=new Map(); const processedGames={}; const warnings=[]; const weights=normalizeDistributionWeights(c.distributionWeights); const freeCashWarningsPerGame=normalizeIntegerConfig(c.freeCashWarningsPerGame,1); const cashPenaltyCentsPerPoint=Math.round(normalizeEuroConfig(c.cashPenaltyEuro,2)*100); const lustCentsPerPoint=Math.round(normalizeEuroConfig(c.lustEuro,0)*100); let totalGameRoundsProcessed=0; function ensure(p){const preset=resolvePreset(p,presetMap,codeMap); if(!preset)return null; const key=normalizeName(preset.name); if(!players.has(key)) players.set(key,{playerId:key,name:preset.name,code:preset.code,gamesPlayed:0,beerReceived:0,beerDebt:0,netBeer:0,points:0,bestGameNet:null,worstGameNet:null,roundsPlayed:0,turnsPlayed:0,avgNetBeer:0,official:false,cashWarningCount:0,cashEntryCount:0,cashPenaltyCount:0,cashPenaltyValueCents:0,lustCount:0,lustValueCents:0,totalPenaltyValueCents:0,participationSharePercent:0,performanceSharePercent:0,contributionSharePercent:0,potSharePercent:0,potValueCents:0,potBreakdown:{},gameIds:[]}); return players.get(key)}
+  items.forEach(item=>{const a=item.archive; const gameId=buildGameId(item,a); if(processedGames[gameId])return; processedGames[gameId]=true; const participants=(a.players||[]).map(p=>resolvePreset(p,presetMap,codeMap)).filter(Boolean); if(!participants.length)return; const gameLedger=calculateGameLedger(a,participants); const roundStats=getPlayerRoundStats(a,participants,presetMap,codeMap); totalGameRoundsProcessed+=roundStats.totalGameRounds; participants.forEach(p=>{const row=ensure(p); if(!row)return; const key=normalizeName(p.name); const g=gameLedger.get(key)||{receive:0,debt:0,net:0}; const playerRounds=Number(roundStats.byPlayer.get(key)||0); row.gamesPlayed+=1; row.beerReceived+=g.receive; row.beerDebt+=g.debt; row.netBeer+=g.net; row.roundsPlayed+=playerRounds; row.turnsPlayed+=playerRounds; row.bestGameNet=row.bestGameNet===null?g.net:Math.max(row.bestGameNet,g.net); row.worstGameNet=row.worstGameNet===null?g.net:Math.min(row.worstGameNet,g.net); row.gameIds.push(gameId); }); applyPenaltyEntriesForGame(a,presetMap,codeMap,ensure,freeCashWarningsPerGame); });
+  const rows=Array.from(players.values()); rows.forEach(row=>{row.beerReceived=roundTo(row.beerReceived,4); row.beerDebt=roundTo(row.beerDebt,4); row.netBeer=roundTo(row.netBeer,4); row.cashPenaltyValueCents=Math.round(Number(row.cashPenaltyCount||0)*cashPenaltyCentsPerPoint); row.lustValueCents=Math.round(Number(row.lustCount||0)*lustCentsPerPoint); row.totalPenaltyValueCents=row.cashPenaltyValueCents+row.lustValueCents; row.points=roundTo(row.netBeer-Number(row.cashPenaltyCount||0)-Number(row.lustCount||0),4); row.avgNetBeer=row.gamesPlayed?roundTo(row.netBeer/row.gamesPlayed,4):0; row.official=row.roundsPlayed>=Number(c.minGamesOfficial||0); row.gameIds=Array.from(new Set(row.gameIds||[])); });
+  applyPotDistribution(rows,weights);
+  const sorted=rows.sort((a,b)=>b.points-a.points||b.netBeer-a.netBeer||b.beerReceived-a.beerReceived||a.beerDebt-b.beerDebt||a.cashPenaltyCount-b.cashPenaltyCount||a.lustCount-b.lustCount||a.name.localeCompare(b.name,'de')); return {schemaVersion:3,type:'knobelklub-bierpunkte-strafkasse',config:{...deepClone(c),cashPenaltyEuro:cashPenaltyCentsPerPoint/100,lustEuro:lustCentsPerPoint/100,freeCashWarningsPerGame,distributionWeights:weights.raw},generatedAt:new Date().toISOString(),summary:{archiveItemsRead:totalRead, gamesProcessed:Object.keys(processedGames).length, playerCount:rows.length, officialCount:rows.filter(x=>x.official).length, totalRoundsPlayed:totalGameRoundsProcessed, totalPlayerRounds:rows.reduce((s,x)=>s+Number(x.roundsPlayed||0),0), totalNetBeer:roundTo(rows.reduce((s,x)=>s+x.netBeer,0),4), totalBeerReceived:roundTo(rows.reduce((s,x)=>s+x.beerReceived,0),4), totalBeerDebt:roundTo(rows.reduce((s,x)=>s+x.beerDebt,0),4), totalCashEntryCount:rows.reduce((s,x)=>s+Number(x.cashEntryCount||0),0), totalCashWarningCount:rows.reduce((s,x)=>s+Number(x.cashWarningCount||0),0), totalCashPenaltyCount:rows.reduce((s,x)=>s+Number(x.cashPenaltyCount||0),0), freeCashWarningsPerGame, cashPenaltyCentsPerPoint, totalCashPenaltyValueCents:rows.reduce((s,x)=>s+Number(x.cashPenaltyValueCents||0),0), totalLustCount:rows.reduce((s,x)=>s+Number(x.lustCount||0),0), lustCentsPerPoint, totalLustValueCents:rows.reduce((s,x)=>s+Number(x.lustValueCents||0),0), totalCashboxCents:rows.reduce((s,x)=>s+Number(x.totalPenaltyValueCents||0),0), distributionWeights:weights, warnings}, players:sorted, processedGames};}
+function applyPenaltyEntriesForGame(a,presetMap,codeMap,ensure,freeCashWarningsPerGame){const cashByPlayer=new Map(); countInformativePenalties(a,presetMap,codeMap).forEach(entry=>{const row=ensure(entry.preset); if(!row)return; if(entry.type==='lust'){row.lustCount+=1; return;} const key=normalizeName(entry.preset.name); cashByPlayer.set(key,(cashByPlayer.get(key)||0)+1); }); cashByPlayer.forEach((count,key)=>{const row=ensure({name:key}); if(!row)return; const free=Math.min(Number(count||0),freeCashWarningsPerGame); const paid=Math.max(0,Number(count||0)-free); row.cashEntryCount+=count; row.cashWarningCount+=free; row.cashPenaltyCount+=paid; });}
+function applyPotDistribution(rows,weights){const totalRounds=rows.reduce((s,r)=>s+Number(r.roundsPlayed||0),0); const performanceBaseRows=rows.filter(r=>r.official&&Number(r.points||0)>0); const totalPerformance=performanceBaseRows.reduce((s,r)=>s+Math.max(0,Number(r.points||0)),0); const totalContribution=rows.reduce((s,r)=>s+Number(r.totalPenaltyValueCents||0),0); const totalCashboxCents=rows.reduce((s,r)=>s+Number(r.totalPenaltyValueCents||0),0); const performanceKeys=new Set(performanceBaseRows.map(r=>r.playerId)); const participationWeight=weights.normalized.participation+(totalPerformance>0?0:weights.normalized.performance)+(totalContribution>0?0:weights.normalized.contribution); const performanceWeight=totalPerformance>0?weights.normalized.performance:0; const contributionWeight=totalContribution>0?weights.normalized.contribution:0; rows.forEach(row=>{const participation=totalRounds>0?(Number(row.roundsPlayed||0)/totalRounds)*participationWeight:0; const performance=totalPerformance>0&&performanceKeys.has(row.playerId)?(Math.max(0,Number(row.points||0))/totalPerformance)*performanceWeight:0; const contribution=totalContribution>0?(Number(row.totalPenaltyValueCents||0)/totalContribution)*contributionWeight:0; row.participationSharePercent=roundTo(participation,4); row.performanceSharePercent=roundTo(performance,4); row.contributionSharePercent=roundTo(contribution,4); row.potSharePercent=roundTo(participation+performance+contribution,4); row.potValueCents=Math.round(totalCashboxCents*(row.potSharePercent/100)); row.potBreakdown={participationPercent:row.participationSharePercent,performancePercent:row.performanceSharePercent,contributionPercent:row.contributionSharePercent,participationValueCents:Math.round(totalCashboxCents*(row.participationSharePercent/100)),performanceValueCents:Math.round(totalCashboxCents*(row.performanceSharePercent/100)),contributionValueCents:Math.round(totalCashboxCents*(row.contributionSharePercent/100))}; });}
+function getPlayerRoundStats(a,participants,presetMap,codeMap){const byPlayer=new Map(participants.map(p=>[normalizeName(p.name),0])); const participantKeys=new Set(byPlayer.keys()); const rounds=extractRoundSnapshots(a); let totalGameRounds=0; if(rounds.length){rounds.forEach(round=>{const turns=getRoundTurnCount(round,a); if(!turns)return; totalGameRounds+=turns; const keys=getRoundParticipantKeys(round,a,presetMap,codeMap,participantKeys); keys.forEach(key=>{if(byPlayer.has(key))byPlayer.set(key,byPlayer.get(key)+turns)}); }); return {byPlayer,totalGameRounds};}
+  const pointRounds=new Map(); (a.points||[]).forEach(point=>{const index=Number(point.roundIndex||0); if(!index)return; const entry=pointRounds.get(index)||{turns:0,keys:new Set()}; entry.turns=Math.max(entry.turns,Number(point.turnNo||1)); collectPointKeys(point,presetMap,codeMap).forEach(key=>{if(participantKeys.has(key))entry.keys.add(key)}); pointRounds.set(index,entry); }); if(pointRounds.size){pointRounds.forEach(entry=>{const turns=Math.max(1,Number(entry.turns||1)); totalGameRounds+=turns; const keys=entry.keys.size?entry.keys:participantKeys; keys.forEach(key=>{if(byPlayer.has(key))byPlayer.set(key,byPlayer.get(key)+turns)}); }); return {byPlayer,totalGameRounds};}
+  const fallbackTurns=Math.max(getTurnCount(a),getRoundCount(a)); totalGameRounds=fallbackTurns; participantKeys.forEach(key=>byPlayer.set(key,fallbackTurns)); return {byPlayer,totalGameRounds};}
+function extractRoundSnapshots(a){const byIndex=new Map(); function addRound(roundLike){if(!roundLike||typeof roundLike!=='object')return; const index=Number(roundLike.index||roundLike.roundIndex||0); if(!index)return; const existing=byIndex.get(index)||{index,turnsCompleted:0,target:0,events:[],players:[],participants:[],activePlayers:[],playerOrder:[]}; const merged={...existing,...roundLike,index}; merged.turnsCompleted=Math.max(Number(existing.turnsCompleted||0),Number(roundLike.turnsCompleted||0)); merged.target=Math.max(Number(existing.target||0),Number(roundLike.target||0)); ['events','players','participants','activePlayers','playerOrder'].forEach(key=>{if(Array.isArray(roundLike[key])&&roundLike[key].length)merged[key]=roundLike[key]}); byIndex.set(index,merged);}
+  (a.finishedRounds||[]).forEach(addRound); (a.roundEntries||[]).forEach(entry=>addRound(entry.currentRound||entry)); return Array.from(byIndex.values()).sort((x,y)=>Number(x.index||0)-Number(y.index||0));}
+function getRoundTurnCount(round,a){const index=Number(round.index||round.roundIndex||0); const fromPoints=Math.max(0,...((a.points||[]).filter(p=>Number(p.roundIndex||0)===index).map(p=>Number(p.turnNo||0)))); const eventCount=Array.isArray(round.events)?round.events.filter(e=>e&&(e.type==='loss'||e.type==='lust')).length:0; return Math.max(Number(round.turnsCompleted||0),Number(round.target||0),fromPoints,eventCount,1);}
+function getRoundParticipantKeys(round,a,presetMap,codeMap,participantKeys){const keys=new Set(); ['players','participants','activePlayers','playerOrder'].forEach(listKey=>{(round[listKey]||[]).forEach(value=>{const preset=typeof value==='string'?resolvePreset({name:value,code:value},presetMap,codeMap):resolvePreset(value,presetMap,codeMap); if(preset)keys.add(normalizeName(preset.name));});}); if(keys.size)return keys; (round.events||[]).forEach(event=>collectPointKeys(event,presetMap,codeMap).forEach(key=>keys.add(key))); (a.points||[]).filter(point=>Number(point.roundIndex||0)===Number(round.index||round.roundIndex||0)).forEach(point=>collectPointKeys(point,presetMap,codeMap).forEach(key=>keys.add(key))); return keys.size?keys:participantKeys;}
+function collectPointKeys(value,presetMap,codeMap){const keys=new Set(); ['from','to','winner','loser','actor','player'].forEach(side=>{const key=resolvePersonKey(value,side); if(key)keys.add(key);}); const preset=resolvePreset(value,presetMap,codeMap); if(preset)keys.add(normalizeName(preset.name)); return keys;}
+function calculateGameLedger(a,participants){const pair=new Map(); const keyFor=(p)=>normalizeName(p.name); const partKeys=new Set(participants.map(keyFor)); (a.points||[]).forEach(point=>{if(!point||point.cancelled||point.isCancelled)return; const from=resolvePersonKey(point,'from')||resolvePersonKey(point,'loser')||resolvePersonKey(point,'actor')||resolvePersonKey(point,'player'); const to=resolvePersonKey(point,'to')||resolvePersonKey(point,'winner')||resolvePersonKey(point,'target'); if(!from||!to||from===to||!partKeys.has(from)||!partKeys.has(to))return; const amount=Number(point.amount||point.value||point.count||1)||1; const k=from+'|'+to; pair.set(k,(pair.get(k)||0)+amount); }); const ledger=new Map(participants.map(p=>[keyFor(p),{receive:0,debt:0,net:0}])); const seen=new Set(); Array.from(pair.keys()).forEach(k=>{if(seen.has(k))return; const [aKey,bKey]=k.split('|'); const rev=bKey+'|'+aKey; seen.add(k);seen.add(rev); const ab=pair.get(k)||0; const ba=pair.get(rev)||0; const net=ab-ba; if(net>0){ledger.get(aKey).debt+=net; ledger.get(bKey).receive+=net}else if(net<0){ledger.get(bKey).debt+=Math.abs(net); ledger.get(aKey).receive+=Math.abs(net)} }); ledger.forEach(v=>{v.net=roundTo(v.receive-v.debt,4); v.receive=roundTo(v.receive,4); v.debt=roundTo(v.debt,4)}); return ledger;}
+function resolvePersonKey(obj,side){const names=[`${side}Name`,`${side}PlayerName`,`${side}Label`]; const codes=[`${side}Code`]; const ids=[`${side}Id`,`${side}PlayerId`]; const direct= side==='player' ? ['playerName','name','actorName','fromName'] : [] ; const valueName=[...names,...direct].map(k=>obj[k]).find(Boolean); if(valueName)return normalizeName(valueName); const valueCode=codes.map(k=>obj[k]).find(Boolean); if(valueCode){const p=PRESET_PLAYERS.find(x=>normalizeName(x.code)===normalizeName(valueCode)); if(p)return normalizeName(p.name)} const valueId=ids.map(k=>obj[k]).find(Boolean); if(valueId){const norm=normalizeName(valueId); const p=PRESET_PLAYERS.find(x=>norm.includes(normalizeName(x.name))||norm===normalizeName(x.code)); if(p)return normalizeName(p.name)} return ''}
+function denseRanks(items){let last=null,rank=0,seen=0; return items.map(x=>{seen++; if(last===null||x.net!==last){rank=seen; last=x.net} return {...x,rank}})}
+function getRoundCount(a){const r=Array.isArray(a.finishedRounds)?a.finishedRounds.length:0; const e=Array.isArray(a.roundEntries)?a.roundEntries.length:0; return Math.max(r,e,0)}
+function getTurnCount(a){let max=0; (a.finishedRounds||[]).forEach(r=>{max+=Number(r.turnsCompleted||r.target||0)}); if(max)return max; (a.points||[]).forEach(p=>{max=Math.max(max,Number(p.turnNo||0))}); return max}
+function countInformativePenalties(a,presetMap,codeMap){const out=[]; (a.cashPenalties||[]).forEach(p=>{const preset=resolvePreset(p,presetMap,codeMap); if(!preset)return; const type=normalizePenaltyType(p.type||p.kind||p.actionType||p.label||'cashfault'); out.push({preset,type:type.includes('lust')?'lust':'cash'})}); (a.points||[]).forEach(p=>{const type=normalizePenaltyType(p.type||p.kind||p.actionType||p.label||''); if(type!=='lust')return; const preset=resolvePreset({name:p.fromName||p.actorName||p.playerName,code:p.fromCode||p.actorCode||p.playerCode},presetMap,codeMap); if(preset) out.push({preset,type:'lust'}); }); return out}
+function normalizePenaltyType(value){const s=normalizeName(value).replace(/[^a-z0-9]/g,''); if(s.includes('lust'))return'lust'; if(s.includes('straf')||s.includes('cash')||s.includes('matten')||s.includes('wuerfel')||s.includes('neuwuerfel'))return'cash'; return s}
+function resolvePreset(value,presetMap,codeMap){if(!value)return null; if(value.name&&presetMap.get(normalizeName(value.name)))return presetMap.get(normalizeName(value.name)); const name=value.name||value.playerName||value.actorName||value.fromName||value.toName||''; if(presetMap.get(normalizeName(name)))return presetMap.get(normalizeName(name)); const code=value.code||value.playerCode||value.actorCode||value.fromCode||value.toCode||''; if(codeMap.get(normalizeName(code)))return codeMap.get(normalizeName(code)); const id=normalizeName(value.id||value.playerId||value.actorId||value.fromId||value.toId||''); return PRESET_PLAYERS.find(p=>id.includes(normalizeName(p.name))||id===normalizeName(p.code))||null}
+function renderSnapshot(snapshot){el.summarySection.classList.remove('hidden'); el.tableSection.classList.remove('hidden'); const rows=snapshot.players||[]; el.kpiGames.textContent=formatInt(snapshot.summary.gamesProcessed||0); el.kpiRounds.textContent=formatInt(snapshot.summary.totalRoundsPlayed||0); el.kpiCashCount.textContent=formatInt(snapshot.summary.totalCashPenaltyCount||0); el.kpiCashValue.textContent=formatCents(snapshot.summary.totalCashboxCents??snapshot.summary.totalCashPenaltyValueCents??snapshot.summary.totalCashPenaltyCents??0); el.kpiLustCount.textContent=formatInt(snapshot.summary.totalLustCount||0); el.kpiOfficial.textContent=`${formatInt(snapshot.summary.officialCount||0)} offiziell gewertet`; el.kpiCashWarnings.textContent=`${formatInt(snapshot.summary.totalCashWarningCount||0)} freie Warnungen`; const ids=getConfigGameIds(snapshot.config); el.kpiIds.textContent=`IDs: ${ids.length?ids.length:'alle'}`; el.kpiPeriod.textContent=buildPeriodLabel(snapshot.config); renderMainTable(rows); renderUnofficial(rows); updateHeader();}
+function renderMainTable(rows){const labels=['#','Spieler','Pkt.','SR','+Bier','-Bier','Strafe','Lust']; el.mainHead.innerHTML='<tr>'+labels.map((l,i)=>`<th class="${i>=2?'num':''}">${l}</th>`).join('')+'</tr>'; const filtered=filterAndSortRows(rows); el.mainBody.innerHTML=filtered.map((r,i)=>rowHtml(r,i+1,labels)).join('')||`<tr><td colspan="${labels.length}">Keine passenden Spieler.</td></tr>`;}
+function rowHtml(r,rank,labels){const playerCell=`<span class="player player-link" title="Doppelklick für Topfdetails">${escapeHtml(r.name)}</span><span class="share-badge">${formatPercent(r.potSharePercent||0)}</span><span class="sub">${escapeHtml(r.code||'')} · ${formatCents(r.potValueCents||0)}</span>`; const cashCell=`${formatInt(r.cashPenaltyCount||0)}${Number(r.cashWarningCount||0)?`<span class="sub">${formatInt(r.cashWarningCount)} frei</span>`:''}`; const vals=[`<span class="rank">${rank}</span>`,playerCell,netSpan(r.points),formatInt(r.roundsPlayed),formatDecimal(r.beerReceived,1),formatDecimal(r.beerDebt,1),cashCell,formatInt(r.lustCount||0)]; return `<tr data-player-id="${escapeHtml(r.playerId||'')}">`+vals.map((v,i)=>`<td data-label="${escapeHtml(labels[i])}" class="${i>=2?'num':''}">${v}</td>`).join('')+'</tr>'}
+function filterAndSortRows(rows){let list=[...(rows||[])]; const q=normalizeName(el.searchInput.value||''); if(q) list=list.filter(r=>normalizeName(r.name).includes(q)||normalizeName(r.code).includes(q)); const f=el.eligibilityFilter.value; if(f==='official')list=list.filter(r=>r.official); if(f==='unofficial')list=list.filter(r=>!r.official); const key=el.sortSelect.value; const dir=el.sortDirSelect.value==='asc'?1:-1; list.sort((a,b)=>((Number(a[key]??0)-Number(b[key]??0))*dir)||b.points-a.points||b.netBeer-a.netBeer||b.beerReceived-a.beerReceived||a.beerDebt-b.beerDebt||a.name.localeCompare(b.name,'de')); return list;}
+function renderUnofficial(rows){const unofficial=(rows||[]).filter(r=>!r.official); el.unofficialSection.classList.toggle('hidden',!unofficial.length); const labels=['Spieler','SR','Pkt.']; el.unofficialHead.innerHTML='<tr>'+labels.map((l,i)=>`<th class="${i?'num':''}">${l}</th>`).join('')+'</tr>'; el.unofficialBody.innerHTML=unofficial.map(r=>`<tr data-player-id="${escapeHtml(r.playerId||'')}">`+[`<span class="player player-link" title="Doppelklick für Topfdetails">${escapeHtml(r.name)}</span><span class="share-badge">${formatPercent(r.potSharePercent||0)}</span><span class="sub">${escapeHtml(r.code||'')} · ${formatCents(r.potValueCents||0)}</span>`,formatInt(r.roundsPlayed),netSpan(r.points)].map((v,i)=>`<td data-label="${escapeHtml(labels[i])}" class="${i?'num':''}">${v}</td>`).join('')+'</tr>').join('')}
+function handlePlayerDblClick(e){const rowEl=e.target.closest('tr[data-player-id]'); if(!rowEl||!runtime.lastSnapshot)return; const id=rowEl.getAttribute('data-player-id'); const row=(runtime.lastSnapshot.players||[]).find(x=>x.playerId===id); if(row)openPlayerDetails(row,runtime.lastSnapshot);}
+function openPlayerDetails(row,snapshot){const summary=snapshot.summary||{}; const weights=summary.distributionWeights||normalizeDistributionWeights(snapshot.config&&snapshot.config.distributionWeights); el.playerModalTitle.textContent=`${row.name} · ${formatPercent(row.potSharePercent||0)} Topf-Anteil`; el.playerModalSubtitle.textContent=`Auszahlung: ${formatCents(row.potValueCents||0)} von ${formatCents(summary.totalCashboxCents||0)} · Gewichtung ${formatPercent(weights.normalized.participation)} Teilnahme / ${formatPercent(weights.normalized.performance)} Leistung / ${formatPercent(weights.normalized.contribution)} Einzahlung`; const b=row.potBreakdown||{}; const cards=[{label:'Teilnahme',value:formatPercent(row.participationSharePercent||0),sub:`${formatInt(row.roundsPlayed||0)} SR · ${formatCents(b.participationValueCents||0)}`},{label:'Leistung',value:formatPercent(row.performanceSharePercent||0),sub:`${formatDecimal(row.points||0,1)} Pkt. · ${row.official?'offiziell':'nicht offiziell'} · ${formatCents(b.performanceValueCents||0)}`},{label:'Einzahlung',value:formatPercent(row.contributionSharePercent||0),sub:`${formatInt(row.cashEntryCount||0)} Einträge, davon ${formatInt(row.cashWarningCount||0)} frei und ${formatInt(row.cashPenaltyCount||0)} zahlpflichtig · ${formatCents(row.totalPenaltyValueCents||0)} eingezahlt · ${formatCents(b.contributionValueCents||0)}`},{label:'Auszahlung',value:formatCents(row.potValueCents||0),sub:`Gesamtanteil ${formatPercent(row.potSharePercent||0)}`,total:true}]; el.playerModalGrid.innerHTML=cards.map(card=>`<div class="detail-card ${card.total?'detail-total':''}"><span class="label">${escapeHtml(card.label)}</span><span class="value">${escapeHtml(card.value)}</span><span class="subline">${escapeHtml(card.sub)}</span></div>`).join(''); el.playerModal.classList.remove('hidden'); document.body.style.overflow='hidden';}
+function renderEmpty(){el.summarySection.classList.add('hidden'); el.tableSection.classList.add('hidden'); el.unofficialSection.classList.add('hidden'); el.tournamentSelect.innerHTML=''; renderConfigSelect(); updateHeader(); renderAdminLock();}
+function recalculateIfPossible(){if(runtime.lastArchivesRaw) calculateAndRender(runtime.lastArchivesRaw); else if(runtime.lastSnapshot) renderSnapshot(runtime.lastSnapshot)}
+function handleAdminLogin(){if(String(el.adminUser.value||'').trim()===CONFIG_ADMIN_USER&&String(el.adminPass.value||'')===CONFIG_ADMIN_PASSWORD){sessionStorage.setItem(ADMIN_SESSION_KEY,'1'); el.adminPass.value=''; renderAdminLock(); log('Konfiguration entsperrt.')}else{sessionStorage.removeItem(ADMIN_SESSION_KEY); renderAdminLock(); log('Admin-Anmeldung fehlgeschlagen.')}}
+function handleAdminLogout(){sessionStorage.removeItem(ADMIN_SESSION_KEY); renderAdminLock(); log('Konfiguration gesperrt.')}
+function isAdmin(){try{return sessionStorage.getItem(ADMIN_SESSION_KEY)==='1'}catch(e){return false}}
+function renderAdminLock(){const open=isAdmin(); document.querySelectorAll('.admin-only').forEach(x=>x.classList.toggle('hidden',!open)); el.adminLoginBtn.classList.toggle('hidden',open); el.adminLogoutBtn.classList.toggle('hidden',!open); if(open)el.adminDetails.open=true; el.adminStatus.classList.toggle('warn-note',!open); el.adminStatus.textContent=open?'Konfiguration entsperrt. Turnierfilter, Speicherung und Export können geändert werden.':'Konfiguration gesperrt.'; [el.saveSnapshotBtn,el.downloadJsonBtn,el.copyJsonBtn].forEach(b=>{if(b)b.disabled=!runtime.lastSnapshot})}
+async function saveCurrentConfig(){const c=updateWorkingConfigFromFields(); saveLocalSettings(); el.configFeedback.textContent='Lokal gespeichert, Datenbank-Abgleich läuft …'; log(`Auswertung lokal gespeichert: ${c.id}`); try{const db=await initDb(); const sdk=runtime.sdk; await sdk.set(sdk.ref(db,`stats/leaderboards/beer/configs/${c.id}`),{...deepClone(c),updatedAt:new Date().toISOString(),updatedBy:'strafkasse-v016.html'}); el.configFeedback.textContent='Datenbank-Abgleich abgeschlossen.'; setStatus('Auswertung gespeichert',c.id,true); log(`Auswertung in Datenbank gespeichert: stats/leaderboards/beer/configs/${c.id}`)}catch(e){el.configFeedback.textContent='Lokal gespeichert, Datenbank-Abgleich fehlgeschlagen: '+(e.message||e); log('Datenbank-Speicherung fehlgeschlagen: '+(e.message||e))}}
+async function loadConfigsFromDatabase({silent=false}={}){try{if(!silent){setStatus('lädt','Auswertungen werden aus der Datenbank geladen …'); log('Auswertungen werden aus der Datenbank geladen …')} const db=await initDb(); const sdk=runtime.sdk; const snap=await sdk.get(sdk.ref(db,'stats/leaderboards/beer/configs')); const configs=snap.val()||{}; Object.entries(configs).forEach(([id,c])=>{runtime.configs[sanitizeKey(id)]={...deepClone(DEFAULT_CONFIG),...c,id:sanitizeKey(c.id||id)}}); renderConfigSelect(); applyConfigToFields(getCurrentConfigId()); saveLocalSettings(); updateHeader(); if(!silent)setStatus('Auswertungen geladen',`${Object.keys(runtime.configs).length} verfügbar.`,true); log(`${Object.keys(runtime.configs).length} Auswertungen verfügbar.`)}catch(e){if(!silent)setStatus('Auswertungen nicht geladen',e.message||String(e),false,true); log('Auswertungen konnten nicht geladen werden: '+(e.message||e))}}
+function prepareNewConfig(){const id='turnier-'+new Date().toISOString().slice(0,10); runtime.configs[id]={...deepClone(DEFAULT_CONFIG),id,title:'Neues Turnier'}; runtime.selectedConfigId=id; renderConfigSelect(); el.tournamentSelect.value=id; applyConfigToFields(id); updateHeader(); saveLocalSettings(); el.configFeedback.textContent='Neue Auswertung vorbereitet. Zum dauerhaften Speichern bitte speichern/übernehmen.'}
+async function deleteCurrentConfig(){const c=getCurrentConfig(); const id=sanitizeKey(c.id||getCurrentConfigId()); if(!id)return; const label=c.title||id; const ok=window.confirm(`Auswertung „${label}” wirklich löschen? Die lokale Auswertung, die Datenbank-Konfiguration und der gespeicherte Snapshot dieser Auswertung werden entfernt.`); if(!ok)return; delete runtime.configs[id]; const remaining=Object.keys(runtime.configs); runtime.selectedConfigId=remaining[0]||DEFAULT_CONFIG_ID; renderConfigSelect(); applyConfigToFields(runtime.selectedConfigId); saveLocalSettings(); runtime.lastSnapshot=null; renderEmpty(); el.configFeedback.textContent=`Auswertung „${label}” lokal gelöscht. Datenbank-Abgleich läuft …`; log(`Auswertung lokal gelöscht: ${id}`); try{const db=await initDb(); const sdk=runtime.sdk; await Promise.all([sdk.remove(sdk.ref(db,`stats/leaderboards/beer/configs/${id}`)),sdk.remove(sdk.ref(db,`stats/leaderboards/beer/snapshots/${id}`))]); setStatus('Auswertung gelöscht',id,true); el.configFeedback.textContent=`Auswertung „${label}” gelöscht.`; log(`Auswertung aus Datenbank gelöscht: ${id}`)}catch(e){setStatus('Löschen unvollständig',e.message||String(e),false,true); el.configFeedback.textContent=`Lokal gelöscht, Datenbank-Löschung fehlgeschlagen: ${e.message||e}`; log('Datenbank-Löschung fehlgeschlagen: '+(e.message||e))}}
+async function saveSnapshot(){if(!runtime.lastSnapshot)return; try{const c=getCurrentConfig(); const db=await initDb(); const sdk=runtime.sdk; await sdk.set(sdk.ref(db,`stats/leaderboards/beer/snapshots/${c.id}`),{...deepClone(runtime.lastSnapshot),savedAt:new Date().toISOString(),savedBy:'strafkasse-v016.html'}); setStatus('Snapshot gespeichert',c.id,true); log('Snapshot in Datenbank gespeichert.')}catch(e){setStatus('Snapshot nicht gespeichert',e.message||String(e),false,true); log('Snapshot konnte nicht gespeichert werden: '+(e.message||e))}}
+async function loadSnapshot(){try{const c=getCurrentConfig(); const db=await initDb(); const sdk=runtime.sdk; const snap=await sdk.get(sdk.ref(db,`stats/leaderboards/beer/snapshots/${c.id}`)); const data=snap.val(); if(!data)throw new Error('Kein Snapshot für diese Auswertung gefunden.'); runtime.lastSnapshot=data; renderSnapshot(data); setStatus('Snapshot geladen',c.id,true); log('Snapshot aus Datenbank geladen.')}catch(e){setStatus('Snapshot nicht geladen',e.message||String(e),false,true); log('Snapshot konnte nicht geladen werden: '+(e.message||e))}}
+function downloadJson(){if(!runtime.lastSnapshot)return; const blob=new Blob([JSON.stringify(runtime.lastSnapshot,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`bierpunkte-strafkasse-${getCurrentConfigId()}.json`; a.click(); URL.revokeObjectURL(url)}
+async function copyJson(){if(!runtime.lastSnapshot)return; await navigator.clipboard.writeText(JSON.stringify(runtime.lastSnapshot,null,2)); setStatus('JSON kopiert','Zwischenablage aktualisiert.',true)}
+function buildGameId(item,a){return sanitizeKey(`${item.code||'game'}__${a.sessionId||a.id||item.archiveKey||a.finishedAt||'archive'}`)}
+function buildPeriodLabel(c){if(c.startDate&&c.endDate)return `Zeitraum: ${formatDate(c.startDate)} bis ${formatDate(c.endDate)}`; if(c.startDate)return `Zeitraum: ab ${formatDate(c.startDate)}`; if(c.endDate)return `Zeitraum: bis ${formatDate(c.endDate)}`; return 'Zeitraum: alle Archive'}
+function splitIds(text){return Array.from(new Set(String(text||'').split(/[\s,;]+/).map(sanitizeKey).filter(Boolean)))}
+function normalizeEuroConfig(value,fallback){const n=Number(String(value??'').replace(',','.')); return Number.isFinite(n)&&n>=0?Math.round(n*100)/100:fallback}
+function normalizeIntegerConfig(value,fallback){const n=Number(String(value??'').replace(',','.')); return Number.isFinite(n)&&n>=0?Math.floor(n):fallback}
+function normalizePercentConfig(value,fallback){const n=Number(String(value??'').replace(',','.')); return Number.isFinite(n)&&n>=0?Math.round(n*100)/100:fallback}
+function normalizeDistributionWeights(value){const raw={participation:normalizePercentConfig(value&&value.participation,30),performance:normalizePercentConfig(value&&value.performance,50),contribution:normalizePercentConfig(value&&value.contribution,20)}; let total=raw.participation+raw.performance+raw.contribution; if(total<=0){raw.participation=30;raw.performance=50;raw.contribution=20;total=100} return {raw,total:roundTo(total,4),normalized:{participation:roundTo(raw.participation/total*100,4),performance:roundTo(raw.performance/total*100,4),contribution:roundTo(raw.contribution/total*100,4)}}}
+function sanitizeKey(value){return String(value||'').trim().replace(/[.#$/\[\]]/g,'-')}
+function normalizeName(v){return String(v||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ü/g,'u').replace(/ä/g,'a').replace(/ö/g,'o').replace(/ß/g,'ss')}
+function parseDate(v){const t=new Date(v||'').getTime(); return Number.isFinite(t)?t:0}
+function formatDate(v){if(!v)return''; try{return new Date(v+'T00:00:00').toLocaleDateString('de-DE')}catch(e){return v}}
+function formatInt(v){return new Intl.NumberFormat('de-DE',{maximumFractionDigits:0}).format(Number(v||0))}
+function formatDecimal(v,d=1){return new Intl.NumberFormat('de-DE',{minimumFractionDigits:d,maximumFractionDigits:d}).format(Number(v||0))}
+function formatCents(v){return `${new Intl.NumberFormat('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v||0)/100)} €`}
+function formatPercent(v){return `${new Intl.NumberFormat('de-DE',{minimumFractionDigits:1,maximumFractionDigits:1}).format(Number(v||0))} %`}
+function formatValue(v){return typeof v==='number'?formatDecimal(v,1):String(v??'–')}
+function netSpan(v){const n=Number(v||0); const cls=n>0?'positive':n<0?'negative':''; const sign=n>0?'+':''; return `<span class="${cls}">${sign}${formatDecimal(n,1)}</span>`}
+function roundTo(v,d=4){const f=10**d; return Math.round((Number(v||0)+Number.EPSILON)*f)/f}
+function deepClone(v){return JSON.parse(JSON.stringify(v))}
+function escapeHtml(v){return String(v??'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}
+function log(msg){const line=`${new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · ${msg}`; el.logBox.textContent=el.logBox.textContent==='Bereit.'?line:line+'\n'+el.logBox.textContent}
+</script>
 </body>
 </html>
